@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Scan &amp; Log</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- so an icon added to the home screen opens dark and chromeless, like an app -->
+<meta name="theme-color" content="#0d0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scan & Log">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --bg:#0d0f14; --panel:#161a22; --panel2:#1d2330; --line:#2a3242;
+    --text:#f2f4f8; --muted:#8a93a6; --accent:#ffd400; --green:#2ecc71;
+    --red:#ff5c5c; --blue:#5aa9ff;
+    --sans: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html, body { background:var(--bg); color:var(--text); font-family:var(--sans); }
+  body { padding:14px 12px 40px; direction:rtl; }
+  .wrap { max-width:620px; margin:0 auto; }
+
+  h1 { font-size:19px; letter-spacing:.2px; margin-bottom:2px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--muted); font-size:12.5px; margin-bottom:14px; }
+
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+
+  /* search results */
+  #searchRes { display:none; margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  #searchRes.on { display:block; }
+  .sr {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:right;
+    background:var(--panel2); border:0; border-bottom:1px solid var(--line);
+    border-radius:0; padding:10px 12px; font-size:14px;
+  }
+  .sr:last-child { border-bottom:0; }
+  .sr .srn { flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sr .srv { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .sr .srs {
+    font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px;
+    background:#1c2836; color:var(--blue); border:1px solid #2b3f55; white-space:nowrap;
+  }
+  .sr .srs.mine { background:#12301f; color:var(--green); border-color:#1d5c39; }
+  .sr .srs.gen  { background:#2a2410; color:var(--accent); border-color:#6b5a12; }
+  .sr.dim { color:var(--muted); font-size:12.5px; justify-content:center; }
+
+  /* week calendar */
+  #calcard { padding:12px 14px; }
+  .caltitle { font-size:14.5px; font-weight:800; margin-bottom:10px; }
+  .calweek { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  .cd {
+    background:var(--panel2); border:1px solid var(--line); border-radius:9px;
+    padding:7px 2px 5px; text-align:center; font-family:inherit; color:var(--text);
+    display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;
+  }
+  .cd:disabled { opacity:.35; cursor:default; }
+  .cd .cl { font-size:11px; font-weight:800; color:var(--muted); }
+  .cd .cn { font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .cd.today .cl { color:var(--accent); }
+  .cd.sel { border-color:var(--accent); background:#241f0e; }
+  .cd .dot { width:5px; height:5px; border-radius:50%; background:var(--green); }
+  .cd .dot.off { background:transparent; }
+
+  /* totals + energy balance */
+  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .erow { display:flex; gap:10px; margin-top:10px; }
+  .efield { flex:1; }
+  .efield label { font-size:11px; }
+  #ebal {
+    margin-top:10px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; font-size:13.5px; line-height:1.7;
+    font-variant-numeric:tabular-nums; text-align:center;
+  }
+  #ebal b.def { color:var(--green); }
+  #ebal b.sur { color:var(--red); }
+  #ebal .dim { color:var(--muted); }
+  .eprof { margin-top:9px; }
+  .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
+  .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
+  .tot { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 6px; text-align:center; }
+  .tot .v { font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
+  .tot .l { font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
+  .tot.kcal .v { color:var(--accent); }
+
+  button, .btn {
+    font-family:inherit; font-size:15px; font-weight:700; border:0; border-radius:11px;
+    padding:13px 16px; cursor:pointer; transition:.12s; color:var(--text);
+    background:var(--panel2); border:1px solid var(--line);
+  }
+  button:active { transform:scale(.985); }
+  button:disabled { opacity:.5; }
+  .primary { background:var(--accent); color:#000; border-color:var(--accent); }
+  .danger  { background:transparent; color:var(--red); border-color:#5a2a2a; }
+  .wide { width:100%; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+
+  .big { font-size:19px; padding:20px; }
+  #cam { margin-top:10px; }
+
+  /* camera — a floating scanner window above the page */
+  #cam {
+    display:none; position:fixed; inset:0; z-index:50;
+    background:rgba(0,0,0,.55); align-items:center; justify-content:center;
+    padding:18px;
+  }
+  #cam.on { display:flex; }
+  .campanel {
+    width:100%; max-width:440px; background:var(--panel);
+    border:1px solid var(--line); border-radius:16px; padding:12px;
+    box-shadow:0 18px 60px rgba(0,0,0,.6);
+  }
+  #video {
+    width:100%; aspect-ratio:4/3; object-fit:cover; background:#000;
+    border-radius:12px; border:2px solid var(--accent); display:block;
+  }
+  #camHint { text-align:center; color:var(--muted); font-size:12.5px; margin:9px 0; }
+  #camBar { display:flex; gap:8px; }
+  #camBar > * { flex:1; }
+  #torchBtn { display:none; }
+  #torchBtn.avail { display:block; }
+  #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
+  .camhint { text-align:center; color:var(--muted); font-size:12.5px; margin:8px 0; }
+
+  /* form */
+  label { display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:5px; }
+  input[type=text], input[type=number] {
+    width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:12px; font-size:16px; font-family:inherit;
+  }
+  input:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .field { margin-bottom:11px; }
+  .per100 { font-size:11px; color:var(--muted); }
+
+  #entry { display:none; }
+  #entry.on { display:block; }
+  .foundtag {
+    display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px;
+    border-radius:999px; margin-bottom:10px;
+  }
+  .foundtag.known { background:#12301f; color:var(--green); border:1px solid #1d5c39; }
+  .foundtag.newp  { background:#2a2410; color:var(--accent); border:1px solid #6b5a12; }
+  #calcPreview {
+    background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+    padding:11px; margin:11px 0; font-size:14px; text-align:center; font-variant-numeric:tabular-nums;
+  }
+  #calcPreview b { color:var(--accent); font-size:17px; }
+  #shot { width:64px; height:64px; border-radius:9px; object-fit:cover; border:1px solid var(--line); background:var(--panel2); }
+
+  /* log */
+  .loghead { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
+  .loghead h2 { font-size:15px; }
+  .loghead .cnt { color:var(--muted); font-size:12.5px; margin-inline-start:auto; }
+  .item { display:flex; gap:10px; align-items:center; padding:10px 0; border-top:1px solid var(--line); }
+  .item:first-child { border-top:0; }
+  .item img { width:44px; height:44px; border-radius:8px; object-fit:cover; background:var(--panel2); flex:0 0 auto; }
+  .item .mid { flex:1; min-width:0; }
+  .item .nm { font-weight:700; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .meta { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .item .kc { font-weight:800; font-variant-numeric:tabular-nums; text-align:center; flex:0 0 auto; }
+  .item .kc b { color:var(--accent); font-size:16px; display:block; }
+  .item .kc small { color:var(--muted); font-size:10px; }
+  .item .x { background:transparent; border:0; color:var(--muted); font-size:19px; padding:6px 4px; flex:0 0 auto; }
+  .empty { color:var(--muted); font-size:13.5px; text-align:center; padding:18px 0; line-height:1.7; }
+
+  .msg { font-size:12.5px; margin-top:9px; min-height:16px; line-height:1.6; }
+  .msg.err { color:var(--red); } .msg.ok { color:var(--green); } .msg.pend { color:var(--accent); }
+  .diag { font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:6px; direction:ltr; text-align:left; }
+  .foot { color:var(--muted); font-size:11.5px; line-height:1.75; margin-top:6px; }
+  .foot b { color:var(--text); }
+  .daynav { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+  .daynav select {
+    flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:11px; font-size:15px; font-family:inherit;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>SCAN <span>//</span> LOG</h1>
+  <div class="sub">סורק ברקוד, רושם כמה גרם, והשורה נשמרת עם השעה.</div>
+
+  <div class="card" id="calcard">
+    <div class="caltitle" id="calToday"></div>
+    <div class="calweek" id="calWeek"></div>
+  </div>
+
+  <div class="card">
+    <div id="totals">
+      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
+      <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
+      <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
+      <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
+    </div>
+    <div class="erow">
+      <div class="efield">
+        <label for="wIn">משקל הבוקר (ק"ג)</label>
+        <input type="number" id="wIn" inputmode="decimal" step="0.1">
+      </div>
+      <div class="efield">
+        <label for="actIn">שרפת באימון (קק"ל)</label>
+        <input type="number" id="actIn" inputmode="numeric" placeholder="0">
+      </div>
+    </div>
+    <div id="ebal"></div>
+    <details class="eprof">
+      <summary>הגדרות חישוב</summary>
+      <div class="erow" style="margin-top:8px">
+        <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
+        <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
+      </div>
+      <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <button id="scanBtn" class="primary wide big">📷 סרוק מוצר</button>
+    <div class="camhint">כוון את הברקוד למצלמה — ברגע שהוא נקלט המוצר מזוהה לבד, כולל הערכים התזונתיים.</div>
+    <div class="row">
+      <button id="photoBtn">🖼️ צלם תמונה</button>
+      <button id="manualBtn">⌨️ הקלד ברקוד</button>
+    </div>
+    <input type="text" id="searchIn" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off" style="margin-top:8px">
+    <div id="searchRes"></div>
+    <div id="cam">
+      <div class="campanel">
+        <video id="video" playsinline muted autoplay></video>
+        <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
+        <div id="camBar">
+          <button id="torchBtn">🔦 פנס</button>
+          <button id="shootBtn">📸 צלם ידנית</button>
+          <button id="stopBtn" class="danger">✕ סגור</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+    <div class="msg" id="scanMsg"></div>
+    <div class="diag" id="diag"></div>
+  </div>
+
+  <div class="card" id="entry">
+    <div id="foundTag" class="foundtag newp">מוצר חדש</div>
+    <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:11px">
+      <img id="shot" alt="">
+      <div style="flex:1">
+        <div class="field" style="margin:0">
+          <label for="pName">שם המוצר</label>
+          <input type="text" id="pName" placeholder="למשל: קוטג׳ 5%">
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>ערכים ל-100 גרם <span class="per100">(מהמדבקה על האריזה — נשמר לפעם הבאה)</span></label>
+      <div class="grid4">
+        <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal">
+        <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal">
+        <input type="number" id="p100carb" placeholder="פחמ׳" inputmode="decimal">
+        <input type="number" id="p100fat" placeholder="שומן" inputmode="decimal">
+      </div>
+      <button id="labelBtn" class="wide" style="margin-top:9px">📄 צלם את טבלת הערכים — היא תיקרא לבד</button>
+      <input type="file" id="labelInput" accept="image/*" capture="environment" hidden>
+      <details id="ocrDetails" style="display:none; margin-top:8px">
+        <summary style="cursor:pointer; font-size:12px; color:var(--muted)">מה נקרא מהתמונה</summary>
+        <pre id="ocrRaw" style="font-size:11px; color:var(--muted); white-space:pre-wrap; margin-top:6px; max-height:140px; overflow-y:auto"></pre>
+      </details>
+    </div>
+
+    <div class="field">
+      <label for="grams">כמה גרם אכלת?</label>
+      <input type="number" id="grams" placeholder="גרם" inputmode="decimal">
+    </div>
+
+    <div id="calcPreview">הזן גרמים כדי לחשב</div>
+
+    <div class="row">
+      <button id="addBtn" class="primary">➕ הוסף לרשימה</button>
+      <button id="cancelBtn">ביטול</button>
+    </div>
+    <div class="msg" id="entryMsg"></div>
+  </div>
+
+  <div class="card">
+    <div class="daynav">
+      <select id="daySel"></select>
+      <button id="copyBtn">📋 העתק דוח</button>
+    </div>
+    <div class="loghead">
+      <h2 id="logTitle">היום</h2>
+      <span class="cnt" id="logCount"></span>
+    </div>
+    <div id="log"></div>
+    <div class="foot" id="foot"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="expBtn">⬇️ גיבוי נתונים</button>
+      <button id="impBtn">⬆️ שחזור מגיבוי</button>
+    </div>
+    <input type="file" id="impInput" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   Storage. Everything lives in this phone's localStorage:
+   - fl_log      : array of entries
+   - fl_products : barcode -> {name, kcal, pro, carb, fat, photo}
+   The page never calls an external API — the artifact sandbox blocks
+   that — so a barcode is matched against products this phone has
+   already seen. Typing a product's label values once teaches it
+   forever.                                                        */
+const LS_LOG = "fl_log", LS_PROD = "fl_products", LS_PROF = "fl_profile", LS_DAY = "fl_daydata";
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+let LOG = store.get(LS_LOG, []);
+let PRODUCTS = store.get(LS_PROD, {});
+// height/age are his stated stats; 107.6 is the last weigh-in known when this
+// was built and is only the seed until a weight is entered in the app
+let PROFILE = store.get(LS_PROF, { height: 182, age: 36 });
+let DAYDATA = store.get(LS_DAY, {});   // per day: {weight, activity}
+const $ = id => document.getElementById(id);
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const todayKey = () => new Date().toLocaleDateString("sv-SE");   // YYYY-MM-DD, local
+let viewDay = todayKey();
+let pending = null;   // {barcode, photo}
+
+/* ---------------- totals + log ---------------- */
+function entriesFor(day) { return LOG.filter(e => e.day === day); }
+
+function computed(e) {
+  const f = e.grams / 100;
+  return { kcal: e.k100 * f, pro: e.pro100 * f, carb: e.carb100 * f, fat: e.fat100 * f };
+}
+
+function renderTotals() {
+  const t = entriesFor(viewDay).reduce((a, e) => {
+    const c = computed(e);
+    a.kcal += c.kcal; a.pro += c.pro; a.carb += c.carb; a.fat += c.fat; return a;
+  }, { kcal: 0, pro: 0, carb: 0, fat: 0 });
+  $("tKcal").textContent = Math.round(t.kcal).toLocaleString("he-IL");
+  $("tPro").textContent = Math.round(t.pro);
+  $("tCarb").textContent = Math.round(t.carb);
+  $("tFat").textContent = Math.round(t.fat);
+  renderEnergy(t.kcal);
+}
+
+/* ---------------- energy balance ----------------
+   He enters two numbers a day - the morning weight and the workout burn.
+   BMR (Mifflin-St Jeor, male) plus the workout is the out side; the log is
+   the in side. The weight carries forward from the last day it was entered. */
+function weightFor(day) {
+  if (DAYDATA[day] && DAYDATA[day].weight) return DAYDATA[day].weight;
+  const days = Object.keys(DAYDATA).filter(d => d <= day && DAYDATA[d].weight).sort();
+  if (days.length) return DAYDATA[days[days.length - 1]].weight;
+  return 107.6;   // build-time seed, replaced by his first entry
+}
+
+function bmrFor(w) {
+  return Math.round(10 * w + 6.25 * PROFILE.height - 5 * PROFILE.age + 5);
+}
+
+function dayEnergy(day, kcalIn) {
+  const w = weightFor(day);
+  const bmr = bmrFor(w);
+  const act = (DAYDATA[day] && DAYDATA[day].activity) || 0;
+  return { w, bmr, act, out: bmr + act, in: Math.round(kcalIn), bal: Math.round(kcalIn) - (bmr + act) };
+}
+
+function renderEnergy(kcalIn) {
+  const d = DAYDATA[viewDay] || {};
+  $("wIn").value = d.weight || "";
+  $("wIn").placeholder = weightFor(viewDay);
+  $("actIn").value = d.activity || "";
+  $("hIn").value = PROFILE.height;
+  $("aIn").value = PROFILE.age;
+  const e = dayEnergy(viewDay, kcalIn);
+  const balTxt = e.bal <= 0
+    ? `<b class="def">גירעון ${Math.abs(e.bal).toLocaleString("he-IL")}</b>`
+    : `<b class="sur">עודף ${e.bal.toLocaleString("he-IL")}</b>`;
+  $("ebal").innerHTML =
+    `<span class="dim">יצא:</span> BMR ${e.bmr.toLocaleString("he-IL")}` +
+    (e.act ? ` + אימון ${e.act.toLocaleString("he-IL")}` : "") +
+    ` = <b>${e.out.toLocaleString("he-IL")}</b>` +
+    ` &nbsp;·&nbsp; <span class="dim">נכנס:</span> <b>${e.in.toLocaleString("he-IL")}</b>` +
+    ` &nbsp;·&nbsp; ${balTxt}`;
+}
+
+function saveDayData() {
+  const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
+  const w = parseFloat($("wIn").value);
+  const a = parseFloat($("actIn").value);
+  if (isFinite(w) && w > 30 && w < 250) d.weight = w; else if (!$("wIn").value) delete d.weight;
+  if (isFinite(a) && a >= 0) d.activity = Math.round(a); else if (!$("actIn").value) delete d.activity;
+  store.set(LS_DAY, DAYDATA);
+  renderTotals();
+}
+
+function saveProfile() {
+  const h = parseFloat($("hIn").value), a = parseFloat($("aIn").value);
+  if (isFinite(h) && h > 100 && h < 230) PROFILE.height = h;
+  if (isFinite(a) && a > 10 && a < 100) PROFILE.age = a;
+  store.set(LS_PROF, PROFILE);
+  renderTotals();
+}
+
+function renderDays() {
+  const days = [...new Set([todayKey(), ...LOG.map(e => e.day)])].sort().reverse();
+  $("daySel").innerHTML = days.map(d =>
+    `<option value="${d}"${d === viewDay ? " selected" : ""}>${d === todayKey() ? "היום" : d} — ${entriesFor(d).length} פריטים</option>`
+  ).join("");
+}
+
+/* week strip: Sunday first (per Ido), tap a day to see that day's log,
+   green dot = the day has entries, future days disabled */
+function renderCal() {
+  const now = new Date();
+  $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());
+  const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const key = d.toLocaleDateString("sv-SE");
+    const isToday = d.toDateString() === now.toDateString();
+    const future = !isToday && d > now;
+    const has = LOG.some(e => e.day === key);
+    html += `<button class="cd${key === viewDay ? " sel" : ""}${isToday ? " today" : ""}" data-day="${key}"${future ? " disabled" : ""}>
+      <span class="cl">${letters[i]}</span><span class="cn">${d.getDate()}</span><span class="dot${has ? "" : " off"}"></span>
+    </button>`;
+  }
+  $("calWeek").innerHTML = html;
+}
+
+function renderLog() {
+  const items = entriesFor(viewDay).slice().sort((a, b) => a.t.localeCompare(b.t));
+  $("logTitle").textContent = viewDay === todayKey() ? "היום" : viewDay;
+  $("logCount").textContent = items.length ? `${items.length} פריטים` : "";
+  if (!items.length) {
+    $("log").innerHTML = `<div class="empty">עדיין אין כלום ביום הזה.<br>לחץ "סרוק מוצר" כדי להתחיל.</div>`;
+  } else {
+    $("log").innerHTML = items.map(e => {
+      const c = computed(e);
+      return `<div class="item" data-id="${e.id}">
+        <img src="${e.photo || ""}" alt="">
+        <div class="mid">
+          <div class="nm">${esc(e.name)}</div>
+          <div class="meta">${e.t} · ${e.grams} ג׳ · ח ${c.pro.toFixed(1)} · פ ${c.carb.toFixed(1)} · ש ${c.fat.toFixed(1)}</div>
+        </div>
+        <div class="kc"><b>${Math.round(c.kcal)}</b><small>קק״ל</small></div>
+        <button class="x" data-del="${e.id}" aria-label="מחק">✕</button>
+      </div>`;
+    }).join("");
+  }
+  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
+    הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.`;
+  renderTotals(); renderDays(); renderCal();
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function save() { if (!store.set(LS_LOG, LOG)) msg("entryMsg", "אין מקום בזיכרון הדפדפן", "err"); }
+function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
+
+/* ---------------- camera + barcode ---------------- */
+let stream = null, detector = null, scanning = false;
+
+/* Why this is so defensive: the live camera needs getUserMedia, which needs a
+   secure context AND — inside an embedded frame — an explicit camera
+   permission from the host frame. When the host does not delegate it the
+   browser never even shows a prompt, so "nothing happened" is a real outcome
+   we have to name. The photo path below needs none of that: <input capture>
+   hands off to the phone's own camera app, so it works everywhere. */
+
+function camDiagnosis() {
+  const d = [];
+  d.push("secure=" + (window.isSecureContext ? "yes" : "NO"));
+  d.push("mediaDevices=" + (navigator.mediaDevices ? "yes" : "NO"));
+  d.push("BarcodeDetector=" + ("BarcodeDetector" in window ? "yes" : "NO"));
+  d.push("framed=" + (window.self !== window.top ? "yes" : "no"));
+  return d.join(" · ");
+}
+
+async function startScan() {
+  msg("scanMsg", "");
+  $("diag").textContent = "";
+
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return camFallback("הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).");
+  }
+
+  // Ask the permission layer first — on a blocked frame this is what tells us
+  // the prompt will never appear, instead of failing silently a second later.
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const st = await navigator.permissions.query({ name: "camera" });
+      if (st.state === "denied") {
+        return camFallback("המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.");
+      }
+    }
+  } catch { /* Firefox and older Safari have no camera permission name */ }
+
+  msg("scanMsg", "מבקש גישה למצלמה — אשר את הבקשה שתופיע…", "pend");
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false
+    });
+  } catch (err) {
+    const why = {
+      NotAllowedError: "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.",
+      NotFoundError: "לא נמצאה מצלמה במכשיר.",
+      NotReadableError: "המצלמה תפוסה על ידי אפליקציה אחרת. סגור אותה ונסה שוב.",
+      OverconstrainedError: "לא נמצאה מצלמה אחורית מתאימה.",
+      SecurityError: "הדפדפן חסם את המצלמה בדף הזה.",
+    }[err.name] || ("שגיאה: " + err.name);
+    return camFallback(why);
+  }
+
+  if (!("BarcodeDetector" in window)) {
+    stream.getTracks().forEach(t => t.stop()); stream = null;
+    return camFallback("הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו.");
+  }
+
+  detector = detector || new BarcodeDetector({
+    formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"]
+  });
+  $("video").srcObject = stream;
+  $("cam").classList.add("on");
+  document.body.style.overflow = "hidden";
+  scanning = true;
+  msg("scanMsg", "");
+  // a torch helps barcodes in bad light - offer it only where the camera has one
+  torchOn = false;
+  $("torchBtn").className = "";
+  try {
+    const track = stream.getVideoTracks()[0];
+    if (track.getCapabilities && track.getCapabilities().torch) $("torchBtn").classList.add("avail");
+  } catch { /* no capabilities API */ }
+  loop();
+}
+
+let torchOn = false;
+async function toggleTorch() {
+  if (!stream) return;
+  try {
+    const track = stream.getVideoTracks()[0];
+    torchOn = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+    $("torchBtn").classList.toggle("on", torchOn);
+  } catch { torchOn = false; $("torchBtn").classList.remove("on"); }
+}
+
+/* Live scanning is the bonus, not the product. When the frame is not permitted
+   to use the camera the browser shows no prompt at all — nothing here can
+   change that — so say it plainly once and send him back to the button that
+   always works. */
+function camFallback(why) {
+  msg("scanMsg", why + ' השתמש ב"צלם תמונה" — הוא לא דורש הרשאה ונותן בדיוק אותה תוצאה.', "err");
+  $("diag").textContent = camDiagnosis();
+  $("cam").classList.remove("on");
+}
+
+async function loop() {
+  if (!scanning) return;
+  const v = $("video");
+  if (v.readyState >= 2) {
+    try {
+      const codes = await detector.detect(v);
+      if (codes.length) { onBarcode(codes[0].rawValue, grabFrame(v)); return; }
+    } catch { /* frame not ready */ }
+  }
+  requestAnimationFrame(loop);
+}
+
+function grabFrame(v) {
+  try {
+    const s = 240, c = document.createElement("canvas");
+    const r = Math.min(s / v.videoWidth, s / v.videoHeight) || 1;
+    c.width = v.videoWidth * r; c.height = v.videoHeight * r;
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.6);
+  } catch { return ""; }
+}
+
+function stopScan() {
+  scanning = false;
+  torchOn = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $("cam").classList.remove("on");
+  $("torchBtn").className = "";
+  document.body.style.overflow = "";
+}
+
+/* photo -> barcode, for browsers with no live camera access */
+async function fromPhoto(file) {
+  msg("scanMsg", "קורא את הברקוד מהתמונה…", "pend");
+  $("diag").textContent = "";
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
+  const s = 240, c = document.createElement("canvas");
+  const r = Math.min(s / img.width, s / img.height) || 1;
+  c.width = img.width * r; c.height = img.height * r;
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const thumb = c.toDataURL("image/jpeg", 0.6);
+  let code = "";
+  if ("BarcodeDetector" in window) {
+    try {
+      const d = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
+      const found = await d.detect(img);
+      if (found.length) code = found[0].rawValue;
+    } catch { /* fall through */ }
+  }
+  URL.revokeObjectURL(url);
+  onBarcode(code, thumb);
+}
+
+/* ---------------- built-in staples ----------------
+   Standard-table values per 100g for foods with no barcode - cooked rice, a
+   tomato, an egg. Approximations by design; every value is editable before
+   adding. Aliases catch spelling variants (עגבניה/עגבנייה).            */
+const GENERIC = [
+  { n: "אורז לבן מבושל", k: 130, p: 2.7, c: 28, f: 0.3, a: ["אורז"] },
+  { n: "אורז מלא מבושל", k: 111, p: 2.6, c: 23, f: 0.9 },
+  { n: "פסטה מבושלת", k: 131, p: 5, c: 25, f: 1.1, a: ["ספגטי", "פסטה"] },
+  { n: "קוסקוס מבושל", k: 112, p: 3.8, c: 23, f: 0.2 },
+  { n: "קינואה מבושלת", k: 120, p: 4.4, c: 21, f: 1.9 },
+  { n: "בורגול מבושל", k: 83, p: 3.1, c: 18.6, f: 0.2 },
+  { n: "פתיתים מבושלים", k: 150, p: 4.8, c: 30, f: 0.5 },
+  { n: "תפוח אדמה מבושל", k: 87, p: 1.9, c: 20, f: 0.1, a: ["תפוד", "תפו\"ד"] },
+  { n: "בטטה מבושלת", k: 76, p: 1.4, c: 17.7, f: 0.1, a: ["בטטה"] },
+  { n: "לחם לבן", k: 265, p: 9, c: 49, f: 3.2, a: ["לחם"] },
+  { n: "לחם מלא", k: 247, p: 13, c: 41, f: 3.4 },
+  { n: "פיתה", k: 275, p: 9, c: 55, f: 1.2 },
+  { n: "לחמנייה", k: 290, p: 9, c: 52, f: 4, a: ["לחמניה"] },
+  { n: "שיבולת שועל יבשה", k: 379, p: 13, c: 67, f: 6.5, a: ["קוואקר", "שיבולת"] },
+  { n: "קורנפלקס", k: 357, p: 7.5, c: 84, f: 0.9 },
+  { n: "עגבנייה", k: 18, p: 0.9, c: 3.9, f: 0.2, a: ["עגבניה"] },
+  { n: "מלפפון", k: 15, p: 0.7, c: 3.6, f: 0.1 },
+  { n: "גזר", k: 41, p: 0.9, c: 10, f: 0.2 },
+  { n: "פלפל", k: 26, p: 1, c: 6, f: 0.3, a: ["גמבה"] },
+  { n: "בצל", k: 40, p: 1.1, c: 9.3, f: 0.1 },
+  { n: "חסה", k: 15, p: 1.4, c: 2.9, f: 0.2 },
+  { n: "כרוב", k: 25, p: 1.3, c: 5.8, f: 0.1 },
+  { n: "ברוקולי מבושל", k: 35, p: 2.4, c: 7, f: 0.4, a: ["ברוקולי"] },
+  { n: "כרובית מבושלת", k: 23, p: 1.8, c: 4.1, f: 0.5, a: ["כרובית"] },
+  { n: "קישוא", k: 17, p: 1.2, c: 3.1, f: 0.3 },
+  { n: "חציל", k: 25, p: 1, c: 5.9, f: 0.2 },
+  { n: "תירס", k: 86, p: 3.3, c: 19, f: 1.4 },
+  { n: "אפונה", k: 81, p: 5.4, c: 14, f: 0.4 },
+  { n: "פטריות", k: 22, p: 3.1, c: 3.3, f: 0.3 },
+  { n: "אבוקדו", k: 160, p: 2, c: 8.5, f: 14.7 },
+  { n: "בננה", k: 89, p: 1.1, c: 23, f: 0.3 },
+  { n: "תפוח", k: 52, p: 0.3, c: 14, f: 0.2 },
+  { n: "תפוז", k: 47, p: 0.9, c: 12, f: 0.1 },
+  { n: "אבטיח", k: 30, p: 0.6, c: 7.6, f: 0.2 },
+  { n: "מלון", k: 34, p: 0.8, c: 8, f: 0.2 },
+  { n: "ענבים", k: 69, p: 0.7, c: 18, f: 0.2 },
+  { n: "תות שדה", k: 32, p: 0.7, c: 7.7, f: 0.3, a: ["תות"] },
+  { n: "אגס", k: 57, p: 0.4, c: 15, f: 0.1 },
+  { n: "אפרסק", k: 39, p: 0.9, c: 9.5, f: 0.3 },
+  { n: "תמר מג'הול", k: 277, p: 1.8, c: 75, f: 0.2, a: ["תמר", "תמרים"] },
+  { n: "ביצה", k: 143, p: 12.6, c: 0.7, f: 9.5, a: ["ביצים"] },
+  { n: "ביצה קשה", k: 155, p: 13, c: 1.1, f: 10.6 },
+  { n: "חלבון ביצה", k: 52, p: 10.9, c: 0.7, f: 0.2 },
+  { n: "חזה עוף צלוי", k: 165, p: 31, c: 0, f: 3.6, a: ["חזה", "עוף"] },
+  { n: "פרגית צלויה", k: 209, p: 26, c: 0, f: 11, a: ["פרגית"] },
+  { n: "שניצל מטוגן", k: 249, p: 17, c: 14, f: 14, a: ["שניצל"] },
+  { n: "בשר בקר טחון רזה", k: 137, p: 21, c: 0, f: 5, a: ["בשר טחון", "טחון"] },
+  { n: "סטייק סינטה", k: 200, p: 29, c: 0, f: 9, a: ["סטייק"] },
+  { n: "טונה במים", k: 116, p: 26, c: 0, f: 1, a: ["טונה"] },
+  { n: "סלמון", k: 208, p: 20, c: 0, f: 13 },
+  { n: "דג אמנון", k: 96, p: 20, c: 0, f: 1.7, a: ["אמנון", "דג"] },
+  { n: "טופו", k: 76, p: 8, c: 1.9, f: 4.8 },
+  { n: "עדשים מבושלות", k: 116, p: 9, c: 20, f: 0.4, a: ["עדשים"] },
+  { n: "גרגירי חומוס מבושלים", k: 164, p: 8.9, c: 27, f: 2.6, a: ["גרגירים"] },
+  { n: "שעועית לבנה מבושלת", k: 139, p: 9.7, c: 25, f: 0.4, a: ["שעועית"] },
+  { n: "קוטג' 5%", k: 98, p: 11, c: 3.5, f: 5, a: ["קוטג"] },
+  { n: "גבינה לבנה 5%", k: 93, p: 8.5, c: 3.5, f: 5, a: ["גבינה לבנה"] },
+  { n: "יוגורט 3%", k: 63, p: 4.7, c: 4.7, f: 3, a: ["יוגורט"] },
+  { n: "יוגורט חלבון 0%", k: 57, p: 10, c: 4, f: 0.2, a: ["סקיר", "פרו"] },
+  { n: "חלב 3%", k: 60, p: 3.3, c: 4.8, f: 3, a: ["חלב"] },
+  { n: "גבינה צהובה", k: 330, p: 25, c: 1, f: 26, a: ["צהובה"] },
+  { n: "גבינה בולגרית 5%", k: 95, p: 12, c: 3, f: 4, a: ["בולגרית"] },
+  { n: "שמן זית", k: 884, p: 0, c: 0, f: 100, a: ["שמן"] },
+  { n: "טחינה גולמית", k: 595, p: 17, c: 21, f: 54, a: ["טחינה"] },
+  { n: "חומוס מוכן", k: 290, p: 7.5, c: 17, f: 21, a: ["חומוס"] },
+  { n: "חמאת בוטנים", k: 588, p: 25, c: 20, f: 50 },
+  { n: "שקדים", k: 579, p: 21, c: 22, f: 50 },
+  { n: "אגוזי מלך", k: 654, p: 15, c: 14, f: 65, a: ["אגוזים"] },
+  { n: "בוטנים", k: 567, p: 26, c: 16, f: 49 },
+  { n: "דבש", k: 304, p: 0.3, c: 82, f: 0 },
+  { n: "סוכר", k: 387, p: 0, c: 100, f: 0 },
+  { n: "קטשופ", k: 112, p: 1.2, c: 26, f: 0.1 },
+  { n: "מיונז", k: 680, p: 1, c: 1.5, f: 75 },
+  { n: "אבקת חלבון", k: 375, p: 75, c: 12, f: 6, a: ["וואי", "חלבון אבקה"] },
+];
+
+/* ---------------- name search ----------------
+   Instant: his own scanned products + the built-in staples. Then the world
+   database joins in through the Make proxy (same origin, so no CORS) -
+   search.openfoodfacts.org itself sends no CORS header to browsers. */
+const SEARCH_PROXY = "https://hook.us2.make.com/wfvh3tmswu9cgl151p3ucab080okz9hb";
+let searchToken = 0, lastResults = [];
+
+function doSearch(q) {
+  q = q.trim();
+  const box = $("searchRes");
+  if (q.length < 2) { box.className = ""; box.innerHTML = ""; return; }
+  const token = ++searchToken;
+  const res = [];
+  for (const [code, pr] of Object.entries(PRODUCTS))
+    if ((pr.name || "").includes(q))
+      res.push({ name: pr.name, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", src: "שלי" });
+  for (const g of GENERIC)
+    if (g.n.includes(q) || (g.a || []).some(x => x.includes(q)))
+      res.push({ name: g.n, k: g.k, p: g.p, c: g.c, f: g.f, src: "מאגר" });
+  renderSearch(res, token, true);
+  fetch(SEARCH_PROXY + "?q=" + encodeURIComponent(q))
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (token !== searchToken || !d) return;
+      const seen = new Set(res.map(r => r.name));
+      for (const h of (d.hits || [])) {
+        const nm = h.product_name_he || h.product_name;
+        const nu = h.nutriments || {};
+        if (!nm || seen.has(nm) || nu["energy-kcal_100g"] == null) continue;
+        seen.add(nm);
+        res.push({ name: nm, k: nu["energy-kcal_100g"], p: nu.proteins_100g ?? "", c: nu.carbohydrates_100g ?? "", f: nu.fat_100g ?? "", barcode: h.code || "", photo: h.image_small_url || "", src: "עולמי" });
+      }
+      renderSearch(res, token, false);
+    })
+    .catch(() => { if (token === searchToken) renderSearch(res, token, false); });
+}
+
+function renderSearch(res, token, stillLoading) {
+  if (token !== searchToken) return;
+  lastResults = res.slice(0, 10);
+  const box = $("searchRes");
+  box.className = "on";
+  box.innerHTML = lastResults.map((r, i) =>
+    `<button class="sr" data-i="${i}">
+       <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${r.src}</span>
+       <span class="srn">${esc(r.name)}</span>
+       <span class="srv">${Math.round(r.k)} קק״ל · ח ${r.p === "" ? "?" : r.p}</span>
+     </button>`).join("") +
+    (stillLoading ? `<div class="sr dim">מחפש גם במאגר העולמי…</div>`
+      : (lastResults.length ? "" : `<div class="sr dim">לא נמצא — אפשר להזין ידנית למטה</div>`));
+}
+
+function openProduct(r) {
+  stopScan();
+  pending = { barcode: r.barcode || "", photo: "" };
+  $("foundTag").textContent = r.src === "מאגר" ? "מהמאגר המובנה — ערכים מקובלים ל-100 ג׳" : "✓ " + r.name;
+  $("foundTag").className = "foundtag known";
+  $("pName").value = r.name;
+  $("p100kcal").value = r.k;
+  $("p100pro").value = r.p;
+  $("p100carb").value = r.c;
+  $("p100fat").value = r.f;
+  $("shot").src = r.photo || "";
+  $("grams").value = "";
+  $("calcPreview").textContent = "הזן גרמים כדי לחשב";
+  $("entry").classList.add("on");
+  msg("scanMsg", ""); msg("entryMsg", "");
+  $("searchRes").className = ""; $("searchRes").innerHTML = ""; $("searchIn").value = "";
+  $("grams").focus();
+  $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!r.photo) autoImage(r.name);
+}
+
+/* ---------------- automatic product images ----------------
+   When a product arrives with no picture (a built-in staple, a typed-in
+   product, an OFF hit without one), Hebrew Wikipedia fills the gap: its API
+   allows browser CORS (origin=*) and its thumbnails hotlink freely.
+   Preparation words are stripped first so "אורז לבן מבושל" searches "אורז לבן". */
+let imgToken = 0;
+
+async function wikiImage(term) {
+  const r = await fetch(
+    "https://he.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
+    "&prop=pageimages&piprop=thumbnail&pithumbsize=240&generator=search&gsrlimit=1" +
+    "&gsrsearch=" + encodeURIComponent(term));
+  if (!r.ok) return "";
+  const d = await r.json();
+  const pages = d.query && d.query.pages ? Object.values(d.query.pages) : [];
+  return (pages.length && pages[0].thumbnail && pages[0].thumbnail.source) || "";
+}
+
+async function autoImage(name) {
+  if (!name || $("shot").getAttribute("src")) return;
+  const token = ++imgToken;
+  const clean = name
+    .replace(/מבושל(ת|ים|ות)?|צלוי(ה|ות|ים)?|מטוגן(ת|ים)?|אפוי(ה|ים)?|קשה|טרי(ה|ים)?|גולמי(ת)?|יבש(ה|ים)?/g, "")
+    .replace(/\s+/g, " ").trim();
+  let src = "";
+  try { src = await wikiImage(clean || name); } catch {}
+  if (!src && clean && clean !== name) {
+    try { src = await wikiImage(name); } catch {}
+  }
+  if (token === imgToken && src && !$("shot").getAttribute("src")) $("shot").src = src;
+}
+
+/* ---------------- product lookup ----------------
+   Order of truth: this phone's own memory first (his corrections off the
+   real label beat any database), then Open Food Facts — 8,000+ Israeli
+   products with Hebrew names. Only possible now that the app is served
+   top-level; the old artifact sandbox blocked every external request. */
+async function lookupOFF(code) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch(
+      "https://world.openfoodfacts.org/api/v2/product/" + encodeURIComponent(code) +
+      ".json?fields=product_name,product_name_he,brands,image_small_url,nutriments",
+      { signal: ctl.signal });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.status !== 1 || !d.product) return null;
+    const p = d.product, n = p.nutriments || {};
+    const name = p.product_name_he || p.product_name || "";
+    if (!name && n["energy-kcal_100g"] == null) return null;
+    return {
+      name,
+      kcal: n["energy-kcal_100g"] ?? "",
+      pro:  n.proteins_100g ?? "",
+      carb: n.carbohydrates_100g ?? "",
+      fat:  n.fat_100g ?? "",
+      photo: p.image_small_url || "",
+    };
+  } catch { return null; }
+  finally { clearTimeout(t); }
+}
+
+/* ---------------- nutrition-label OCR ----------------
+   Reads a photographed nutrition table with tesseract.js (loaded from CDN on
+   first use — Make's plan gates its own AI extractors, so the reading happens
+   entirely on the phone). Two hard-won details: Hebrew FINAL letters mean
+   "חלבון" never matches inside "חלבונים" (hence [נן]), and OCR routinely
+   drops decimal points, so per-100g bounds put them back (125 -> 12.5). */
+function parseLabel(text) {
+  const out = {};
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const num = s => { const m = s.replace(/,/g, ".").match(/(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : null; };
+  const fixMacro = v => (v != null && v > 100 && v / 10 <= 100) ? +(v / 10).toFixed(1) : v;
+  const fixKcal = v => (v != null && v > 900 && v <= 3800) ? Math.round(v / 4.184) : v;
+  // any nutrition keyword — used to stop the next-line fallback from stealing
+  // a number that belongs to the following row
+  const anyKw = /(קלוריות|אנרגיה|energy|calor|קק|חלבו[נן]|protein|פחמימ|carbohydrat|שומ[נן]|fat|סוכר|sugar|רווי|saturat|trans|טרנס|טראנס|נתרן|sodium|סיבים|fib)/i;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // labels are often laid out in columns, so the number lands on the line
+    // AFTER its keyword — fall back to it when it has no keyword of its own
+    const grab = () => {
+      const v = num(line);
+      if (v != null) return v;
+      const nl = lines[i + 1] || "";
+      return anyKw.test(nl) ? null : num(nl);
+    };
+    if (out.kcal == null && /(קלוריות|אנרגיה|energy|calor|קק)/i.test(line)) {
+      const m = line.replace(/,/g, ".").match(/(\d+(?:\.\d+)?)\s*(?:קק|kcal)/i);
+      out.kcal = fixKcal(m ? parseFloat(m[1]) : grab());
+    } else if (out.pro == null && /(חלבו[נן]|protein)/i.test(line)) out.pro = fixMacro(grab());
+    else if (out.carb == null && /(פחמימ|carbohydrat)/i.test(line) && !/(סוכר|sugar)/i.test(line)) out.carb = fixMacro(grab());
+    else if (out.fat == null && /(שומ[נן]|fat)/i.test(line) && !/(רווי|טרנס|טראנס|saturat|trans)/i.test(line)) out.fat = fixMacro(grab());
+  }
+  // Energy must agree with the macros (4·protein + 4·carb + 9·fat). When it
+  // wildly doesn't, one macro usually swallowed a glued unit digit ("8.1 g"
+  // read as "81 9") - try dividing each by 10 and keep the one fix that makes
+  // the arithmetic click back into place.
+  if (out.kcal != null && out.pro != null && out.carb != null && out.fat != null) {
+    const impl = o => 4 * o.pro + 4 * o.carb + 9 * o.fat;
+    const err = o => Math.abs(impl(o) - out.kcal) / Math.max(1, out.kcal);
+    if (err(out) > 0.2) {
+      let best = null, bestErr = err(out);
+      for (const k of ["pro", "carb", "fat"]) {
+        const cand = { kcal: out.kcal, pro: out.pro, carb: out.carb, fat: out.fat };
+        cand[k] = +(cand[k] / 10).toFixed(2);
+        const e = err(cand);
+        if (e < bestErr) { bestErr = e; best = cand; }
+      }
+      if (best && bestErr < 0.1) { out.pro = best.pro; out.carb = best.carb; out.fat = best.fat; }
+    }
+  }
+  return out;
+}
+
+let tessPromise = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (tessPromise) return tessPromise;
+  tessPromise = new Promise((ok, no) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = ok;
+    s.onerror = () => { tessPromise = null; no(new Error("cdn")); };
+    document.head.appendChild(s);
+  });
+  return tessPromise;
+}
+
+/* keep the OCR worker alive between reads — re-initializing it costs more
+   than the read itself */
+let tessWorker = null;
+async function getWorker(onProgress) {
+  await loadTesseract();
+  if (tessWorker) { tessWorker._log = onProgress; return tessWorker; }
+  tessWorker = await Tesseract.createWorker("heb+eng", 1, {
+    logger: m => {
+      if (m.status === "recognizing text" && tessWorker && tessWorker._log)
+        tessWorker._log(Math.round(m.progress * 100));
+    }
+  });
+  // one uniform block of text — the right mode for a photographed table
+  await tessWorker.setParameters({ tessedit_pageseg_mode: "6" });
+  tessWorker._log = onProgress;
+  return tessWorker;
+}
+
+function preprocess(img) {
+  // small print needs pixels: keep up to 2600px of the photo instead of
+  // crushing it, then flatten uneven lighting with a contrast stretch
+  const max = 2600, r = Math.min(1, max / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  try {
+    const im = ctx.getImageData(0, 0, c.width, c.height), d = im.data;
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < d.length; i += 4) {
+      const g = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+      d[i] = d[i + 1] = d[i + 2] = g;
+      hist[g]++;
+    }
+    // stretch between the 5th and 95th percentile so glare and shadow
+    // stop eating the dynamic range the digits live in
+    // text is a tiny share of the pixels, so anchor at the darkest and
+    // brightest 1% - a 5% cut lands entirely inside the background and
+    // wipes the print out (found the hard way)
+    const total = c.width * c.height;
+    let lo = 0, hi = 255, acc = 0;
+    for (let g = 0; g < 256; g++) { acc += hist[g]; if (acc >= total * 0.01) { lo = g; break; } }
+    acc = 0;
+    for (let g = 255; g >= 0; g--) { acc += hist[g]; if (acc >= total * 0.01) { hi = g; break; } }
+    const span = hi - lo;
+    if (span >= 40) {
+      for (let i = 0; i < d.length; i += 4) {
+        const v = Math.max(0, Math.min(255, ((d[i] - lo) * 255 / span) | 0));
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+    }
+    ctx.putImageData(im, 0, 0);
+  } catch { /* preprocessing is a bonus, never a blocker */ }
+  return c;
+}
+
+async function readLabel(file) {
+  msg("entryMsg", "טוען מנוע קריאה — בפעם הראשונה זו הורדה גדולה…", "pend");
+  let worker;
+  try { worker = await getWorker(p => msg("entryMsg", "קורא את הטבלה… " + p + "%", "pend")); }
+  catch { msg("entryMsg", "אין חיבור או שההורדה נחסמה — מלא את הערכים ידנית.", "err"); return; }
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  try { await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; }); }
+  catch { msg("entryMsg", "לא הצלחתי לפתוח את התמונה.", "err"); return; }
+  const c = preprocess(img);
+  URL.revokeObjectURL(url);
+  msg("entryMsg", "קורא את הטבלה…", "pend");
+  let text = "";
+  try { text = (await worker.recognize(c)).data.text || ""; }
+  catch {
+    msg("entryMsg", "הקריאה נכשלה — צלם רק את הטבלה, קרוב, ישר ובאור טוב.", "err");
+    return;
+  }
+  $("ocrRaw").textContent = text.trim() || "(לא זוהה טקסט)";
+  $("ocrDetails").style.display = "block";
+  const p = parseLabel(text);
+  const got = [];
+  if (p.kcal != null) { $("p100kcal").value = p.kcal; got.push("קק״ל " + p.kcal); }
+  if (p.pro  != null) { $("p100pro").value  = p.pro;  got.push("חלבון " + p.pro); }
+  if (p.carb != null) { $("p100carb").value = p.carb; got.push("פחמ׳ " + p.carb); }
+  if (p.fat  != null) { $("p100fat").value  = p.fat;  got.push("שומן " + p.fat); }
+  preview();
+  if (!got.length) msg("entryMsg", "לא זוהו ערכים — פתח את \"מה נקרא מהתמונה\" למטה כדי לראות מה המנוע ראה, וצלם שוב רק את הטבלה, קרוב וישר.", "err");
+  else msg("entryMsg", "נקרא מהטבלה: " + got.join(" · ") + " — ודא שזו העמודה של 100 גרם ותקן אם צריך.", "ok");
+  $("grams").focus();
+}
+
+/* ---------------- entry ---------------- */
+async function onBarcode(code, photo) {
+  stopScan();
+  if (navigator.vibrate) { try { navigator.vibrate(60); } catch {} }
+  pending = { barcode: code || "", photo: photo || "" };
+  const known = code && PRODUCTS[code];
+  $("foundTag").textContent = known ? "✓ מוכר — הערכים מולאו" : (code ? "מוצר חדש · " + code : "בלי ברקוד");
+  $("foundTag").className = "foundtag " + (known ? "known" : "newp");
+  $("pName").value = known ? known.name : "";
+  $("p100kcal").value = known ? known.kcal : "";
+  $("p100pro").value = known ? known.pro : "";
+  $("p100carb").value = known ? known.carb : "";
+  $("p100fat").value = known ? known.fat : "";
+  $("shot").src = photo || (known && known.photo) || "";
+  $("grams").value = "";
+  $("calcPreview").textContent = "הזן גרמים כדי לחשב";
+  $("entry").classList.add("on");
+  msg("scanMsg", code ? "" : "לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה.", code ? "" : "err");
+  msg("entryMsg", "");
+  (known ? $("grams") : $("pName")).focus();
+  $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // unknown barcode -> ask the world database, and fill only if he hasn't
+  // moved on to a different scan meanwhile
+  if (!known && code) {
+    $("foundTag").textContent = "מחפש במאגר העולמי…";
+    const off = await lookupOFF(code);
+    if (!pending || pending.barcode !== code) return;
+    if (off) {
+      if (!$("pName").value) $("pName").value = off.name;
+      if (!$("p100kcal").value && off.kcal !== "") $("p100kcal").value = off.kcal;
+      if (!$("p100pro").value && off.pro !== "") $("p100pro").value = off.pro;
+      if (!$("p100carb").value && off.carb !== "") $("p100carb").value = off.carb;
+      if (!$("p100fat").value && off.fat !== "") $("p100fat").value = off.fat;
+      if (!$("shot").src && off.photo) $("shot").src = off.photo;
+      const complete = off.name && off.kcal !== "";
+      $("foundTag").textContent = complete
+        ? "✓ זוהה: " + off.name
+        : "זוהה חלקית: " + (off.name || code) + " — השלם מהמדבקה";
+      $("foundTag").className = "foundtag " + (complete ? "known" : "newp");
+      preview();
+      $("grams").focus();
+      if (off.name) autoImage(off.name);
+    } else {
+      $("foundTag").textContent = "לא במאגר · " + code + " — מלא מהמדבקה פעם אחת וזה ייזכר";
+      $("foundTag").className = "foundtag newp";
+    }
+  }
+}
+
+function preview() {
+  const g = num($("grams").value);
+  if (!g) { $("calcPreview").textContent = "הזן גרמים כדי לחשב"; return; }
+  const f = g / 100;
+  $("calcPreview").innerHTML =
+    `<b>${Math.round(num($("p100kcal").value) * f)}</b> קק״ל · ` +
+    `חלבון ${(num($("p100pro").value) * f).toFixed(1)} · ` +
+    `פחמימה ${(num($("p100carb").value) * f).toFixed(1)} · ` +
+    `שומן ${(num($("p100fat").value) * f).toFixed(1)}`;
+}
+
+function addEntry() {
+  const name = $("pName").value.trim();
+  const grams = num($("grams").value);
+  const k100 = num($("p100kcal").value);
+  if (!name) { msg("entryMsg", "חסר שם למוצר", "err"); $("pName").focus(); return; }
+  if (!grams) { msg("entryMsg", "חסר משקל בגרמים", "err"); $("grams").focus(); return; }
+  if (!k100) { msg("entryMsg", "חסרות קלוריות ל-100 גרם", "err"); $("p100kcal").focus(); return; }
+
+  const now = new Date();
+  const e = {
+    id: now.getTime() + "-" + Math.round(performance.now()),
+    day: todayKey(),
+    t: now.toTimeString().slice(0, 5),
+    barcode: pending ? pending.barcode : "",
+    name, grams,
+    k100, pro100: num($("p100pro").value), carb100: num($("p100carb").value), fat100: num($("p100fat").value),
+    photo: $("shot").src && ($("shot").src.startsWith("data:") || $("shot").src.startsWith("https:")) ? $("shot").src : "",
+  };
+  LOG.push(e);
+  save();
+
+  if (e.barcode) {
+    PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
+    store.set(LS_PROD, PRODUCTS);
+  }
+  viewDay = e.day;
+  $("entry").classList.remove("on");
+  pending = null;
+  renderLog();
+  msg("scanMsg", `נוסף: ${name} · ${grams} ג׳`, "ok");
+}
+
+function report(day) {
+  const items = entriesFor(day).slice().sort((a, b) => a.t.localeCompare(b.t));
+  if (!items.length) return `אין רישומים ל-${day}`;
+  const t = items.reduce((a, e) => {
+    const c = computed(e);
+    a.kcal += c.kcal; a.pro += c.pro; a.carb += c.carb; a.fat += c.fat; return a;
+  }, { kcal: 0, pro: 0, carb: 0, fat: 0 });
+  const lines = items.map(e => {
+    const c = computed(e);
+    return `${e.t}  ${e.name} — ${e.grams}g — ${Math.round(c.kcal)} kcal ` +
+           `(P ${c.pro.toFixed(1)} / C ${c.carb.toFixed(1)} / F ${c.fat.toFixed(1)})` +
+           (e.barcode ? `  [${e.barcode}]` : "");
+  });
+  const e = dayEnergy(day, t.kcal);
+  return `FOOD LOG ${day}\n` + lines.join("\n") +
+    `\n\nTOTAL IN: ${Math.round(t.kcal)} kcal · protein ${Math.round(t.pro)}g · carbs ${Math.round(t.carb)}g · fat ${Math.round(t.fat)}g (${items.length} items)` +
+    `\nWEIGHT: ${e.w} kg · BMR ${e.bmr} · workout ${e.act} · TOTAL OUT ${e.out}` +
+    `\nBALANCE: ${e.bal <= 0 ? "deficit " + Math.abs(e.bal) : "SURPLUS " + e.bal} kcal`;
+}
+
+/* ---------------- wiring ---------------- */
+$("scanBtn").addEventListener("click", startScan);
+$("stopBtn").addEventListener("click", () => { stopScan(); msg("scanMsg", ""); });
+$("torchBtn").addEventListener("click", toggleTorch);
+$("cam").addEventListener("click", e => { if (e.target === $("cam")) { stopScan(); msg("scanMsg", ""); } });
+$("shootBtn").addEventListener("click", () => {
+  const v = $("video");
+  onBarcode("", grabFrame(v));
+});
+$("photoBtn").addEventListener("click", () => $("photoInput").click());
+$("photoInput").addEventListener("change", e => { if (e.target.files[0]) fromPhoto(e.target.files[0]); e.target.value = ""; });
+$("manualBtn").addEventListener("click", () => {
+  const code = prompt("הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):");
+  if (code === null) return;
+  onBarcode(code.trim(), "");
+});
+$("labelBtn").addEventListener("click", () => $("labelInput").click());
+$("labelInput").addEventListener("change", e => { if (e.target.files[0]) readLabel(e.target.files[0]); e.target.value = ""; });
+$("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); });
+$("addBtn").addEventListener("click", addEntry);
+["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
+$("daySel").addEventListener("change", e => { viewDay = e.target.value; renderLog(); });
+$("calWeek").addEventListener("click", e => {
+  const b = e.target.closest("[data-day]");
+  if (b && !b.disabled) { viewDay = b.dataset.day; renderLog(); }
+});
+let searchTimer = null;
+$("searchIn").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => doSearch(e.target.value), 250);
+});
+$("searchRes").addEventListener("click", e => {
+  const b = e.target.closest("[data-i]");
+  if (b) openProduct(lastResults[+b.dataset.i]);
+});
+$("pName").addEventListener("blur", () => autoImage($("pName").value.trim()));
+$("wIn").addEventListener("change", saveDayData);
+$("actIn").addEventListener("change", saveDayData);
+$("hIn").addEventListener("change", saveProfile);
+$("aIn").addEventListener("change", saveProfile);
+$("log").addEventListener("click", e => {
+  const id = e.target.dataset && e.target.dataset.del;
+  if (!id) return;
+  const it = LOG.find(x => x.id === id);
+  if (it && confirm(`למחוק "${it.name}"?`)) { LOG = LOG.filter(x => x.id !== id); save(); renderLog(); }
+});
+$("copyBtn").addEventListener("click", async () => {
+  const text = report(viewDay);
+  try { await navigator.clipboard.writeText(text); msg("scanMsg", "הדוח הועתק — הדבק אותו לקלוד", "ok"); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); msg("scanMsg", "הדוח הועתק", "ok"); }
+    catch { msg("scanMsg", "לא הצלחתי להעתיק — סמן ידנית", "err"); }
+    ta.remove();
+  }
+});
+$("expBtn").addEventListener("click", () => {
+  const payload = { v: 1, exported: new Date().toISOString(),
+    log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE };
+  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "scanlog-backup-" + todayKey() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  msg("scanMsg", "קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו.", "ok");
+});
+$("impBtn").addEventListener("click", () => $("impInput").click());
+$("impInput").addEventListener("change", e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!d || !Array.isArray(d.log)) throw 0;
+      const ids = new Set(LOG.map(x => x.id));
+      let added = 0;
+      for (const en of d.log) if (!ids.has(en.id)) { LOG.push(en); added++; }
+      Object.assign(PRODUCTS, d.products || {});
+      for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
+      if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
+      save(); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
+      renderLog();
+      msg("scanMsg", "שוחזר: " + added + " רישומים, " + Object.keys(d.products || {}).length + " מוצרים בזיכרון.", "ok");
+    } catch { msg("scanMsg", "הקובץ לא נראה כמו גיבוי של האפליקציה.", "err"); }
+  };
+  rd.readAsText(f);
+});
+
+// offline shell — only on the GitHub Pages origin, where sw.js exists
+if ("serviceWorker" in navigator && location.hostname.endsWith("github.io")) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+
+window.addEventListener("pagehide", stopScan);
+
+renderLog();
+</script>
+</body>
+</html>
