@@ -76,8 +76,13 @@
     display:flex; align-items:center; justify-content:center; border-radius:9px;
   }
   .calbtn:disabled { opacity:.3; }
-  .calweek { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
-  #calcard { touch-action: pan-y; }
+  .calweek {
+    display:flex; gap:5px; overflow-x:auto;
+    scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; overscroll-behavior-x:contain;
+  }
+  .calweek::-webkit-scrollbar { display:none; }
+  .calweek .cd { flex:0 0 calc((100% - 30px)/7); scroll-snap-align:center; }
   .cd {
     background:var(--panel2); border:1px solid var(--line); border-radius:9px;
     padding:7px 2px 5px; text-align:center; font-family:inherit; color:var(--text);
@@ -495,37 +500,32 @@ function showToast(text) {
 
 function renderStreak() { $("streakN").textContent = streakCount(); }
 
-/* week strip: Sunday first (per Ido), tap a day to see that day's log,
-   green dot = the day has entries, future days disabled */
-let calOffset = 0;   // weeks back from the current week (0 = this week)
-
+/* date strip: one continuous scrollable row (per Ido - smooth drag, not
+   week jumps). Oldest day sits at the right edge (RTL), today at the left;
+   native touch scroll supplies the momentum. Tap a day to see its log,
+   green dot = the day has entries. */
 function renderCal() {
   const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay() - calOffset * 7);
-  if (calOffset === 0) {
-    $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
-  } else {
-    const end = new Date(start); end.setDate(start.getDate() + 6);
-    $("calToday").textContent =
-      start.toLocaleDateString("he-IL", { day: "numeric", month: "short" }) + " – " +
-      end.toLocaleDateString("he-IL", { day: "numeric", month: "short" });
-  }
-  $("calNext").disabled = calOffset === 0;
+  const todayK = todayKey();
+  $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
   const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  const firstLogged = LOG.length ? LOG.map(e => e.day).sort()[0] : null;
+  let start = new Date("2026-08-09T12:00:00");
+  if (firstLogged && firstLogged < "2026-08-09") start = new Date(firstLogged + "T12:00:00");
+  start.setDate(start.getDate() - start.getDay());
   let html = "";
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
+  for (const d = new Date(start); ; d.setDate(d.getDate() + 1)) {
     const key = d.toLocaleDateString("sv-SE");
-    const isToday = d.toDateString() === now.toDateString();
-    const future = !isToday && d > now;
+    if (key > todayK) break;
     const has = LOG.some(e => e.day === key);
-    html += `<button class="cd${key === viewDay ? " sel" : ""}${isToday ? " today" : ""}" data-day="${key}"${future ? " disabled" : ""}>
-      <span class="cl">${letters[i]}</span><span class="cn">${d.getDate()}</span><span class="dot${has ? "" : " off"}"></span>
+    const label = d.getDate() === 1 ? d.getDate() + "." + (d.getMonth() + 1) : d.getDate();
+    html += `<button class="cd${key === viewDay ? " sel" : ""}${key === todayK ? " today" : ""}" data-day="${key}">
+      <span class="cl">${letters[d.getDay()]}</span><span class="cn">${label}</span><span class="dot${has ? "" : " off"}"></span>
     </button>`;
   }
   $("calWeek").innerHTML = html;
+  const target = $("calWeek").querySelector(".sel") || $("calWeek").querySelector(".today");
+  if (target && target.scrollIntoView) target.scrollIntoView({ inline: "center", block: "nearest" });
 }
 
 function renderLog() {
@@ -1219,21 +1219,13 @@ $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("daySel").addEventListener("change", e => { viewDay = e.target.value; renderLog(); });
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
-$("calPrev").addEventListener("click", () => { calOffset++; renderCal(); });
-$("calNext").addEventListener("click", () => { if (calOffset > 0) { calOffset--; renderCal(); } });
-let swipeX = null, swipeY = null;
-$("calcard").addEventListener("touchstart", e => {
-  swipeX = e.touches[0].clientX; swipeY = e.touches[0].clientY;
-}, { passive: true });
-$("calcard").addEventListener("touchend", e => {
-  if (swipeX == null) return;
-  const dx = e.changedTouches[0].clientX - swipeX;
-  const dy = e.changedTouches[0].clientY - swipeY;
-  swipeX = swipeY = null;
-  if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-  if (dx < 0) { calOffset++; renderCal(); }
-  else if (calOffset > 0) { calOffset--; renderCal(); }
-}, { passive: true });
+function calScroll(dir) {
+  const w = $("calWeek");
+  const step = (w.firstElementChild ? w.firstElementChild.offsetWidth + 5 : 50) * 7;
+  w.scrollBy({ left: dir * step, behavior: "smooth" });
+}
+$("calPrev").addEventListener("click", () => calScroll(1));
+$("calNext").addEventListener("click", () => calScroll(-1));
 $("calWeek").addEventListener("click", e => {
   const b = e.target.closest("[data-day]");
   if (b && !b.disabled) { viewDay = b.dataset.day; renderLog(); }
