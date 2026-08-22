@@ -77,6 +77,7 @@
   }
   .calbtn:disabled { opacity:.3; }
   .calweek { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  #calcard { touch-action: pan-y; }
   .cd {
     background:var(--panel2); border:1px solid var(--line); border-radius:9px;
     padding:7px 2px 5px; text-align:center; font-family:inherit; color:var(--text);
@@ -222,9 +223,9 @@
 
   <div class="card" id="calcard">
     <div class="calnav">
-      <button class="calbtn" id="calPrev" title="שבוע אחורה">›</button>
+      <button class="calbtn" id="calPrev" title="שבוע אחורה">‹</button>
       <div class="caltitle" id="calToday"></div>
-      <button class="calbtn" id="calNext" title="שבוע קדימה">‹</button>
+      <button class="calbtn" id="calNext" title="שבוע קדימה">›</button>
     </div>
     <div class="calweek" id="calWeek"></div>
   </div>
@@ -1220,6 +1221,19 @@ $("daySel").addEventListener("change", e => { viewDay = e.target.value; renderLo
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("calPrev").addEventListener("click", () => { calOffset++; renderCal(); });
 $("calNext").addEventListener("click", () => { if (calOffset > 0) { calOffset--; renderCal(); } });
+let swipeX = null, swipeY = null;
+$("calcard").addEventListener("touchstart", e => {
+  swipeX = e.touches[0].clientX; swipeY = e.touches[0].clientY;
+}, { passive: true });
+$("calcard").addEventListener("touchend", e => {
+  if (swipeX == null) return;
+  const dx = e.changedTouches[0].clientX - swipeX;
+  const dy = e.changedTouches[0].clientY - swipeY;
+  swipeX = swipeY = null;
+  if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+  if (dx < 0) { calOffset++; renderCal(); }
+  else if (calOffset > 0) { calOffset--; renderCal(); }
+}, { passive: true });
 $("calWeek").addEventListener("click", e => {
   const b = e.target.closest("[data-day]");
   if (b && !b.disabled) { viewDay = b.dataset.day; renderLog(); }
