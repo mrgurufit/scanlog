@@ -50,9 +50,32 @@
   .sr .srs.gen  { background:#2a2410; color:var(--accent); border-color:#6b5a12; }
   .sr.dim { color:var(--muted); font-size:12.5px; justify-content:center; }
 
+  /* header + streak */
+  .hdr { display:flex; align-items:flex-start; gap:10px; }
+  .hdr > div:first-child { flex:1; }
+  #streak {
+    display:flex; align-items:center; gap:5px; padding:8px 13px;
+    background:#241a0e; border:1px solid #6b4d16; border-radius:999px;
+    font-size:17px; flex:0 0 auto;
+  }
+  #streak span { font-size:15px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+  #streakToast {
+    display:none; background:var(--panel); border:1px solid var(--accent); color:var(--text);
+    border-radius:12px; padding:11px 14px; font-size:14px; font-weight:700;
+    margin:8px 0 12px; text-align:center; line-height:1.6;
+  }
+  #streakToast.on { display:block; }
+
   /* week calendar */
   #calcard { padding:12px 14px; }
   .caltitle { font-size:14.5px; font-weight:800; margin-bottom:10px; }
+  .calnav { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .calnav .caltitle { flex:1; text-align:center; margin-bottom:0; }
+  .calbtn {
+    width:34px; height:34px; padding:0; font-size:19px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; border-radius:9px;
+  }
+  .calbtn:disabled { opacity:.3; }
   .calweek { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
   .cd {
     background:var(--panel2); border:1px solid var(--line); border-radius:9px;
@@ -188,11 +211,21 @@
 <body>
 
 <div class="wrap">
-  <h1>SCAN <span>//</span> LOG</h1>
-  <div class="sub">סורק ברקוד, רושם כמה גרם, והשורה נשמרת עם השעה.</div>
+  <div class="hdr">
+    <div>
+      <h1>SCAN <span>//</span> LOG</h1>
+      <div class="sub">סורק ברקוד, רושם כמה גרם, והשורה נשמרת עם השעה.</div>
+    </div>
+    <button id="streak" title="רצף ימי תיעוד">🔥<span id="streakN">0</span></button>
+  </div>
+  <div id="streakToast"></div>
 
   <div class="card" id="calcard">
-    <div class="caltitle" id="calToday"></div>
+    <div class="calnav">
+      <button class="calbtn" id="calPrev" title="שבוע אחורה">›</button>
+      <div class="caltitle" id="calToday"></div>
+      <button class="calbtn" id="calNext" title="שבוע קדימה">‹</button>
+    </div>
     <div class="calweek" id="calWeek"></div>
   </div>
 
@@ -425,13 +458,59 @@ function renderDays() {
   ).join("");
 }
 
+/* ---------------- streak ----------------
+   Consecutive days with at least one logged item. A day without entries only
+   breaks the streak once it is OVER - so an empty "today" still counts the
+   run that ended yesterday, and logging tonight extends it. */
+function streakCount() {
+  const days = new Set(LOG.map(e => e.day));
+  let n = 0;
+  const d = new Date();
+  if (!days.has(d.toLocaleDateString("sv-SE"))) d.setDate(d.getDate() - 1);
+  while (days.has(d.toLocaleDateString("sv-SE"))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+const HEB_ORDINALS = { 2: "שני", 3: "שלישי", 4: "רביעי", 5: "חמישי", 6: "שישי", 7: "שביעי", 8: "שמיני", 9: "תשיעי", 10: "עשירי" };
+function streakMsg(n) {
+  if (n <= 0) return "עוד לא נרשם כלום היום — סרוק משהו ותדליק את האש 🔥";
+  if (n === 1) return "יום ראשון של תיעוד — ככה מתחילים! 💪";
+  if (n === 7) return "שבוע שלם ברציפות! זו כבר לא מוטיבציה, זו משמעת 🔥🔥";
+  if (n === 14) return "שבועיים רצוף! מי שמודד — משתנה 🔥🔥";
+  if (n === 30) return "חודש שלם של תיעוד יומי. אלוף אמיתי 🏆";
+  if (n === 100) return "מאה ימים. אתה כתבת את הסיפור הזה, יום אחרי יום 🏆🔥";
+  if (n <= 10) return "כל הכבוד! יום " + HEB_ORDINALS[n] + " ברציפות 🔥";
+  return n + " ימים ברציפות — אתה מכונה 🔥";
+}
+
+let toastTimer = null;
+function showToast(text) {
+  const t = $("streakToast");
+  t.textContent = text;
+  t.className = "on";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 4500);
+}
+
+function renderStreak() { $("streakN").textContent = streakCount(); }
+
 /* week strip: Sunday first (per Ido), tap a day to see that day's log,
    green dot = the day has entries, future days disabled */
+let calOffset = 0;   // weeks back from the current week (0 = this week)
+
 function renderCal() {
   const now = new Date();
-  $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
   const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay());
+  start.setDate(now.getDate() - now.getDay() - calOffset * 7);
+  if (calOffset === 0) {
+    $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
+  } else {
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    $("calToday").textContent =
+      start.toLocaleDateString("he-IL", { day: "numeric", month: "short" }) + " – " +
+      end.toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+  }
+  $("calNext").disabled = calOffset === 0;
   const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
   let html = "";
   for (let i = 0; i < 7; i++) {
@@ -470,7 +549,7 @@ function renderLog() {
   }
   $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
     הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.`;
-  renderTotals(); renderDays(); renderCal();
+  renderTotals(); renderDays(); renderCal(); renderStreak();
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -1138,6 +1217,9 @@ $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("daySel").addEventListener("change", e => { viewDay = e.target.value; renderLog(); });
+$("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
+$("calPrev").addEventListener("click", () => { calOffset++; renderCal(); });
+$("calNext").addEventListener("click", () => { if (calOffset > 0) { calOffset--; renderCal(); } });
 $("calWeek").addEventListener("click", e => {
   const b = e.target.closest("[data-day]");
   if (b && !b.disabled) { viewDay = b.dataset.day; renderLog(); }
