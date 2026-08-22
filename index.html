@@ -83,6 +83,8 @@
   .eprof { margin-top:9px; }
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
+  .chkrow { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px; cursor:pointer; }
+  .chkrow input { width:17px; height:17px; accent-color:var(--accent); }
   .tot { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 6px; text-align:center; }
   .tot .v { font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
   .tot .l { font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
@@ -218,6 +220,7 @@
         <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
         <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
       </div>
+      <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
       <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
     </details>
   </div>
@@ -383,6 +386,7 @@ function renderEnergy(kcalIn) {
   $("actIn").value = d.activity || "";
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
+  $("autoScanChk").checked = PROFILE.autoScan !== false;
   const e = dayEnergy(viewDay, kcalIn);
   const balTxt = e.bal <= 0
     ? `<b class="def">גירעון ${Math.abs(e.bal).toLocaleString("he-IL")}</b>`
@@ -409,6 +413,7 @@ function saveProfile() {
   const h = parseFloat($("hIn").value), a = parseFloat($("aIn").value);
   if (isFinite(h) && h > 100 && h < 230) PROFILE.height = h;
   if (isFinite(a) && a > 10 && a < 100) PROFILE.age = a;
+  PROFILE.autoScan = $("autoScanChk").checked;
   store.set(LS_PROF, PROFILE);
   renderTotals();
 }
@@ -1151,6 +1156,7 @@ $("wIn").addEventListener("change", saveDayData);
 $("actIn").addEventListener("change", saveDayData);
 $("hIn").addEventListener("change", saveProfile);
 $("aIn").addEventListener("change", saveProfile);
+$("autoScanChk").addEventListener("change", saveProfile);
 $("log").addEventListener("click", e => {
   const id = e.target.dataset && e.target.dataset.del;
   if (!id) return;
@@ -1210,6 +1216,10 @@ if ("serviceWorker" in navigator && location.hostname.endsWith("github.io")) {
 window.addEventListener("pagehide", stopScan);
 
 renderLog();
+if (PROFILE.autoScan !== false &&
+    window.isSecureContext && navigator.mediaDevices && "BarcodeDetector" in window) {
+  startScan();
+}
 </script>
 </body>
 </html>
