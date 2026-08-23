@@ -249,6 +249,37 @@
   #selectAllBtn { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
   #publishAllBtn { background: var(--accent); color: #000; font-size: 15px; padding: 11px 22px; }
   #log { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.7; max-height: 120px; overflow-y: auto; direction: ltr; text-align: left; }
+  /* ---- mobile: this page is installed as a phone app ---- */
+  @media (max-width: 640px) {
+    body { padding: 12px 10px; }
+    header { gap: 10px; margin-bottom: 14px; }
+    header h1 { font-size: 20px; }
+    .card { padding: 14px 12px; border-radius: 12px; margin-bottom: 14px; }
+    #tabs { gap: 4px; }
+    .tab { flex: 1; padding: 10px 5px; font-size: 13px; text-align: center; }
+    .viewtitle { font-size: 18px; }
+    #brief .focus { padding: 10px 12px; font-size: 14px; }
+    .brow { grid-template-columns: 82px 1fr; gap: 8px; }
+    #calbar { padding: 12px 10px; }
+    .calweek { gap: 4px; }
+    .cd { padding: 6px 2px; border-radius: 8px; }
+    .cd .cn { font-size: 13px; }
+    .tot { min-width: 0; flex: 1 1 calc(50% - 5px); padding: 9px 11px; }
+    .tot .tv { font-size: 19px; }
+    #drop { padding: 26px 14px; }
+    #drop .big { font-size: 17px; }
+    #videoRow { flex-direction: column; }
+    #videoRow video { width: 100%; max-width: 240px; align-self: center; }
+    .grid { grid-template-columns: 1fr; }
+    .pcard textarea { min-height: 110px; }
+    .setrow { flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 12px; }
+    .setrow label { min-width: 0; }
+    .setrow input { min-width: 0; width: 100%; }
+    #bulk { flex-wrap: wrap; gap: 8px; padding: 10px 12px; bottom: 8px; }
+    #bulk .selinfo { flex-basis: 100%; text-align: center; font-size: 13px; }
+    #publishAllBtn { flex: 1; }
+    button { padding: 10px 14px; }
+  }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0f14">
