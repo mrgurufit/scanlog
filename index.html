@@ -200,6 +200,18 @@
   .item .kc b { color:var(--accent); font-size:16px; display:block; }
   .item .kc small { color:var(--muted); font-size:10px; }
   .item .x { background:transparent; border:0; color:var(--muted); font-size:19px; padding:6px 4px; flex:0 0 auto; }
+  .item { cursor:pointer; }
+  .item.editing { cursor:default; background:var(--panel2); border-radius:10px; padding:10px 8px; }
+  .editrow { display:flex; align-items:center; gap:7px; margin-top:6px; }
+  .editrow input {
+    width:76px; background:var(--bg); border:1px solid var(--accent); color:var(--text);
+    border-radius:8px; padding:7px 9px; font-size:15px; text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .editrow .gl { color:var(--muted); font-size:13px; }
+  .editrow button { flex:0 0 auto; padding:7px 13px; font-size:13px; border-radius:8px; border:0; font-weight:700; }
+  .editrow .esave { background:var(--accent); color:#000; }
+  .editrow .ecancel { background:transparent; color:var(--muted); border:1px solid var(--line); }
   .empty { color:var(--muted); font-size:13.5px; text-align:center; padding:18px 0; line-height:1.7; }
 
   .msg { font-size:12.5px; margin-top:9px; min-height:16px; line-height:1.6; }
@@ -379,6 +391,20 @@ let pending = null;   // {barcode, photo}
 /* ---------------- totals + log ---------------- */
 function entriesFor(day) { return LOG.filter(e => e.day === day); }
 
+/* tap a logged row to fix the grams after the fact (his request) - kcal and
+   macros re-derive from the stored per-100g values, so only grams changes */
+let editId = null;
+
+function saveEditedGrams() {
+  const it = LOG.find(x => x.id === editId);
+  const g = parseFloat($("editG") && $("editG").value);
+  if (!it || !isFinite(g) || g <= 0 || g > 5000) { msg("entryMsg", "כמות לא תקינה", "err"); return; }
+  it.grams = Math.round(g * 10) / 10;
+  editId = null;
+  save();
+  renderLog();
+}
+
 function computed(e) {
   const f = e.grams / 100;
   return { kcal: e.k100 * f, pro: e.pro100 * f, carb: e.carb100 * f, fat: e.fat100 * f };
@@ -537,16 +563,36 @@ function renderLog() {
   } else {
     $("log").innerHTML = items.map(e => {
       const c = computed(e);
+      if (e.id === editId) {
+        return `<div class="item editing" data-id="${e.id}">
+          <img src="${e.photo || ""}" alt="">
+          <div class="mid">
+            <div class="nm">${esc(e.name)}</div>
+            <div class="editrow">
+              <input type="number" step="any" min="1" inputmode="decimal" id="editG" value="${e.grams}">
+              <span class="gl">גרם</span>
+              <button class="esave" data-esave="1">שמור</button>
+              <button class="ecancel" data-ecancel="1">ביטול</button>
+            </div>
+          </div>
+          <div class="kc"><b>${Math.round(c.kcal)}</b><small>קק״ל</small></div>
+        </div>`;
+      }
       return `<div class="item" data-id="${e.id}">
         <img src="${e.photo || ""}" alt="">
         <div class="mid">
           <div class="nm">${esc(e.name)}</div>
-          <div class="meta">${e.t} · ${e.grams} ג׳ · ח ${c.pro.toFixed(1)} · פ ${c.carb.toFixed(1)} · ש ${c.fat.toFixed(1)}</div>
+          <div class="meta">${e.t} · ${e.grams} ג׳ · ח ${c.pro.toFixed(1)} · פ ${c.carb.toFixed(1)} · ש ${c.fat.toFixed(1)} · ✎</div>
         </div>
         <div class="kc"><b>${Math.round(c.kcal)}</b><small>קק״ל</small></div>
         <button class="x" data-del="${e.id}" aria-label="מחק">✕</button>
       </div>`;
     }).join("");
+  }
+  const g = $("editG");
+  if (g) {
+    g.focus(); g.select();
+    g.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveEditedGrams(); } });
   }
   $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
     הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.`;
@@ -1247,9 +1293,19 @@ $("aIn").addEventListener("change", saveProfile);
 $("autoScanChk").addEventListener("change", saveProfile);
 $("log").addEventListener("click", e => {
   const id = e.target.dataset && e.target.dataset.del;
-  if (!id) return;
-  const it = LOG.find(x => x.id === id);
-  if (it && confirm(`למחוק "${it.name}"?`)) { LOG = LOG.filter(x => x.id !== id); save(); renderLog(); }
+  if (id) {
+    const it = LOG.find(x => x.id === id);
+    if (it && confirm(`למחוק "${it.name}"?`)) {
+      if (editId === id) editId = null;
+      LOG = LOG.filter(x => x.id !== id); save(); renderLog();
+    }
+    return;
+  }
+  if (e.target.dataset && e.target.dataset.esave) { saveEditedGrams(); return; }
+  if (e.target.dataset && e.target.dataset.ecancel) { editId = null; renderLog(); return; }
+  if (e.target.closest("input")) return;
+  const row = e.target.closest(".item");
+  if (row && row.dataset.id && row.dataset.id !== editId) { editId = row.dataset.id; renderLog(); }
 });
 $("copyBtn").addEventListener("click", async () => {
   const text = report(viewDay);
