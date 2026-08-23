@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRANSFORMATION — Publish Center</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #161a22; --panel2: #1d2330;
+    --text: #f2f4f8; --muted: #8a93a6; --accent: #ffd400;
+    --green: #2ecc71; --red: #ff5c5c; --border: #2a3242;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", Arial, sans-serif; min-height: 100vh; padding: 24px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  header h1 { font-size: 26px; letter-spacing: 1px; }
+  header h1 span { color: var(--accent); }
+  .daybadge {
+    background: var(--accent); color: #000; font-weight: 800;
+    padding: 6px 14px; border-radius: 999px; font-size: 15px; display: none;
+  }
+  .copysrc {
+    font-size: 13px; font-weight: 600; padding: 5px 12px;
+    border-radius: 999px; border: 1px solid var(--border);
+  }
+  .copysrc.written { color: #35d07f; border-color: #35d07f55; }
+  .copysrc.generic { color: #e0a34a; border-color: #e0a34a55; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; margin-bottom: 18px;
+  }
+  /* ---- daily brief ---- */
+  #brief { border-right: 4px solid var(--accent); }
+  #brief h2 { font-size: 17px; margin-bottom: 4px; }
+  #brief .bsub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  #brief .focus {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px; font-size: 14.5px; line-height: 1.65;
+  }
+  #brief .focus b { color: var(--accent); }
+  #brief .timing {
+    display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+    font-size: 14px; margin-bottom: 14px;
+  }
+  #brief .slot {
+    background: #2a2410; border: 1px solid #6b5a12; color: var(--accent);
+    font-weight: 700; padding: 4px 12px; border-radius: 999px;
+  }
+  #brief .timing .why { color: var(--muted); font-size: 13px; }
+  .brow {
+    display: grid; grid-template-columns: 110px 1fr; gap: 12px;
+    padding: 9px 0; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.6;
+  }
+  .brow .bp { font-weight: 700; color: var(--muted); }
+  .brow.tt .bp { color: #ff5c8a; }
+  #lastTimes { font-size: 12.5px; color: var(--muted); margin-top: 12px; line-height: 1.8; }
+  #lastTimes b { color: var(--text); }
+  /* ---- week calendar ---- */
+  #calbar { padding: 14px 18px; }
+  .caltitle { font-size: 15px; margin-bottom: 12px; }
+  .caltitle b { font-weight: 800; }
+  .caltitle span { color: var(--accent); font-weight: 700; }
+  .calweek { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cd {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 4px; text-align: center;
+  }
+  .cd.today { border-color: var(--accent); background: #241f0e; }
+  .cd .cl { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .cd.today .cl { color: var(--accent); }
+  .cd .cn { font-size: 14px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .cd .cy { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .cd.today .cy { color: var(--accent); font-weight: 700; }
+  /* ---- tab nav ---- */
+  #tabs {
+    display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); padding-bottom: 0;
+  }
+  .tab {
+    background: transparent; color: var(--muted); border: 1px solid transparent;
+    border-bottom: 0; border-radius: 12px 12px 0 0; padding: 11px 20px;
+    font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.on {
+    background: var(--panel); color: var(--text);
+    border-color: var(--border); border-bottom: 1px solid var(--panel);
+  }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .view { display: none; }
+  .view.on { display: block; }
+  .viewtitle { font-size: 20px; margin-bottom: 4px; }
+  .viewsub { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
+  /* ---- performance dashboard ---- */
+  .refreshrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  #refreshBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  #refreshBtn:hover:not(:disabled) { border-color: var(--accent); }
+  #refreshBtn:disabled { opacity: .55; cursor: wait; }
+  #refreshStatus { font-size: 13px; color: var(--muted); }
+  #refreshStatus.ok { color: var(--green); }
+  #refreshStatus.err { color: var(--red); }
+  #refreshStatus.pend { color: var(--accent); }
+  .totals { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tot {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; flex: 1; min-width: 128px;
+  }
+  .tot .tl { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .tot .tv { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tot .tx { font-size: 11.5px; color: var(--muted); }
+  .synced { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .dayblock { border-top: 1px solid var(--border); padding: 14px 0 4px; }
+  .dayhead {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .dayhead .dnum {
+    background: var(--accent); color: #000; font-weight: 800; font-size: 13px;
+    padding: 3px 11px; border-radius: 999px;
+  }
+  .dayhead .ddate { color: var(--muted); font-size: 13px; }
+  .dayhead .dtot { margin-inline-start: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dayhead .dtot b { color: var(--text); font-size: 15px; }
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ptable th {
+    text-align: right; font-size: 11.5px; color: var(--muted); font-weight: 700;
+    padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .ptable td { padding: 7px 8px; border-bottom: 1px solid #222a38; vertical-align: middle; }
+  .ptable tr:last-child td { border-bottom: 0; }
+  .ptable .pf { font-weight: 700; white-space: nowrap; }
+  .ptable .n { font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
+  .ptable .big { font-size: 15px; font-weight: 800; }
+  .ptable .dim { color: var(--muted); }
+  .ptable a { color: var(--accent); text-decoration: none; font-size: 12.5px; white-space: nowrap; }
+  .ptable a:hover { text-decoration: underline; }
+  .bar { height: 5px; border-radius: 3px; background: #2a3242; overflow: hidden; min-width: 54px; }
+  .bar > i { display: block; height: 100%; background: var(--green); }
+  .flag {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; background: #3a1c1c; color: #ff8f8f; border: 1px solid #6b2b2b;
+  }
+  .flag.gone { background: #3a2a12; color: #ffc46b; border-color: #6b4d16; }
+  .perfnote { font-size: 12.5px; color: #ffb3b3; margin: 2px 0 8px; line-height: 1.6; }
+  .perffoot {
+    font-size: 12px; color: var(--muted); line-height: 1.7;
+    border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px;
+  }
+  .perffoot b { color: var(--text); }
+  /* ---- followers tab ---- */
+  #folRefreshBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  #folRefreshBtn:disabled { opacity: .55; cursor: wait; }
+  #folStatus { font-size: 13px; color: var(--muted); }
+  #folStatus.ok { color: var(--green); } #folStatus.err { color: var(--red); } #folStatus.pend { color: var(--accent); }
+  .fdelta { font-size: 12px; font-weight: 800; padding: 1px 8px; border-radius: 999px; }
+  .fdelta.up { background: #12301f; color: var(--green); }
+  .fdelta.down { background: #3a1c1c; color: #ff8f8f; }
+  .fdelta.flat { color: var(--muted); }
+  .tot .tx.stale { color: #e0a34a; }
+  /* ---- tiktok variant slot ---- */
+  #ttdrop {
+    border: 2px dashed #5a3a48; border-radius: 12px; padding: 14px 16px;
+    text-align: center; cursor: pointer; transition: .15s; margin-top: 14px;
+  }
+  #ttdrop.drag { border-color: #ff5c8a; background: #241a1f; }
+  #ttdrop .big { font-size: 15px; font-weight: 700; color: #ff8fae; }
+  #ttdrop .small { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  #ttStatus { font-size: 12.5px; margin-top: 8px; }
+  #ttStatus.ok { color: var(--green); }
+  #ttStatus.err { color: var(--red); }
+  #ttStatus.pend { color: var(--accent); }
+  #ttFileInput { display: none; }
+  #drop {
+    border: 2px dashed #3a4560; border-radius: 14px;
+    padding: 36px; text-align: center; cursor: pointer; transition: .15s;
+  }
+  #drop.drag { border-color: var(--accent); background: #1a1f2b; }
+  #drop .big { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  #drop .small { color: var(--muted); font-size: 14px; }
+  #fileInput { display: none; }
+  #videoRow { display: none; gap: 18px; align-items: flex-start; margin-top: 16px; }
+  #videoRow video {
+    width: 180px; border-radius: 12px; border: 1px solid var(--border); background: #000;
+  }
+  #videoMeta { flex: 1; }
+  #videoMeta .name { font-weight: 700; font-size: 17px; margin-bottom: 6px; word-break: break-all; }
+  #videoMeta .sub { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+  .dayedit { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 12px; }
+  .dayedit input {
+    width: 70px; background: var(--panel2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 15px; text-align: center;
+  }
+  #hostStatus { font-size: 13.5px; min-height: 18px; }
+  #hostStatus.ok { color: var(--green); }
+  #hostStatus.err { color: var(--red); }
+  #hostStatus.pend { color: var(--accent); }
+  #settings summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+  #settings[open] summary { margin-bottom: 12px; }
+  .setrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .setrow label { font-size: 14px; color: var(--muted); min-width: 170px; }
+  .setrow input {
+    flex: 1; min-width: 260px; background: var(--panel2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 13px;
+    direction: ltr; text-align: left;
+  }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  .pcard { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .pcard.selected { border-color: var(--accent); }
+  .phead { display: flex; align-items: center; gap: 10px; }
+  .picon { font-size: 20px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--panel2); font-weight: 800; }
+  .pname { font-weight: 800; font-size: 16px; }
+  .pnote { font-size: 12px; color: var(--muted); }
+  .phead .spacer { flex: 1; }
+  .phead input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
+  .pcard textarea {
+    width: 100%; min-height: 140px; background: var(--panel2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 10px; font-size: 13px; line-height: 1.5;
+    resize: vertical; direction: ltr; text-align: left; font-family: inherit;
+  }
+  .btnrow { display: flex; gap: 8px; }
+  button {
+    border: 0; border-radius: 9px; padding: 9px 14px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: .12s; font-family: inherit;
+  }
+  .b-copy { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  .b-copy:hover { border-color: var(--accent); }
+  .b-pub { background: var(--accent); color: #000; flex: 1; }
+  .b-pub:hover { filter: brightness(1.1); }
+  .b-pub:disabled { background: #3a4152; color: #767f92; cursor: not-allowed; }
+  .b-link { background: var(--panel2); color: var(--text); border: 1px solid var(--border); flex: 1; text-align: center; text-decoration: none; padding: 9px 14px; border-radius: 9px; font-size: 14px; font-weight: 700; }
+  .b-link:hover { border-color: var(--accent); }
+  .pstatus { font-size: 12.5px; min-height: 17px; }
+  .pstatus.ok { color: var(--green); }
+  .pstatus.err { color: var(--red); }
+  .pstatus.pend { color: var(--accent); }
+  #bulk {
+    position: sticky; bottom: 14px; display: flex; gap: 12px; align-items: center;
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 18px; margin-top: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.45);
+  }
+  #bulk .selinfo { color: var(--muted); font-size: 14px; }
+  #selectAllBtn { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+  #publishAllBtn { background: var(--accent); color: #000; font-size: 15px; padding: 11px 22px; }
+  #log { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.7; max-height: 120px; overflow-y: auto; direction: ltr; text-align: left; }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Publish Center">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TRANSFORMATION <span>//</span> PUBLISH CENTER</h1>
+    <div class="daybadge" id="dayBadge"></div>
+    <div class="copysrc" id="copySrc"></div>
+  </header>
+
+  <!-- week calendar: real date + challenge day, Sunday first -->
+  <div class="card" id="calbar">
+    <div class="caltitle"><b id="calToday"></b><span id="calChal"></span></div>
+    <div class="calweek" id="calWeek"></div>
+  </div>
+
+  <nav id="tabs">
+    <button class="tab" data-view="publish">🎬 העלאת הריל היומי</button>
+    <button class="tab" data-view="stats">📊 סטטיסטיקות</button>
+    <button class="tab" data-view="followers">👥 עוקבים</button>
+  </nav>
+
+  <!-- ============ VIEW: PUBLISH ============ -->
+  <div class="view" id="viewPublish">
+
+  <!-- daily brief -->
+  <div class="card" id="brief">
+    <h2 id="briefTitle">📈 מה משנים היום</h2>
+    <div class="bsub" id="briefSub"></div>
+    <div class="focus" id="briefFocus"></div>
+    <div class="timing">
+      <span>שעת פרסום מומלצת:</span>
+      <span class="slot" id="briefSlot"></span>
+      <span class="why" id="briefWhy"></span>
+    </div>
+    <div id="briefRows"></div>
+    <div id="lastTimes"></div>
+  </div>
+
+  <!-- upload -->
+  <div class="card">
+    <div id="drop">
+      <div class="big">גרור לכאן את הריל של היום 🎬</div>
+      <div class="small">או לחץ לבחירת קובץ (למשל DAY0_REEL.mp4)</div>
+    </div>
+    <input type="file" id="fileInput" accept="video/mp4,video/quicktime">
+    <div id="videoRow">
+      <video id="preview" controls muted></video>
+      <div id="videoMeta">
+        <div class="name" id="fName"></div>
+        <div class="sub" id="fSub"></div>
+        <div class="dayedit">
+          <span>יום מספר:</span>
+          <input type="number" id="dayInput" min="0" max="100" value="0">
+          <span>/ 100</span>
+        </div>
+        <div id="hostStatus"></div>
+      </div>
+    </div>
+    <div id="ttdrop">
+      <div class="big">🎵 גרסת טיקטוק נפרדת — גרור לכאן DAY&lt;n&gt;_REEL_TIKTOK.mp4</div>
+      <div class="small">טיקטוק מקבל חיתוך וקופי משלו. בלי הקובץ הזה הוא יפרסם את הריל הראשי — וזה מה שהוסר ביום 6.</div>
+    </div>
+    <input type="file" id="ttFileInput" accept="video/mp4,video/quicktime">
+    <div id="ttStatus"></div>
+  </div>
+
+  <!-- settings -->
+  <details class="card" id="settings">
+    <summary>⚙️ הגדרות (Make + Cloudinary)</summary>
+    <div class="setrow">
+      <label for="webhookUrl">Make Webhook (PUBLISH CENTER):</label>
+      <input type="url" id="webhookUrl" spellcheck="false">
+    </div>
+    <div class="setrow">
+      <label for="cloudName">Cloudinary cloud name:</label>
+      <input type="text" id="cloudName" placeholder="למשל: dab12xyz" spellcheck="false">
+    </div>
+    <div class="setrow">
+      <label for="uploadPreset">Cloudinary upload preset (unsigned):</label>
+      <input type="text" id="uploadPreset" placeholder="unsigned preset" spellcheck="false">
+    </div>
+    <div class="setrow">
+      <label for="zernioKey">מפתח Zernio (קריאה בלבד):</label>
+      <input type="password" id="zernioKey" placeholder="לכפתור הרענון בלשונית הסטטיסטיקות" spellcheck="false" autocomplete="off">
+      <button class="b-copy" id="saveHook">שמור הכל</button>
+    </div>
+    <div class="hint">
+      כפתור הרענון כבר לא צריך מפתח כאן — המפתח יושב בצד השרת ב-Make (תרחיש "PUBLISH CENTER - analytics proxy"),
+      אז הרענון עובד מכל מכשיר בלי שום הגדרה. השדה הזה נשאר רק כגיבוי ואפשר להשאירו ריק.
+    </div>
+    <div class="hint">
+      הסרטון מועלה ישירות מהדפדפן ל-Cloudinary (נדרש preset מסוג unsigned) כדי לקבל
+      כתובת ציבורית — אינסטגרם ופייסבוק לא מקבלים קבצים מגוגל דרייב. לאחר ההעלאה
+      הדף שולח ל-webhook הודעה נפרדת לכל פלטפורמה:
+      <code dir="ltr">{ platform, day, filename, reelUrl, longCaption, fbTitle }</code>.
+      התוצאות נראות ב-Make &larr; History של התרחיש "PUBLISH CENTER - Buffer Mode".
+    </div>
+  </details>
+
+  <!-- platforms -->
+  <div class="grid" id="grid"></div>
+
+  <!-- bulk -->
+  <div id="bulk">
+    <button id="selectAllBtn">בחר הכל</button>
+    <span class="selinfo" id="selInfo">0 נבחרו</span>
+    <span style="flex:1"></span>
+    <button id="publishAllBtn">🚀 פרסם נבחרים</button>
+  </div>
+
+  </div><!-- /viewPublish -->
+
+  <!-- ============ VIEW: STATS ============ -->
+  <div class="view" id="viewStats">
+    <div class="card">
+      <h2 class="viewtitle">כל הסרטונים והביצועים</h2>
+      <p class="viewsub">כל ריל שפורסם, לפי יום, בכל ארבע הפלטפורמות — כדי שלא תצטרך להיכנס לאף אחת מהן.</p>
+      <div class="refreshrow">
+        <button id="refreshBtn">🔄 רענן נתונים מכל הפלטפורמות</button>
+        <span id="refreshStatus"></span>
+      </div>
+      <div id="perfHead"></div>
+      <div id="perfDays"></div>
+      <div class="perffoot">
+        <b>איפה המספרים נמדדים:</b> הכל נשאב אוטומטית מזרינו ומתעדכן כל ערב. <b>אחוז נטישה קיים רק באינסטגרם</b> — היא הפלטפורמה היחידה שמדווחת זמן צפייה ממוצע לכל ריל. טיקטוק ופייסבוק לא מדווחים ריטנשן בכלל דרך ה-API, וביוטיוב הנתון קיים רק ב-YouTube Studio. איפה שכתוב "לא נמדד" — הוא באמת לא נמדד, ולא ממציאים מספר.
+      </div>
+    </div>
+  </div><!-- /viewStats -->
+
+  <!-- ============ VIEW: FOLLOWERS ============ -->
+  <div class="view" id="viewFollowers">
+    <div class="card">
+      <h2 class="viewtitle">עוקבים</h2>
+      <p class="viewsub">כמה עוקבים בכל פלטפורמה, וכמה נוספו או עזבו בכל יום.</p>
+      <div class="refreshrow">
+        <button id="folRefreshBtn">🔄 רענן עוקבים</button>
+        <span id="folStatus"></span>
+      </div>
+      <div id="folTotals"></div>
+      <div id="folLedger"></div>
+      <div class="perffoot">
+        <b>למה אין שמות:</b> אף פלטפורמה לא חושפת לכלים חיצוניים מי עקב ומי הסיר — טיקטוק, אינסטגרם, יוטיוב ופייסבוק מוסרים דרך ה-API רק את המספר. את השמות אפשר לראות רק בהתראות בתוך כל אפליקציה. מה שכן נמדד כאן, יום-יום: כמה נכנסו וכמה עזבו. חשוב: <b>זרינו מצלם את המספרים פעם ביום בלבד</b> — לחיצה על רענון מביאה את הצילום האחרון, לא את הרגע הנוכחי. כתום ליד השעה = הצילום בן יותר מ-20 שעות. את המספר החי של הרגע רואים רק בפרופיל עצמו; ההיסטוריה כאן מצטברת מרגע חיבור הערוץ.
+      </div>
+    </div>
+  </div><!-- /viewFollowers -->
+
+  <div id="log"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- defaults ---------------- */
+
+const DEFAULT_WEBHOOK = "";
+
+/* ---------------- performance data ----------------
+   Pulled from Zernio (analytics_get_analytics) and refreshed by the nightly
+   task. `watch`/`dur` exist for Instagram only — it is the one platform that
+   reports average watch time per reel, so it is the only place a real
+   drop-off number can come from. Never fill the others in by hand.        */
+
+const PERF = {
+  synced: "2026-08-22T20:45:00Z",
+  days: [
+    { day: 1, date: "2026-08-16", note: "", platforms: {
+      youtube:   { views: 1685, likes: 13, comments: 4, er: 1.01, at: "2026-08-16T18:42:46Z", url: "https://www.youtube.com/watch?v=LhUtdpYMyo0" },
+      facebook:  { views: 272, reach: 240, likes: 1, comments: 0, er: 0.37, at: "2026-08-16T19:49:26Z", url: "https://www.facebook.com/reel/1416918570343495/" },
+      instagram: { views: 199, reach: 153, likes: 3, comments: 1, er: 2.51, watch: 6.70, dur: 32, at: "2026-08-16T17:38:51Z", url: "https://www.instagram.com/reel/DcHBI9yFuBD/" },
+      tiktok:    { views: 1607, likes: 11, comments: 4, er: 0.93, at: "2026-08-16T17:28:45Z", url: "https://www.tiktok.com/@mrgurufit/video/7674683163129433364" },
+    }},
+    { day: 2, date: "2026-08-17", note: "", platforms: {
+      youtube:   { views: 1134, likes: 14, comments: 5, er: 1.68, at: "2026-08-17T19:18:18Z", url: "https://www.youtube.com/watch?v=olY7rEAQlMk" },
+      facebook:  { views: 272, reach: 241, likes: 1, comments: 0, er: 0.37, at: "2026-08-17T19:25:40Z", url: "https://www.facebook.com/reel/2044219509635477/" },
+      instagram: { views: 143, reach: 119, likes: 2, comments: 1, er: 2.10, watch: 9.13, dur: 40, at: "2026-08-17T19:17:46Z", url: "https://www.instagram.com/reel/DcJxQOZCL5t/" },
+      tiktok:    { views: 119, likes: 2, comments: 3, er: 4.20, at: "2026-08-17T19:16:55Z", url: "https://www.tiktok.com/@mrgurufit/video/7675081800347176209" },
+    }},
+    { day: 3, date: "2026-08-18", note: "", platforms: {
+      youtube:   { views: 1192, likes: 6, comments: 1, er: 0.59, at: "2026-08-18T17:49:10Z", url: "https://www.youtube.com/watch?v=W6ZnToeD6h8" },
+      facebook:  { views: 182, reach: 155, likes: 0, comments: 0, er: 0, at: "2026-08-18T17:51:07Z", url: "https://www.facebook.com/reel/1691251778840133/" },
+      instagram: { views: 149, reach: 119, likes: 2, comments: 1, er: 2.68, watch: 6.71, dur: 25, at: "2026-08-18T17:48:14Z", url: "https://www.instagram.com/reel/DcMLz7IAb_c/" },
+      tiktok:    { views: 523, likes: 8, comments: 2, er: 1.91, at: "2026-08-18T17:47:43Z", url: "https://www.tiktok.com/@mrgurufit/video/7675429760834555144" },
+    }},
+    { day: 4, date: "2026-08-19", note: "", platforms: {
+      youtube:   { views: 1303, likes: 13, comments: 5, er: 1.38, at: "2026-08-19T18:27:30Z", url: "https://www.youtube.com/watch?v=OIvXY7OA68c" },
+      facebook:  { views: 334, reach: 270, likes: 1, comments: 0, er: 0.30, at: "2026-08-19T18:29:20Z", url: "https://www.facebook.com/reel/1571168151115911/" },
+      instagram: { views: 244, reach: 193, likes: 4, comments: 1, er: 2.05, watch: 9.73, dur: 25, at: "2026-08-19T18:27:10Z", url: "https://www.instagram.com/reel/DcO1DQTFFfv/" },
+      tiktok:    { views: 53, likes: 1, comments: 0, er: 1.89, at: "2026-08-19T18:26:39Z", url: "https://www.tiktok.com/@mrgurufit/video/7675810729043283201" },
+    }},
+    { day: 5, date: "2026-08-20", note: "⚠️ יוטיוב של יום 5 תקוע על 8 צפיות אחרי יומיים, בזמן שכל שאר הימים עשו 1,100–1,700. זו לא תנודה — משהו לא בסדר בסרטון הזה עצמו. תיכנס ל-YouTube Studio ותבדוק אם הוא מסומן כ-Short, אם הוא ציבורי, ואם יש עליו התראה.", platforms: {
+      youtube:   { views: 8, likes: 0, comments: 0, er: 0, at: "2026-08-20T16:57:20Z", url: "https://www.youtube.com/watch?v=6ZrEZnc1o6w", flag: "חריג" },
+      facebook:  { views: 441, reach: 356, likes: 0, comments: 0, er: 0, at: "2026-08-20T16:58:33Z", url: "https://www.facebook.com/reel/3386718801489086/" },
+      instagram: { views: 141, reach: 112, likes: 4, comments: 1, er: 3.55, watch: 8.20, dur: 25, at: "2026-08-20T16:56:32Z", url: "https://www.instagram.com/reel/DcRPeCxDTod/" },
+      tiktok:    { views: 64, likes: 3, comments: 0, er: 4.69, at: "2026-08-20T16:55:26Z", url: "https://www.tiktok.com/@mrgurufit/video/7676158512677817620" },
+    }},
+    { day: 6, date: "2026-08-21", note: "שני הסרטונים של יום 6 עלו באיחור ולכן החותמת שלהם היא 22.8 — הם שייכים ליום 6, לא ליום 7. טיקטוק הסיר את שתי הגרסאות המקוריות בגלל הנחיות הקהילה, ומה שבאוויר הוא חיתוך תואם-כללים. המספרים שלו ושל יוטיוב לא ניתנים להשוואה לשאר הימים.", platforms: {
+      youtube:   { views: 347, likes: 3, comments: 0, er: 0.86, at: "2026-08-22T09:10:07Z", url: "https://www.youtube.com/watch?v=QGZ8HE61xos", flag: "יום 6 · עלה 22.8" },
+      facebook:  { views: 454, reach: 371, likes: 2, comments: 0, er: 0.44, at: "2026-08-21T20:19:37Z", url: "https://www.facebook.com/reel/27849968031333201/" },
+      instagram: { views: 157, reach: 127, likes: 3, comments: 1, er: 2.55, watch: 7.55, dur: 25, at: "2026-08-21T20:19:07Z", url: "https://www.instagram.com/reel/DcULc4bD7bQ/" },
+      tiktok:    { views: 481, likes: 10, comments: 0, er: 2.08, at: "2026-08-22T09:52:54Z", url: "https://www.tiktok.com/@mrgurufit/video/7676791601393372417", flag: "יום 6 · חיתוך תואם, עלה 22.8" },
+    }},
+    { day: 7, date: "2026-08-22", note: "פורסם ב-23:18–23:41 — אחרי חלון היעד (סבבי העריכה התארכו). טיקטוק נתקע בניסיון הראשון ופורסם מחדש בהצלחה. המספרים הראשונים יסתנכרנו עד הבוקר — אל תקרא כלום לפני 24 שעות.", platforms: {
+      youtube:   { views: null, likes: 0, comments: 0, er: null, at: "2026-08-22T20:18:13Z", url: "https://www.youtube.com/watch?v=D5B5iSaJL1U" },
+      facebook:  { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-22T20:18:35Z", url: "https://www.facebook.com/Mrgurufit" },
+      instagram: { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-22T20:18:27Z", url: "https://www.instagram.com/mrgurufit/" },
+      tiktok:    { views: null, likes: 0, comments: 0, er: null, at: "2026-08-22T20:41:01Z", url: "https://www.tiktok.com/@mrgurufit/video/7676957947980941329", flag: "ניסיון שני" },
+    }},
+  ]
+};
+
+/* ---------------- daily brief ----------------
+   One entry per day, written the evening before from the real numbers in
+   performance/performance_log.json. `focus` names AT MOST TWO variables being
+   tested today — change more than that and the next day's numbers mean nothing.
+   Days without an entry fall back to BRIEF_DEFAULT.                          */
+
+const BRIEF_DEFAULT = {
+  sub: "לא נכתב תדריך ליום הזה — אלה הכללים הקבועים.",
+  focus: "<b>שתי השניות הראשונות</b> קובעות הכל, ואחריהן <b>אחוז הצפייה עד הסוף</b>. אל תשנה יותר משני משתנים ביום — אחרת אי אפשר לדעת מה עבד.",
+  slot: "20:30–21:30",
+  why: "(מדגם קטן, 6 ימים — לא חוק)",
+  platforms: {
+    tiktok: "חיתוך וקופי נפרדים. בלי קלוריות, בלי מספרי משקל, בלי קצב ירידה, בלי קללות, בלי #cheatmeal / #fatlosstips, בלי צילומי גוף בלבוש מינימלי.",
+    instagram: "הערוץ עם הנתון הכי אמין — אחוז צפייה. ההוק המדובר מעלה אותו. כאן נמדדת כל עריכה.",
+    facebook: "חשיפה זולה וגבוהה (~445), אבל עוקב אחד. נוכחות, לא בניית קהל.",
+    youtube: "הבית. פי 3 מכל השאר ויציב. כותרת ברורה + תיאור מלא, ותמיד לינק לשאר הערוצים."
+  }
+};
+
+const DAY_BRIEF = {
+  7: {
+    sub: "נקרא מהמספרים האמיתיים של ימים 1–6, 22.8.2026",
+    focus: "משנים <b>משתנה אחד בלבד</b> היום: <b>בקשת העקיבה עוברת לאמצע הריל</b> (בשנייה ~11, בנוסף לסוגר). הסיבה: 1,033 צפיות באינסטגרם ייצרו <b>אפס עוקבים חדשים</b> — החשיפה תקינה, הבקשה היא הבעיה. כל השאר נשאר זהה כדי שנדע אם זה עבד.",
+    slot: "20:30–21:30",
+    why: "(יום 4 קיבל 244 ב-21:27 — הכי טוב. יום 5 קיבל 141 ב-19:56 והכי גרוע היה 22:16. אחרי 22:00 לא לפרסם.)",
+    platforms: {
+      tiktok: "חובה חיתוך נפרד — טיקטוק הסיר שני סרטונים מהחשבון. הפרה שלישית מוציאה את כל החשבון מה-For You. הרץ: <code dir=ltr>render_variant.py &lt;תיקייה&gt; 7 tiktok</code>",
+      instagram: "אחוז הצפייה ירד 3 ימים ברצף: 38.9 ← 32.8 ← 30.2. ההוק של יום 6 הכריז על עלייה במשקל — פחות מושך. היום ההוק הוא הבטחה שקוימה, וזה חזק יותר.",
+      facebook: "מפורסם דרך החיבור הישיר לזרינו. הקופי המלא בסדר כאן — פייסבוק לא מגביל כמו טיקטוק.",
+      youtube: "1,200 צפיות לריל, יציב לחלוטין ולא רגיש לשעה. אל תיגע בפורמט שעובד — רק הכותרת צריכה לסקרן."
+    }
+  }
+};
+
+/* ---------------- per-day copy ----------------
+   Written fresh each evening for the day that was actually filmed.
+   Whatever is here wins over the generic template below; a day that is
+   missing just falls back to the template, so nothing ever breaks.     */
+
+const DAY_COPY = {
+  6: {
+    /* REWRITTEN 22.8.2026 — the original version of this copy was published and
+       TikTok REMOVED the video. This is the compliant text that actually went
+       live, alongside the separate cut DAY6_REEL_TIKTOK.mp4. Do not restore
+       the old one. */
+    tiktok: `Most people don't post this day.
+
+Friday dinner with my family. I sat down, I ate, and I enjoyed it.
+
+Day 6 of 100. I'm filming all of it — the training, the meals, the ordinary days and the ones like this one.
+
+A dinner with people you love isn't something to apologise for. It's part of a routine you can actually keep going.
+
+Back in the gym tomorrow, same as always.
+
+#day6 #100days #gymtok #fitnessjourney #consistency #balance #showingup`,
+
+    instagram: `I f*cked up today. Badly. 📈
+
+4,731 calories at Friday dinner with my family, and I'm not going to pretend it didn't happen.
+
+107.3 → 107.6 KG. Still down 3.9 from where I started.
+
+And that weigh-in was this morning — BEFORE the dinner. Tomorrow's number is going to be way worse, and I'll post that one too.
+
+I could have skipped today. That's exactly why I didn't.
+
+Day 6/100.
+
+#weightloss #transformation #100daychallenge #cheatmeal #fitnessjourney #honesty #day6`,
+
+    facebook: `I messed up badly today. 4,731 calories.
+
+Day 6 of 100 — and the first day the scale went the wrong way.
+
+Friday dinner with the family. 4,731 calories in, 3,758 out. 107.3 → 107.6 KG.
+
+I said at the start that the bad days go up here too. This is one of them.
+
+And that weigh-in was this morning, before the dinner — so tomorrow's number is going to be worse. I'll post that one too.
+
+Still down 3.9 KG overall. Day 7 tomorrow, same as every day.`,
+
+    youtube: `TITLE:
+Day 6/100 — I Messed Up Badly. 4,731 Calories. | Losing 25KG
+
+DESCRIPTION:
+I f*cked up today. Badly.
+
+Day 6 of losing 25kg in 100 days — and the first day the scale went the wrong way.
+
+Friday family dinner. 4,731 calories in, 3,758 out. Weight up from 107.3 to 107.6 KG.
+
+I said at the start that the bad days go up here too. This is one of them.
+
+And that weigh-in was this morning, before the dinner — so tomorrow's number is going to be way worse. I'll post that one too.
+
+Still down 3.9 KG overall. Day 7 tomorrow, same as every day.
+
+The daily reels drop here first:
+▸ TikTok: @mrgurufit
+▸ Instagram: @mrgurufit
+
+#weightloss #transformation #100daychallenge #shorts`,
+
+  },
+
+  /* DAY 7 — DRAFT. Fill the three markers before publishing:
+     108.0  = this morning's weight        0.4 = gain vs 107.6      3.5 = total lost from 111.5
+     Built on the day 1-6 data: the two best reels (IG day 4, TikTok day 3) both had a human stake,
+     not a routine log — so day 7 leads with the promise being kept, and the follow ask moved up
+     from the last line to the middle, because 1,000+ IG views produced zero followers. */
+  7: {
+    /* TIKTOK IS DELIBERATELY DIFFERENT. TikTok removed the DAY 6 reel under its
+       Mental & Behavioral Health guidelines, so its copy carries NO calorie
+       numbers, NO weight numbers, NO weight-loss amounts, no masked profanity
+       and no "I'll pay for this tomorrow" framing. It also needs its own CUT -
+       run: python -X utf8 reel_maker/render_variant.py "<day folder>" 7 tiktok */
+    tiktok: `Yesterday I told you today's weigh-in was going to go the wrong way. It did. I'm posting it anyway.
+
+That's Friday dinner with my family showing up, exactly like I said it would.
+
+Here's the part worth knowing: most of what the scale adds after a big meal is water and food still moving through you. It settles within a couple of days. One dinner is not a failed week.
+
+I film every day and post it whether it looks good or not. That's the whole point.
+
+My full routine is in my bio if you want it.
+
+Day 7 of 100.
+
+#day7 #100days #gymtok #consistency #showingup #fitnessjourney #honesty`,
+
+    instagram: `I called this number yesterday. Now I'm posting it. 📈
+
+108.0 KG — up 0.4 after Friday dinner.
+
+A 973 calorie surplus is roughly 120 GRAMS of real fat. Everything else on that scale is water, sodium and food still moving through me. It's gone in 2-3 days.
+
+That's the difference between a bad day and a failed diet, and it's why I didn't hide it.
+
+I weigh in every morning and post it whether it's good or ugly. Follow if you want to see day 100.
+
+📋 The exact routine I'm using — five rules, free. Link in bio.
+
+Still down 3.5 KG. Day 7/100.
+
+#weightloss #transformation #100daychallenge #fitnessjourney #accountability #weightlossjourney #day7`,
+
+    facebook: `Yesterday I told you the number would be bad. Here it is: 108.0 KG, up 0.4.
+
+That's Friday dinner — 4,731 calories — showing up on the scale exactly as promised.
+
+The part worth knowing: a 973 calorie surplus is about 120 grams of actual fat. The rest is water, salt and undigested food, and it clears in two or three days.
+
+Anyone can post the good mornings. I said at the start I'd post all of them.
+
+📋 The exact routine I'm using, free: https://preview.mailerlite.io/forms/2590254/196504325381424635/share
+
+Still down 3.5 KG from where I started. Day 7 of 100.`,
+
+    youtube: `TITLE:
+Day 7/100 — I Predicted This Bad Number. Here It Is. | Losing 25KG
+
+DESCRIPTION:
+📋 THE EXACT ROUTINE I'M USING — free: https://preview.mailerlite.io/forms/2590254/196504325381424635/share
+(the five rules, the food-weighing method, and the one bit of maths that stops people quitting in week three)
+
+Yesterday I told you the scale was going to be ugly today. Here it is: 108.0 KG, up 0.4 from yesterday.
+
+That's the Friday family dinner — 4,731 calories — landing exactly where I said it would.
+
+Here's what most people never get told: a 973 calorie surplus is about 120 grams of actual fat. Everything else on that scale is water, sodium and food that hasn't finished moving through me. It's off again within two or three days.
+
+That's the difference between one bad day and a failed diet.
+
+I weigh in every morning and post the number whether it's good or ugly. Subscribe if you want to see what day 100 looks like.
+
+Still down 3.5 KG from 111.5. Day 7 of 100.
+
+Find me daily on the other platforms too:
+▸ TikTok: @mrgurufit
+▸ Instagram: @mrgurufit
+
+#weightloss #transformation #100daychallenge #shorts #fitness`
+  }
+};
+
+/* ---------------- platforms & copy templates ---------------- */
+
+const PLATFORMS = [
+  {
+    id: "instagram", name: "Instagram Reels", icon: "IG", mode: "auto",
+    copy: d => `Day ${d}/100 of losing 25kg. No excuses, just receipts. 📉
+
+I'm documenting every single day — the workouts, the meals, the weigh-ins. Raw and unfiltered.
+
+Follow the journey. Day 100 will be unrecognizable.
+
+#weightloss #transformation #100daychallenge #fitnessjourney #weightlosstransformation #day${d} #fatloss #discipline`
+  },
+  {
+    id: "tiktok", name: "TikTok", icon: "TT", mode: "auto",
+    copy: d => `Day ${d}/100 — losing 25kg and filming everything 🎥
+
+If I can do this, you can too. Stick around for day 100.
+
+#weightlosscheck #100days #transformation #gymtok #fatlosstips #day${d} #fyp`
+  },
+  {
+    id: "facebook", name: "Facebook Reels (קלוד מפרסם)", icon: "FB", mode: "manual",
+    link: "https://www.facebook.com/Mrgurufit", linkText: "פתח את העמוד Mrgurufit ↗",
+    note: "מ-22.8.2026 פייסבוק מתפרסם דרך החיבור הישיר לזרינו — תגיד לקלוד \"תעלה לפייסבוק\" והוא מעלה עם הקופי הזה. המודול של פייסבוק ב-Make שבור לווידאו (שדה המדיה שלו מוגדר ריק בלבד) ולא ישמש יותר.",
+    copy: d => `Day ${d} of 100. Goal: lose 25kg. 💪
+
+Every day I film my meals, workouts and weigh-ins — no filters, no shortcuts. Follow along and watch it happen.
+
+#weightloss #transformation #100daychallenge`
+  },
+  {
+    id: "story", name: "Instagram Story", icon: "ST", mode: "manual",
+    link: "https://www.instagram.com", linkText: "פתח אינסטגרם ↗",
+    copy: d => `סטורי ידני: אחרי שהריל עולה לאינסטגרם, פתח אותו ← שתף ← "הוסף לסטורי".
+(החיבור האוטומטי לסטורי הוסר כדי לפנות מקום לפייסבוק בזרינו.)`
+  },
+  {
+    id: "youtube", name: "YouTube Shorts", icon: "YT", mode: "auto",
+    copy: d => `TITLE:
+Day ${d}/100 — Losing 25KG | Daily Transformation
+
+DESCRIPTION:
+Documenting 100 days of losing 25kg — every workout, every meal, every weigh-in. This is day ${d}.
+
+Subscribe to watch the full transformation happen in real time.
+
+#shorts #weightloss #transformation #100daychallenge #fitness`
+  },
+];
+
+/* ---------------- state ---------------- */
+
+let currentDay = null;
+let currentFile = null;
+let hostedUrl = null;      // Cloudinary secure_url of the current file
+let uploading = null;      // promise while upload in progress
+let ttFile = null;         // TikTok-only cut, when one was rendered
+let ttHostedUrl = null;
+let ttUploading = null;
+
+const PLATFORM_LABELS = { tiktok: "טיקטוק", instagram: "אינסטגרם", facebook: "פייסבוק", youtube: "יוטיוב", story: "סטורי" };
+
+/* localStorage throws outright in some contexts (data: URLs, private mode with
+   storage blocked). One throw at load time used to kill the whole page before
+   the copy boxes were ever filled, so every access goes through here. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* not fatal */ } },
+};
+
+(function () {
+  const m = location.hash.match(/cfg=([A-Za-z0-9+/=_-]+)/);
+  if (!m) return;
+  try {
+    const c = JSON.parse(atob(m[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (c.w) store.set("mk_webhook", c.w);
+    if (c.p) store.set("pc_proxy", c.p);
+    if (c.cn) store.set("cld_name", c.cn);
+    if (c.up) store.set("cld_preset", c.up);
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch { /* bad fragment - ignore */ }
+})();
+
+const $ = id => document.getElementById(id);
+const grid = $("grid");
+const logEl = $("log");
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  logEl.innerHTML = `[${t}] ${msg}<br>` + logEl.innerHTML;
+}
+
+/* ---------------- build platform cards ---------------- */
+
+for (const p of PLATFORMS) {
+  const card = document.createElement("div");
+  card.className = "pcard";
+  card.dataset.pid = p.id;
+  card.innerHTML = `
+    <div class="phead">
+      <div class="picon">${p.icon}</div>
+      <div>
+        <div class="pname">${p.name}</div>
+        <div class="pnote">${p.note || (p.mode === "auto" ? "פרסום אוטומטי דרך Make" : "העלאה ידנית — הקופי מוכן להעתקה")}</div>
+      </div>
+      <div class="spacer"></div>
+      <input type="checkbox" class="psel" ${p.mode === "auto" ? "" : "disabled title='ידני'"}>
+    </div>
+    <textarea class="pcopy" spellcheck="false"></textarea>
+    <div class="btnrow">
+      <button class="b-copy">📋 העתק</button>
+      ${p.mode === "auto"
+        ? `<button class="b-pub">פרסם</button>`
+        : `<a class="b-link" href="${p.link}" target="_blank">${p.linkText}</a>`}
+    </div>
+    <div class="pstatus"></div>`;
+  grid.appendChild(card);
+
+  card.querySelector(".b-copy").addEventListener("click", async () => {
+    const ta = card.querySelector(".pcopy");
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch { ta.select(); document.execCommand("copy"); }
+    setStatus(card, "הקופי הועתק ✓", "ok");
+  });
+
+  const pub = card.querySelector(".b-pub");
+  if (pub) pub.addEventListener("click", () => publish(card));
+
+  const sel = card.querySelector(".psel");
+  sel.addEventListener("change", () => {
+    card.classList.toggle("selected", sel.checked);
+    updateSelInfo();
+  });
+}
+
+function setStatus(card, msg, cls) {
+  const el = card.querySelector(".pstatus");
+  el.textContent = msg;
+  el.className = "pstatus " + (cls || "");
+}
+
+function copyFor(p, d) {
+  const written = DAY_COPY[d] && DAY_COPY[d][p.id];
+  return written || p.copy(d);
+}
+
+/* ---------------- performance dashboard ---------------- */
+
+const PF_ORDER = ["youtube", "facebook", "instagram", "tiktok"];
+const nf = n => (n == null ? "—" : n.toLocaleString("he-IL"));
+const hhmm = iso => new Date(iso).toLocaleString("he-IL",
+  { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+function renderPerf() {
+  // totals per platform, so the ranking is visible before any detail
+  const tot = {};
+  for (const p of PF_ORDER) tot[p] = { views: 0, n: 0 };
+  for (const d of PERF.days) {
+    for (const p of PF_ORDER) {
+      const m = d.platforms[p];
+      if (m && m.views != null) { tot[p].views += m.views; tot[p].n++; }
+    }
+  }
+  $("perfHead").innerHTML =
+    `<div class="totals">` + PF_ORDER.map(p => {
+      const t = tot[p];
+      const avg = t.n ? Math.round(t.views / t.n) : 0;
+      return `<div class="tot">
+        <div class="tl">${PLATFORM_LABELS[p]}</div>
+        <div class="tv">${nf(t.views)}</div>
+        <div class="tx">${nf(avg)} לסרטון · ${t.n} סרטונים</div>
+      </div>`;
+    }).join("") + `</div>
+    <div class="synced">מסונכרן מזרינו: ${hhmm(PERF.synced)}</div>`;
+
+  $("perfDays").innerHTML = PERF.days.slice().reverse().map(d => {
+    const dayTotal = PF_ORDER.reduce((s, p) => s + ((d.platforms[p] || {}).views || 0), 0);
+    const rows = PF_ORDER.map(p => {
+      const m = d.platforms[p];
+      if (!m) return "";
+      // drop-off is real only where average watch time is reported
+      let ret = `<span class="dim">לא נמדד</span>`;
+      if (m.watch && m.dur) {
+        const kept = Math.round(m.watch / m.dur * 100);
+        ret = `<div class="bar" title="${kept}% נשארו · ${100 - kept}% נטשו"><i style="width:${kept}%"></i></div>
+               <span style="font-size:11.5px">${kept}% / <span class="dim">${100 - kept}% נטשו</span></span>`;
+      }
+      return `<tr>
+        <td class="pf">${PLATFORM_LABELS[p]}${m.flag ? ` <span class="flag ${m.flag.startsWith("יום") ? "gone" : ""}">${m.flag}</span>` : ""}</td>
+        <td class="n big">${nf(m.views)}</td>
+        <td class="n dim">${nf(m.reach)}</td>
+        <td class="n">${nf(m.likes)} / ${nf(m.comments)}</td>
+        <td class="n">${m.er != null ? m.er.toFixed(2) + "%" : "—"}</td>
+        <td class="n">${ret}</td>
+        <td class="n dim">${hhmm(m.at)}</td>
+        <td class="n"><a href="${m.url}" target="_blank" rel="noopener">צפה ↗</a></td>
+      </tr>`;
+    }).join("");
+    return `<div class="dayblock">
+      <div class="dayhead">
+        <span class="dnum">DAY ${d.day}</span>
+        <span class="ddate">${d.date}</span>
+        <span class="dtot">סה״כ <b>${nf(dayTotal)}</b> צפיות</span>
+      </div>
+      ${d.note ? `<div class="perfnote">${d.note}</div>` : ""}
+      <div style="overflow-x:auto">
+        <table class="ptable">
+          <thead><tr>
+            <th>פלטפורמה</th><th style="text-align:center">צפיות</th><th style="text-align:center">חשיפה</th>
+            <th style="text-align:center">לייק / תגובה</th><th style="text-align:center">מעורבות</th>
+            <th style="text-align:center">נשארו לצפות</th><th style="text-align:center">פורסם</th><th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------- live refresh, via the Make proxy ----------------
+   The Zernio API key lives server-side in Make scenario 6022332, so this page
+   needs no key and no setup on any device. The proxy echoes Zernio's JSON with
+   open CORS; the nightly task still refreshes PERF on its own every evening. */
+
+const ANALYTICS_PROXY = store.get("pc_proxy") || "";
+
+function rStatus(msg, cls) {
+  const el = $("refreshStatus");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+function dayNumFor(iso) {
+  // DAY 1 = 2026-08-16; a reel filmed on day N publishes that evening
+  const d0 = Date.UTC(2026, 7, 16);
+  const d = new Date(iso);
+  return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - d0) / 864e5) + 1;
+}
+
+async function fetchPlatform(platform) {
+  const res = await fetch(`${ANALYTICS_PROXY}?platform=${platform}`);
+  if (!res.ok) throw new Error(`${platform}: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function refreshPerf() {
+  const btn = $("refreshBtn");
+  btn.disabled = true;
+  rStatus("מושך מכל ארבע הפלטפורמות…", "pend");
+
+  const platforms = ["youtube", "facebook", "instagram", "tiktok"];
+  const byDay = new Map();
+  let pulled = 0;
+
+  try {
+    for (const pf of platforms) {
+      const data = await fetchPlatform(pf);
+      for (const post of (data.posts || [])) {
+        const at = post.publishedAt || post.scheduledFor;
+        if (!at) continue;
+        const a = post.analytics || {};
+        // A reel published a day late (DAY 6's YouTube went up on the 22nd)
+        // would land on the wrong day by date alone, so a post already in PERF
+        // keeps the day it was assigned; only genuinely new posts use the date.
+        // TikTok appends utm_* tracking params to its URLs while YouTube keeps
+        // the video id INSIDE the query (?v=...) - so strip only tracking
+        // params, never the whole query string
+        const canon = u => {
+          if (!u) return "";
+          const parts = u.split("?");
+          if (!parts[1]) return parts[0];
+          const keep = parts[1].split("&").filter(kv => kv && !/^utm_/i.test(kv));
+          return keep.length ? parts[0] + "?" + keep.sort().join("&") : parts[0];
+        };
+        const known = PERF.days.find(d =>
+          Object.values(d.platforms).some(x => x.url && canon(x.url) === canon(post.platformPostUrl)));
+        const n = known ? known.day : dayNumFor(at);
+        if (n < 1) continue;
+        if (!byDay.has(n)) byDay.set(n, { day: n, date: at.slice(0, 10), note: "", platforms: {} });
+        const row = {
+          views: a.views ?? null, reach: a.reach || null,
+          likes: a.likes || 0, comments: a.comments || 0,
+          er: a.engagementRate ?? null, at, url: post.platformPostUrl || "#",
+        };
+        // Instagram is the only platform that reports average watch time,
+        // so it stays the only source of a real drop-off number
+        if (pf === "instagram" && a.igReelsAvgWatchTime && a.videoDurationSeconds) {
+          row.watch = a.igReelsAvgWatchTime / 1000;
+          row.dur = a.videoDurationSeconds;
+        }
+        byDay.get(n).platforms[pf] = row;
+        pulled++;
+      }
+    }
+  } catch (err) {
+    btn.disabled = false;
+    rStatus(`הרענון נכשל (${err.message}). ייתכן שהדפדפן חוסם את הקריאה מקובץ מקומי — המשימה הלילית מרעננת בכל מקרה.`, "err");
+    log("refresh failed: " + err.message);
+    return;
+  }
+
+  if (!byDay.size) {
+    btn.disabled = false;
+    rStatus("לא חזרו פוסטים — בדוק שהמפתח שייך לחשבון הנכון", "err");
+    return;
+  }
+
+  // keep the hand-written notes and flags; only the numbers are replaced
+  const oldNotes = new Map(PERF.days.map(d => [d.day, d]));
+  PERF.days = [...byDay.values()].sort((a, b) => a.day - b.day).map(d => {
+    const prev = oldNotes.get(d.day);
+    if (prev) {
+      d.note = prev.note || "";
+      for (const pf of Object.keys(d.platforms)) {
+        const pflag = (prev.platforms[pf] || {}).flag;
+        if (pflag) d.platforms[pf].flag = pflag;
+      }
+    }
+    return d;
+  });
+  PERF.synced = new Date().toISOString();
+  renderPerf();
+  btn.disabled = false;
+  rStatus(`עודכן — ${pulled} סרטונים על פני ${byDay.size} ימים. (מתאפס בטעינה מחדש; המשימה הלילית כותבת את זה לקובץ.)`, "ok");
+}
+
+/* ---------------- daily brief + publish-time log ---------------- */
+
+function renderBrief(d) {
+  const b = DAY_BRIEF[d] || BRIEF_DEFAULT;
+  $("briefTitle").textContent = `📈 מה משנים ביום ${d}`;
+  $("briefSub").textContent = b.sub || BRIEF_DEFAULT.sub;
+  $("briefFocus").innerHTML = b.focus;
+  $("briefSlot").textContent = b.slot || BRIEF_DEFAULT.slot;
+  $("briefWhy").textContent = b.why || "";
+  const rows = b.platforms || BRIEF_DEFAULT.platforms;
+  $("briefRows").innerHTML = Object.keys(rows).map(k =>
+    `<div class="brow ${k === "tiktok" ? "tt" : ""}">
+       <div class="bp">${PLATFORM_LABELS[k] || k}</div>
+       <div>${rows[k]}</div>
+     </div>`).join("");
+  renderLastTimes();
+}
+
+/* Actual publish times, so the effect of the hour can be read later.
+   Zernio records these too, but this covers manual platforms and gives
+   immediate feedback on how consistent the slot really is. */
+function pubLog() {
+  try { return JSON.parse(store.get("pub_log") || "[]"); }
+  catch { return []; }
+}
+
+function recordPublish(platform, day) {
+  const l = pubLog();
+  l.push({ platform, day, ts: new Date().toISOString() });
+  store.set("pub_log", JSON.stringify(l.slice(-200)));
+  renderLastTimes();
+}
+
+function renderLastTimes() {
+  const l = pubLog();
+  if (!l.length) { $("lastTimes").innerHTML = "עדיין לא נרשמו שעות פרסום מהדף הזה."; return; }
+  const last = {};
+  for (const e of l) last[e.platform] = e;
+  const fmt = e => new Date(e.ts).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  $("lastTimes").innerHTML = "🕒 פרסום אחרון: " + Object.keys(last)
+    .map(k => `<b>${PLATFORM_LABELS[k] || k}</b> ${fmt(last[k])} (יום ${last[k].day})`)
+    .join(" · ");
+}
+
+function regenerateCopy() {
+  const d = currentDay ?? 0;
+  renderBrief(d);
+  let usedWritten = false;
+  document.querySelectorAll(".pcard").forEach(card => {
+    const p = PLATFORMS.find(x => x.id === card.dataset.pid);
+    card.querySelector(".pcopy").value = copyFor(p, d);
+    if (DAY_COPY[d] && DAY_COPY[d][p.id]) usedWritten = true;
+  });
+  const badge = $("dayBadge");
+  badge.style.display = "inline-block";
+  badge.textContent = `DAY ${d}/100`;
+  const note = $("copySrc");
+  if (note) {
+    note.textContent = usedWritten
+      ? "✍️ קופי ייעודי שנכתב ליום הזה"
+      : "תבנית כללית — לא נכתב קופי ייעודי ליום הזה";
+    note.className = usedWritten ? "copysrc written" : "copysrc generic";
+  }
+}
+
+/* ---------------- file handling + Cloudinary hosting ---------------- */
+
+const drop = $("drop"), fileInput = $("fileInput");
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("drag"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("drag");
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+$("dayInput").addEventListener("input", () => {
+  currentDay = parseInt($("dayInput").value || "0", 10);
+  regenerateCopy();
+});
+
+function hostStatus(msg, cls) {
+  const el = $("hostStatus");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+/* ---- TikTok-only cut ---- */
+const ttdrop = $("ttdrop"), ttFileInput = $("ttFileInput");
+ttdrop.addEventListener("click", () => ttFileInput.click());
+ttdrop.addEventListener("dragover", e => { e.preventDefault(); ttdrop.classList.add("drag"); });
+ttdrop.addEventListener("dragleave", () => ttdrop.classList.remove("drag"));
+ttdrop.addEventListener("drop", e => {
+  e.preventDefault(); ttdrop.classList.remove("drag");
+  if (e.dataTransfer.files[0]) loadTtFile(e.dataTransfer.files[0]);
+});
+ttFileInput.addEventListener("change", () => {
+  if (ttFileInput.files[0]) loadTtFile(ttFileInput.files[0]);
+});
+
+function ttStatus(msg, cls) {
+  const el = $("ttStatus");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+function loadTtFile(f) {
+  ttFile = f; ttHostedUrl = null; ttUploading = null;
+  ttStatus(`${f.name} (${(f.size / 1048576).toFixed(1)} MB) — מעלה...`, "pend");
+  log(`גרסת טיקטוק נטענה: ${f.name}`);
+  uploadTo(f, u => { ttHostedUrl = u; ttStatus("גרסת טיקטוק מאוחסנת ומוכנה ✓", "ok"); },
+           m => ttStatus("העלאת גרסת טיקטוק נכשלה: " + m, "err"),
+           p => ttStatus(`מעלה גרסת טיקטוק... ${p}%`, "pend"));
+}
+
+/* shared uploader so the main reel and the TikTok cut cannot drift apart */
+function uploadTo(file, onOk, onErr, onProg) {
+  const cloud = ($("cloudName").value || "").trim();
+  const preset = ($("uploadPreset").value || "").trim();
+  if (!cloud || !preset) { onErr("חסרות הגדרות Cloudinary"); $("settings").open = true; return null; }
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("upload_preset", preset);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloud}/video/upload`);
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable && onProg) onProg(Math.round(e.loaded / e.total * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const u = JSON.parse(xhr.responseText).secure_url;
+        log("Cloudinary: " + u);
+        if (onOk) onOk(u);
+        resolve(u);
+      } else { if (onErr) onErr(xhr.responseText.slice(0, 120)); reject(new Error("upload failed")); }
+    };
+    xhr.onerror = () => { if (onErr) onErr("שגיאת רשת"); reject(new Error("network")); };
+    xhr.send(fd);
+  });
+}
+
+/* the URL a given platform should actually publish */
+function urlForPlatform(pid) {
+  if (pid === "tiktok" && ttHostedUrl) return ttHostedUrl;
+  return hostedUrl;
+}
+
+function loadFile(f) {
+  currentFile = f;
+  hostedUrl = null;
+  uploading = null;
+  const m = f.name.match(/DAY(\d+)/i);
+  currentDay = m ? parseInt(m[1], 10) : (currentDay ?? 0);
+  $("dayInput").value = currentDay;
+  $("preview").src = URL.createObjectURL(f);
+  $("fName").textContent = f.name;
+  $("fSub").textContent = (f.size / 1048576).toFixed(1) + " MB";
+  $("videoRow").style.display = "flex";
+  regenerateCopy();
+  log(`נטען: ${f.name} (DAY ${currentDay})`);
+  ensureHosted().catch(() => {});   // start uploading right away
+}
+
+function ensureHosted() {
+  if (hostedUrl) return Promise.resolve(hostedUrl);
+  if (uploading) return uploading;
+  const cloud = ($("cloudName").value || "").trim();
+  const preset = ($("uploadPreset").value || "").trim();
+  if (!currentFile) return Promise.reject(new Error("no file"));
+  if (!cloud || !preset) {
+    hostStatus("⚠️ להעלאה אוטומטית צריך למלא Cloudinary cloud name + preset בהגדרות", "err");
+    $("settings").open = true;
+    return Promise.reject(new Error("cloudinary not configured"));
+  }
+  uploading = new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append("file", currentFile);
+    fd.append("upload_preset", preset);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloud}/video/upload`);
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable)
+        hostStatus(`מעלה ל-Cloudinary... ${Math.round(e.loaded / e.total * 100)}%`, "pend");
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const res = JSON.parse(xhr.responseText);
+        hostedUrl = res.secure_url;
+        hostStatus("הסרטון מאוחסן ומוכן לפרסום ✓", "ok");
+        log("Cloudinary: " + hostedUrl);
+        resolve(hostedUrl);
+      } else {
+        hostStatus("העלאה נכשלה: " + xhr.responseText.slice(0, 120), "err");
+        uploading = null;
+        reject(new Error("upload failed"));
+      }
+    };
+    xhr.onerror = () => {
+      hostStatus("העלאה נכשלה (רשת)", "err");
+      uploading = null;
+      reject(new Error("network"));
+    };
+    xhr.send(fd);
+  });
+  return uploading;
+}
+
+/* ---------------- settings ---------------- */
+
+$("webhookUrl").value = store.get("mk_webhook") || DEFAULT_WEBHOOK;
+$("cloudName").value = store.get("cld_name") || "";
+$("uploadPreset").value = store.get("cld_preset") || "";
+$("zernioKey").value = store.get("zernio_key") || "";
+$("saveHook").addEventListener("click", () => {
+  store.set("mk_webhook", $("webhookUrl").value.trim());
+  store.set("cld_name", $("cloudName").value.trim());
+  store.set("cld_preset", $("uploadPreset").value.trim());
+  store.set("zernio_key", $("zernioKey").value.trim());
+  log("ההגדרות נשמרו.");
+});
+
+/* ---------------- publish ---------------- */
+
+async function publish(card) {
+  const hook = ($("webhookUrl").value || "").trim();
+  if (!hook) { setStatus(card, "אין Webhook בהגדרות", "err"); $("settings").open = true; return; }
+  if (!currentFile) { setStatus(card, "קודם טען את קובץ הריל למעלה", "err"); return; }
+
+  const p = PLATFORMS.find(x => x.id === card.dataset.pid);
+  let url;
+  try {
+    setStatus(card, "מוודא שהסרטון מאוחסן...", "pend");
+    await ensureHosted();
+    url = urlForPlatform(p.id);
+  } catch {
+    setStatus(card, "אין כתובת ציבורית לסרטון — בדוק הגדרות Cloudinary", "err");
+    return;
+  }
+  // TikTok removed the DAY 6 reel; publishing the shared cut there again is the
+  // exact mistake that caused it, so warn loudly instead of failing silently.
+  if (p.id === "tiktok" && !ttHostedUrl) {
+    const go = confirm(
+      "לא נטענה גרסת טיקטוק נפרדת.\n\n" +
+      "טיקטוק כבר הסיר שני סרטונים מהחשבון, והריל הראשי מכיל מספרי קלוריות ומשקל שהם הסיבה להסרה. " +
+      "הפרה נוספת מוציאה את כל החשבון מה-For You feed.\n\n" +
+      "לפרסם בכל זאת את הריל הראשי לטיקטוק?");
+    if (!go) { setStatus(card, "בוטל — טען קודם DAY<n>_REEL_TIKTOK.mp4", "err"); return; }
+  }
+  const caption = card.querySelector(".pcopy").value;
+  // form-urlencoded so Make parses each field into a separate variable
+  const payload = new URLSearchParams({
+    action: "publish",
+    platform: p.id,
+    day: String(currentDay),
+    date: new Date().toISOString().slice(0, 10),
+    filename: currentFile.name,
+    reelUrl: url,
+    longCaption: caption,
+    fbTitle: `Day ${currentDay}/100 — Losing 25KG`,
+  });
+  setStatus(card, "שולח ל-Make…", "pend");
+  try {
+    await fetch(hook, {
+      method: "POST",
+      mode: "no-cors",
+      body: payload,
+    });
+    recordPublish(p.id, currentDay);
+    setStatus(card, `נשלח ✓ ${new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`, "ok");
+    log(`${p.name}: payload נשלח`);
+  } catch (err) {
+    setStatus(card, "שליחה נכשלה: " + err.message, "err");
+    log(`${p.name}: שגיאה — ${err.message}`);
+  }
+}
+
+/* ---------------- bulk ---------------- */
+
+function updateSelInfo() {
+  const n = document.querySelectorAll(".psel:checked").length;
+  $("selInfo").textContent = `${n} נבחרו`;
+}
+
+$("selectAllBtn").addEventListener("click", () => {
+  const boxes = [...document.querySelectorAll(".psel:not(:disabled)")];
+  const allOn = boxes.every(b => b.checked);
+  boxes.forEach(b => {
+    b.checked = !allOn;
+    b.dispatchEvent(new Event("change"));
+  });
+});
+
+/* ---------------- week calendar ----------------
+   Sunday-first, per Ido. Challenge day counts from DAY 1 = 2026-08-16,
+   date-only so a DST shift can never move a day boundary. */
+
+function challengeDay(d) {
+  return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 7, 16)) / 864e5) + 1;
+}
+
+function renderCalbar() {
+  const now = new Date();
+  const chal = challengeDay(now);
+  $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  $("calChal").textContent = (chal >= 1 && chal <= 100) ? "  ·  DAY " + chal + "/100" : "";
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());   // back to Sunday
+  const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dn = challengeDay(d);
+    const isToday = d.toDateString() === now.toDateString();
+    html += `<div class="cd${isToday ? " today" : ""}">
+      <div class="cl">${letters[i]}</div>
+      <div class="cn">${d.getDate()}.${d.getMonth() + 1}</div>
+      <div class="cy">${dn >= 1 && dn <= 100 ? "יום " + dn : "&nbsp;"}</div>
+    </div>`;
+  }
+  $("calWeek").innerHTML = html;
+}
+
+/* ---------------- followers ----------------
+   Counts only, by design: no platform exposes WHO follows or unfollows to
+   any external tool - the APIs return a number. The ledger turns Zernio's
+   once-a-day snapshots into daily +/- per platform. Seeded 2026-08-23. */
+
+let FOLLOWERS = {
+  fetched: false,
+  accounts: [
+    { platform: "youtube",   count: 9, updated: "2026-08-22T08:21Z" },
+    { platform: "tiktok",    count: 8, updated: "2026-08-22T08:43Z" },
+    { platform: "instagram", count: 7, updated: "2026-08-22T08:21Z" },
+    { platform: "facebook",  count: 1, updated: "2026-08-22T04:45Z" },
+  ],
+  history: { facebook: [
+    { date: "2026-08-18", followers: 1 }, { date: "2026-08-19", followers: 1 },
+    { date: "2026-08-20", followers: 1 }, { date: "2026-08-21", followers: 1 },
+    { date: "2026-08-22", followers: 1 } ] },
+};
+
+function renderFollowers() {
+  const total = FOLLOWERS.accounts.reduce((a, x) => a + x.count, 0);
+  $("folTotals").innerHTML = `<div class="totals">` +
+    `<div class="tot"><div class="tl">סה"כ</div><div class="tv">${total}</div><div class="tx">בכל הערוצים</div></div>` +
+    FOLLOWERS.accounts.map(a => {
+      const h = FOLLOWERS.history[a.platform] || [];
+      const prev = h.length > 1 ? h[h.length - 2].followers : null;
+      const d = prev == null ? null : a.count - prev;
+      const chip = d == null ? "" :
+        d > 0 ? `<span class="fdelta up">+${d}</span>` :
+        d < 0 ? `<span class="fdelta down">${d}</span>` : `<span class="fdelta flat">±0</span>`;
+      const ageH = (Date.now() - new Date(a.updated).getTime()) / 36e5;
+      return `<div class="tot"><div class="tl">${PLATFORM_LABELS[a.platform]}</div>
+        <div class="tv">${a.count} ${chip}</div>
+        <div class="tx${ageH > 20 ? " stale" : ""}">צולם ${new Date(a.updated).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div></div>`;
+    }).join("") + `</div>`;
+
+  const dates = [...new Set(Object.values(FOLLOWERS.history).flat().map(x => x.date))].sort().reverse();
+  if (!dates.length) {
+    $("folLedger").innerHTML = `<div class="perfnote" style="color:var(--muted)">היסטוריה יומית תתחיל להצטבר מעכשיו — זרינו מצלם את המספרים פעם ביום.</div>`;
+    return;
+  }
+  const pfs = FOLLOWERS.accounts.map(a => a.platform);
+  const byPf = {};
+  for (const pf of pfs) byPf[pf] = Object.fromEntries((FOLLOWERS.history[pf] || []).map(x => [x.date, x.followers]));
+  const rows = dates.map(dt => {
+    const cells = pfs.map(pf => {
+      const cur = byPf[pf][dt];
+      if (cur == null) return `<td class="n dim">—</td>`;
+      const prevDate = Object.keys(byPf[pf]).filter(x => x < dt).sort().pop();
+      const d = prevDate == null ? null : cur - byPf[pf][prevDate];
+      const chip = d == null || d === 0 ? "" : d > 0 ? ` <span class="fdelta up">+${d}</span>` : ` <span class="fdelta down">${d}</span>`;
+      return `<td class="n">${cur}${chip}</td>`;
+    }).join("");
+    return `<tr><td class="pf">${dt.slice(8)}.${dt.slice(5, 7)}</td>${cells}</tr>`;
+  }).join("");
+  $("folLedger").innerHTML = `<div style="overflow-x:auto"><table class="ptable">
+    <thead><tr><th>תאריך</th>${pfs.map(pf => `<th style="text-align:center">${PLATFORM_LABELS[pf]}</th>`).join("")}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function folStatus(m, c) { const el = $("folStatus"); el.textContent = m; el.className = c || ""; }
+
+async function refreshFollowers() {
+  const btn = $("folRefreshBtn");
+  btn.disabled = true;
+  folStatus("מושך…", "pend");
+  try {
+    const r = await fetch(ANALYTICS_PROXY + "?type=followers&from=2026-08-15");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    const idToPf = Object.fromEntries((d.accounts || []).map(a => [a._id, a.platform]));
+    FOLLOWERS = {
+      fetched: true,
+      accounts: (d.accounts || []).map(a => ({ platform: a.platform, count: Math.round(a.currentFollowers), updated: a.lastUpdated }))
+        .sort((a, b) => b.count - a.count),
+      history: Object.fromEntries(Object.entries(d.stats || {})
+        .filter(([id]) => idToPf[id])
+        .map(([id, arr]) => [idToPf[id], (arr || []).map(x => ({ date: x.date, followers: Math.round(x.followers) }))])),
+    };
+    renderFollowers();
+    const newest = Math.max(...FOLLOWERS.accounts.map(a => new Date(a.updated).getTime()));
+    const ageH = Math.round((Date.now() - newest) / 36e5);
+    folStatus(ageH >= 2
+      ? "עודכן ✓ — אבל זרינו מצלם עוקבים פעם ביום, והצילום האחרון הוא מלפני ~" + ageH + " שעות. למספר של הרגע — רק בפרופיל עצמו."
+      : "עודכן ✓", "ok");
+  } catch (e) {
+    folStatus("הרענון נכשל (" + e.message + ")", "err");
+  }
+  btn.disabled = false;
+}
+
+/* ---------------- tabs ---------------- */
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v =>
+    v.classList.toggle("on", v.id === "view" + name[0].toUpperCase() + name.slice(1)));
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.toggle("on", t.dataset.view === name));
+  store.set("pc_view", name);
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+document.querySelectorAll(".tab").forEach(t =>
+  t.addEventListener("click", () => {
+    showView(t.dataset.view);
+    if (t.dataset.view === "followers" && !FOLLOWERS.fetched) refreshFollowers();
+  }));
+$("folRefreshBtn").addEventListener("click", refreshFollowers);
+
+$("refreshBtn").addEventListener("click", refreshPerf);
+renderCalbar();
+renderPerf();
+renderFollowers();
+currentDay = 0;
+regenerateCopy();
+showView(store.get("pc_view") === "stats" ? "stats" : "publish");
+
+if (location.hostname.endsWith("github.io") && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+
+$("publishAllBtn").addEventListener("click", async () => {
+  const cards = [...document.querySelectorAll(".pcard")]
+    .filter(c => c.querySelector(".psel:checked"));
+  if (!cards.length) { log("לא נבחרו פלטפורמות."); return; }
+  for (const c of cards) {
+    await publish(c);
+    await new Promise(r => setTimeout(r, 800));
+  }
+});
+</script>
+</body>
+</html>
