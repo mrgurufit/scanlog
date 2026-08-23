@@ -518,6 +518,18 @@ const BRIEF_DEFAULT = {
 };
 
 const DAY_BRIEF = {
+  8: {
+    sub: "נקרא מימים 1–7, 23.8.2026. ניסוי ה-CTA באמצע הריל — יום שני מתוך שניים",
+    focus: "היום <b>לא נוגעים באף משתנה</b>: ה-CTA באמצע הריל רץ יום שני, ומחר קוראים את תוצאת שני הימים יחד (עוקבים חדשים מול ימים 1–6). ההוק היום הוא ההבטחה שקוימה — <b>106.7, המים ירדו בדיוק כמו שנאמר</b> — הפורמט החזק ביותר שיש לנו.",
+    slot: "20:30–21:30",
+    why: "(שוב יצא פרסום אחרי 23:00 — שני ימים ברצף. זה מזהם את מדידת השעה; אם אפשר, מחר לצלם את הסגיר מוקדם יותר.)",
+    platforms: {
+      tiktok: "חיתוך נפרד חובה, בלי מספרי משקל/קלוריות. ההוק הפעם בקול שלו — משפט מלא עד 3.3ש׳.",
+      instagram: "הוק של הבטחה-שקוימה עצר את ירידת אחוז הצפייה ביום 7 — חוזרים עליו: ׳אמרתי לכם שזה מים׳.",
+      facebook: "קופי מלא עם מספרים. פייסבוק עדיין הערוץ החלש — לא משקיעים בו מעבר לפרסום.",
+      youtube: "יציב סביב 1,200. כותרת מסקרנת בלי לחשוף את המספר — הצופה יפתח לראות את השקילה."
+    }
+  },
   7: {
     sub: "נקרא מהמספרים האמיתיים של ימים 1–6, 22.8.2026",
     focus: "משנים <b>משתנה אחד בלבד</b> היום: <b>בקשת העקיבה עוברת לאמצע הריל</b> (בשנייה ~11, בנוסף לסוגר). הסיבה: 1,033 צפיות באינסטגרם ייצרו <b>אפס עוקבים חדשים</b> — החשיפה תקינה, הבקשה היא הבעיה. כל השאר נשאר זהה כדי שנדע אם זה עבד.",
@@ -538,6 +550,59 @@ const DAY_BRIEF = {
    missing just falls back to the template, so nothing ever breaks.     */
 
 const DAY_COPY = {
+  8: {
+    tiktok: `Day 8 of 100. Watch me get shredded.
+
+This morning proved why I never panic over one number on the scale. Patience wins. Every time.
+
+Weighed every gram of food today. Overhead press till there was nothing left — you can hear exactly where that happened.
+
+And yes, there was dessert. Planned, weighed, enjoyed.
+
+Day 9 tomorrow morning. Come watch.
+
+#day8 #100days #gymtok #fitnessjourney #discipline #consistency #showingup`,
+
+    instagram: `Told you it was water. 📉
+
+Yesterday the scale said +0.4 and I told you not to panic. This morning: 106.7 kg. Down 1.3 overnight — 4.8 kg total in 8 days.
+
+One Friday dinner doesn't end a cut. Panic does.
+
+Today, everything on a scale:
+🍽️ 1,252 calories in
+🔥 3,230 out
+📉 Deficit: 1,978
+
+Overhead press to failure — the scream at the end is real. And dessert still fit the numbers.
+
+Day 8 of 100. Follow — day 9's weigh-in goes up tomorrow morning.
+
+#weightlossjourney #100dayschallenge #caloriedeficit #fitnessmotivation #transformation #day8`,
+
+    facebook: `Day 8 of 100 — and the scale just proved the whole point. 📉
+
+Yesterday it showed +0.4 after Friday's family dinner, and I said it out loud: it's water, it'll be gone in a day. This morning: 106.7 kg. Down 1.3 overnight, 4.8 kg total in 8 days.
+
+That's the difference between a plan and a panic. One heavy dinner doesn't end a cut — quitting over it does.
+
+Today's numbers, every gram weighed:
+In: 1,252 calories
+Out: 3,230 (training included an overhead press set that ended in a scream — it's in the video)
+Deficit: 1,978
+
+There was even dessert. Weighed, counted, enjoyed.
+
+Every morning until day 100, the weigh-in goes up here. Follow along.`,
+
+    youtube: `Day 8 of 100. Yesterday the scale went UP and I told everyone it was water — this morning it dropped 1.3 kg to 106.7. That's 4.8 kg down in 8 days.
+
+1,252 in / 3,230 out / deficit 1,978 — every gram weighed on a scale.
+
+Overhead press till failure (the scream is real), and dessert still fit the plan.
+
+New video every morning until day 100.`
+  },
   6: {
     /* REWRITTEN 22.8.2026 — the original version of this copy was published and
        TikTok REMOVED the video. This is the compliant text that actually went
