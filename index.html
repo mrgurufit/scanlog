@@ -69,7 +69,7 @@
   /* week calendar - pinned while the page scrolls */
   #calcard {
     padding:12px 14px;
-    position:sticky; top:8px; z-index:30;
+    position:sticky; top:0; z-index:30;
     box-shadow:0 6px 18px rgba(0,0,0,.35);
   }
   .caltitle { font-size:14.5px; font-weight:800; margin-bottom:10px; }
@@ -267,25 +267,6 @@
     <div class="calweek" id="calWeek"></div>
   </div>
 
-  <div class="card" id="ecard">
-    <div id="totals">
-      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
-      <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
-      <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
-      <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
-    </div>
-    <div class="erow">
-      <div class="efield">
-        <label for="wIn">משקל הבוקר (ק"ג)</label>
-        <input type="number" id="wIn" inputmode="decimal" step="0.1">
-      </div>
-      <div class="efield">
-        <label for="actIn">שרפת באימון (קק"ל)</label>
-        <input type="number" id="actIn" inputmode="numeric" placeholder="0">
-      </div>
-    </div>
-    <div id="ebal"></div>
-  </div>
 
   <div id="cam">
     <div class="campanel">
@@ -374,6 +355,26 @@
       <button id="impBtn">⬆️ שחזור מגיבוי</button>
     </div>
     <input type="file" id="impInput" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="card" id="ecard">
+    <div id="totals">
+      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
+      <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
+      <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
+      <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
+    </div>
+    <div class="erow">
+      <div class="efield">
+        <label for="wIn">משקל הבוקר (ק"ג)</label>
+        <input type="number" id="wIn" inputmode="decimal" step="0.1">
+      </div>
+      <div class="efield">
+        <label for="actIn">שרפת באימון (קק"ל)</label>
+        <input type="number" id="actIn" inputmode="numeric" placeholder="0">
+      </div>
+    </div>
+    <div id="ebal"></div>
   </div>
 </div>
 
