@@ -66,8 +66,12 @@
   }
   #streakToast.on { display:block; }
 
-  /* week calendar */
-  #calcard { padding:12px 14px; }
+  /* week calendar - pinned while the page scrolls */
+  #calcard {
+    padding:12px 14px;
+    position:sticky; top:8px; z-index:30;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+  }
   .caltitle { font-size:14.5px; font-weight:800; margin-bottom:10px; }
   .calnav { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
   .calnav .caltitle { flex:1; text-align:center; margin-bottom:0; }
@@ -97,13 +101,15 @@
   .cd .dot.off { background:transparent; }
 
   /* totals + energy balance */
-  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .erow { display:flex; gap:10px; margin-top:10px; }
+  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  #ecard { padding:11px 12px; }
+  .erow { display:flex; gap:8px; margin-top:8px; }
   .efield { flex:1; }
-  .efield label { font-size:11px; }
+  .efield label { font-size:10.5px; margin-bottom:3px; }
+  .efield input { padding:8px 10px; font-size:14px; }
   #ebal {
-    margin-top:10px; background:var(--panel2); border:1px solid var(--line);
-    border-radius:10px; padding:10px 12px; font-size:13.5px; line-height:1.7;
+    margin-top:8px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:9px; padding:6px 10px; font-size:12px; line-height:1.55;
     font-variant-numeric:tabular-nums; text-align:center;
   }
   #ebal b.def { color:var(--green); }
@@ -114,9 +120,9 @@
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
   .chkrow { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px; cursor:pointer; }
   .chkrow input { width:17px; height:17px; accent-color:var(--accent); }
-  .tot { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 6px; text-align:center; }
-  .tot .v { font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
-  .tot .l { font-size:10.5px; color:var(--muted); font-weight:700; margin-top:2px; }
+  .tot { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:5px 4px; text-align:center; }
+  .tot .v { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
+  .tot .l { font-size:9.5px; color:var(--muted); font-weight:700; margin-top:1px; }
   .tot.kcal .v { color:var(--accent); }
 
   button, .btn {
@@ -261,7 +267,7 @@
     <div class="calweek" id="calWeek"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="ecard">
     <div id="totals">
       <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
       <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
@@ -279,15 +285,6 @@
       </div>
     </div>
     <div id="ebal"></div>
-    <details class="eprof">
-      <summary>הגדרות חישוב</summary>
-      <div class="erow" style="margin-top:8px">
-        <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
-        <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
-      </div>
-      <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
-      <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
-    </details>
   </div>
 
   <div id="cam">
@@ -305,6 +302,15 @@
         <button id="photoBtn">🖼️ צלם תמונה</button>
         <button id="manualBtn">⌨️ הקלד ברקוד</button>
       </div>
+      <details class="eprof">
+        <summary>⚙️ הגדרות</summary>
+        <div class="erow" style="margin-top:8px">
+          <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
+          <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
+        </div>
+        <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
+        <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
+      </details>
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
@@ -355,17 +361,15 @@
   </div>
 
   <div class="card">
-    <div class="daynav">
-      <select id="daySel"></select>
-      <button id="copyBtn">📋 העתק דוח</button>
-    </div>
     <div class="loghead">
       <h2 id="logTitle">היום</h2>
-      <span class="cnt" id="logCount"></span>
     </div>
     <div id="log"></div>
     <div class="foot" id="foot"></div>
-    <div class="row" style="margin-top:10px">
+    <div class="row" style="margin-top:12px">
+      <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
+    </div>
+    <div class="row" style="margin-top:8px">
       <button id="expBtn">⬇️ גיבוי נתונים</button>
       <button id="impBtn">⬆️ שחזור מגיבוי</button>
     </div>
@@ -494,13 +498,6 @@ function saveProfile() {
   renderTotals();
 }
 
-function renderDays() {
-  const days = [...new Set([todayKey(), ...LOG.map(e => e.day)])].sort().reverse();
-  $("daySel").innerHTML = days.map(d =>
-    `<option value="${d}"${d === viewDay ? " selected" : ""}>${d === todayKey() ? "היום" : d} — ${entriesFor(d).length} פריטים</option>`
-  ).join("");
-}
-
 /* ---------------- streak ----------------
    Consecutive days with at least one logged item. A day without entries only
    breaks the streak once it is OVER - so an empty "today" still counts the
@@ -568,7 +565,6 @@ function renderCal() {
 function renderLog() {
   const items = entriesFor(viewDay).slice().sort((a, b) => a.t.localeCompare(b.t));
   $("logTitle").textContent = viewDay === todayKey() ? "היום" : viewDay;
-  $("logCount").textContent = items.length ? `${items.length} פריטים` : "";
   if (!items.length) {
     $("log").innerHTML = `<div class="empty">עדיין אין כלום ביום הזה.<br>לחץ על ה-+ הצהוב כדי להתחיל.</div>`;
   } else {
@@ -607,7 +603,7 @@ function renderLog() {
   }
   $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
     הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.`;
-  renderTotals(); renderDays(); renderCal(); renderStreak();
+  renderTotals(); renderCal(); renderStreak();
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -1279,7 +1275,6 @@ $("labelInput").addEventListener("change", e => { if (e.target.files[0]) readLab
 $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); });
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
-$("daySel").addEventListener("change", e => { viewDay = e.target.value; renderLog(); });
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 function calScroll(dir) {
   const w = $("calWeek");
