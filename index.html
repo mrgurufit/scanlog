@@ -22,7 +22,7 @@
   }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html, body { background:var(--bg); color:var(--text); font-family:var(--sans); }
-  body { padding:14px 12px 40px; direction:rtl; }
+  body { padding:14px 12px 92px; direction:rtl; }
   .wrap { max-width:620px; margin:0 auto; }
 
   h1 { font-size:19px; letter-spacing:.2px; margin-bottom:2px; }
@@ -146,7 +146,21 @@
     width:100%; max-width:440px; background:var(--panel);
     border:1px solid var(--line); border-radius:16px; padding:12px;
     box-shadow:0 18px 60px rgba(0,0,0,.6);
+    max-height:92vh; overflow-y:auto;
   }
+  #video.off { display:none; }
+  .camsearch { margin-top:10px; }
+  .camfb { display:flex; gap:8px; margin-top:8px; }
+  .camfb > * { flex:1; }
+  #fab {
+    position:fixed; bottom:20px; right:18px; z-index:40;
+    width:60px; height:60px; border-radius:50%;
+    background:#ffd400; color:#000; border:0; cursor:pointer;
+    font-size:36px; font-weight:800; line-height:1; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 20px rgba(0,0,0,.55);
+  }
+  #fab:active { transform:scale(.93); }
   #video {
     width:100%; aspect-ratio:4/3; object-fit:cover; background:#000;
     border-radius:12px; border:2px solid var(--accent); display:block;
@@ -276,30 +290,27 @@
     </details>
   </div>
 
-  <div class="card">
-    <button id="scanBtn" class="primary wide big">📷 סרוק מוצר</button>
-    <div class="camhint">כוון את הברקוד למצלמה — ברגע שהוא נקלט המוצר מזוהה לבד, כולל הערכים התזונתיים.</div>
-    <div class="row">
-      <button id="photoBtn">🖼️ צלם תמונה</button>
-      <button id="manualBtn">⌨️ הקלד ברקוד</button>
-    </div>
-    <input type="text" id="searchIn" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off" style="margin-top:8px">
-    <div id="searchRes"></div>
-    <div id="cam">
-      <div class="campanel">
-        <video id="video" playsinline muted autoplay></video>
-        <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
-        <div id="camBar">
-          <button id="torchBtn">🔦 פנס</button>
-          <button id="shootBtn">📸 צלם ידנית</button>
-          <button id="stopBtn" class="danger">✕ סגור</button>
-        </div>
+  <div id="cam">
+    <div class="campanel">
+      <video id="video" playsinline muted autoplay></video>
+      <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
+      <div id="camBar">
+        <button id="torchBtn">🔦 פנס</button>
+        <button id="shootBtn">📸 צלם ידנית</button>
+        <button id="stopBtn" class="danger">✕ סגור</button>
+      </div>
+      <input type="text" id="searchIn" class="camsearch" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
+      <div id="searchRes"></div>
+      <div class="camfb">
+        <button id="photoBtn">🖼️ צלם תמונה</button>
+        <button id="manualBtn">⌨️ הקלד ברקוד</button>
       </div>
     </div>
-    <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
-    <div class="msg" id="scanMsg"></div>
-    <div class="diag" id="diag"></div>
   </div>
+  <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+  <button id="fab" aria-label="סריקה והוספת מזון">+</button>
+  <div class="msg" id="scanMsg"></div>
+  <div class="diag" id="diag"></div>
 
   <div class="card" id="entry">
     <div id="foundTag" class="foundtag newp">מוצר חדש</div>
@@ -559,7 +570,7 @@ function renderLog() {
   $("logTitle").textContent = viewDay === todayKey() ? "היום" : viewDay;
   $("logCount").textContent = items.length ? `${items.length} פריטים` : "";
   if (!items.length) {
-    $("log").innerHTML = `<div class="empty">עדיין אין כלום ביום הזה.<br>לחץ "סרוק מוצר" כדי להתחיל.</div>`;
+    $("log").innerHTML = `<div class="empty">עדיין אין כלום ביום הזה.<br>לחץ על ה-+ הצהוב כדי להתחיל.</div>`;
   } else {
     $("log").innerHTML = items.map(e => {
       const c = computed(e);
@@ -626,6 +637,12 @@ function camDiagnosis() {
 async function startScan() {
   msg("scanMsg", "");
   $("diag").textContent = "";
+  // the window opens regardless - if the camera fails, the name search and
+  // the photo fallback are sitting right under it
+  $("cam").classList.add("on");
+  document.body.style.overflow = "hidden";
+  $("video").classList.add("off");
+  $("camHint").textContent = "פותח מצלמה…";
 
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return camFallback("הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).");
@@ -642,7 +659,7 @@ async function startScan() {
     }
   } catch { /* Firefox and older Safari have no camera permission name */ }
 
-  msg("scanMsg", "מבקש גישה למצלמה — אשר את הבקשה שתופיע…", "pend");
+  $("camHint").textContent = "מבקש גישה למצלמה — אשר את הבקשה שתופיע…";
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false
@@ -667,10 +684,9 @@ async function startScan() {
     formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf"]
   });
   $("video").srcObject = stream;
-  $("cam").classList.add("on");
-  document.body.style.overflow = "hidden";
+  $("video").classList.remove("off");
+  $("camHint").textContent = "כוון את הברקוד למרכז — הזיהוי אוטומטי";
   scanning = true;
-  msg("scanMsg", "");
   // a torch helps barcodes in bad light - offer it only where the camera has one
   torchOn = false;
   $("torchBtn").className = "";
@@ -697,9 +713,9 @@ async function toggleTorch() {
    change that — so say it plainly once and send him back to the button that
    always works. */
 function camFallback(why) {
-  msg("scanMsg", why + ' השתמש ב"צלם תמונה" — הוא לא דורש הרשאה ונותן בדיוק אותה תוצאה.', "err");
+  $("video").classList.add("off");
+  $("camHint").textContent = why + ' אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.';
   $("diag").textContent = camDiagnosis();
-  $("cam").classList.remove("on");
 }
 
 async function loop() {
@@ -1243,7 +1259,7 @@ function report(day) {
 }
 
 /* ---------------- wiring ---------------- */
-$("scanBtn").addEventListener("click", startScan);
+$("fab").addEventListener("click", startScan);
 $("stopBtn").addEventListener("click", () => { stopScan(); msg("scanMsg", ""); });
 $("torchBtn").addEventListener("click", toggleTorch);
 $("cam").addEventListener("click", e => { if (e.target === $("cam")) { stopScan(); msg("scanMsg", ""); } });
