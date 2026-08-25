@@ -64,7 +64,18 @@
   .caltitle { font-size: 15px; margin-bottom: 12px; }
   .caltitle b { font-weight: 800; }
   .caltitle span { color: var(--accent); font-weight: 700; }
-  .calweek { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .calweek {
+    display: flex; gap: 6px; overflow-x: auto;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .calweek::-webkit-scrollbar { display: none; }
+  .calweek .cd {
+    flex: 0 0 calc((100% - 36px) / 7); scroll-snap-align: center;
+    cursor: pointer; border: 1px solid var(--border); font-family: inherit;
+  }
+  .cd.sel { border-color: var(--accent); background: #241f0e; }
+  .cd.sel .cy { color: var(--accent); font-weight: 700; }
   .cd {
     background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
     padding: 8px 4px; text-align: center;
@@ -178,11 +189,6 @@
     border-radius: 9px; padding: 9px; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums;
   }
   .dfhint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-  .dfarrow {
-    width: 38px; height: 40px; padding: 0; font-size: 20px; font-weight: 800;
-    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
-    border-radius: 9px; cursor: pointer;
-  }
   .dfdate { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
   .dfbar { height: 10px; border-radius: 6px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; margin: 10px 0 6px; }
   .dfbar > i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .6s; }
@@ -504,13 +510,11 @@
       <div class="dfstep" id="dfS1">
         <div class="dfh"><span class="dfnum">1</span> התחלת יום</div>
         <div class="dfrow">
-          <button class="dfarrow" id="dfPrev" title="יום אחורה">‹</button>
-          <input type="number" id="dfDay" min="1" max="100" inputmode="numeric">
-          <button class="dfarrow" id="dfNext" title="יום קדימה">›</button>
+          <input type="number" id="dfDay" min="1" max="100" inputmode="numeric" readonly>
           <span class="dfdate" id="dfDate"></span>
           <button id="dfOpenBtn" class="b-pub" style="flex:1">📁 פתח את תיקיית ההעלאה</button>
         </div>
-        <div class="dfhint">התיקייה של היום נפתחת בדרייב — העלה לשם את כל הסרטונים. חכה שכל קובץ יגיע ל-100% לפני שממשיכים.</div>
+        <div class="dfhint">בוחרים יום בתאריכון שלמעלה. התיקייה נפתחת בדרייב — העלה לשם את כל הסרטונים וחכה שכל קובץ יגיע ל-100%.</div>
       </div>
 
       <div class="dfstep" id="dfS2">
@@ -1625,28 +1629,44 @@ function challengeDay(d) {
   return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(2026, 7, 16)) / 864e5) + 1;
 }
 
+/* The strip is the day PICKER (his request - like Scan & Log): one
+   continuous scrollable row from DAY 1 to today, oldest at the right,
+   tap a day to open it in the wizard. */
+let calSelDay = null;
+
 function renderCalbar() {
   const now = new Date();
   const chal = challengeDay(now);
+  const cur = Math.max(1, Math.min(100, chal));
+  if (calSelDay == null) calSelDay = cur;
   $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   $("calChal").textContent = (chal >= 1 && chal <= 100) ? "  ·  DAY " + chal + "/100" : "";
-  const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay());   // back to Sunday
   const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
   let html = "";
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const dn = challengeDay(d);
-    const isToday = d.toDateString() === now.toDateString();
-    html += `<div class="cd${isToday ? " today" : ""}">
-      <div class="cl">${letters[i]}</div>
-      <div class="cn">${d.getDate()}.${d.getMonth() + 1}</div>
-      <div class="cy">${dn >= 1 && dn <= 100 ? "יום " + dn : "&nbsp;"}</div>
-    </div>`;
+  for (let n = 1; n <= cur; n++) {
+    const d = new Date(Date.UTC(2026, 7, 15) + n * 864e5);
+    html += `<button class="cd${n === cur ? " today" : ""}${n === calSelDay ? " sel" : ""}" data-dn="${n}">
+      <div class="cl">${letters[d.getUTCDay()]}</div>
+      <div class="cn">${d.getUTCDate()}.${d.getUTCMonth() + 1}</div>
+      <div class="cy">יום ${n}</div>
+    </button>`;
   }
   $("calWeek").innerHTML = html;
+  const t = $("calWeek").querySelector(".sel") || $("calWeek").querySelector(".today");
+  if (t && t.scrollIntoView) t.scrollIntoView({ inline: "center", block: "nearest" });
 }
+
+function calbarPick(n) {
+  calSelDay = n;
+  renderCalbar();
+  if (typeof dfSetDay === "function") dfSetDay(n);
+  showView("day");
+}
+
+$("calWeek").addEventListener("click", e => {
+  const b = e.target.closest("[data-dn]");
+  if (b) calbarPick(parseInt(b.dataset.dn, 10));
+});
 
 /* ---------------- followers ----------------
    Counts only, by design: no platform exposes WHO follows or unfollows to
@@ -1887,6 +1907,7 @@ function esc2(x) { return String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<":
 function dfSetDay(n) {
   n = Math.max(1, Math.min(100, n));
   $("dfDay").value = n;
+  if (typeof calSelDay !== "undefined" && calSelDay !== n) { calSelDay = n; renderCalbar(); }
   const d = new Date(Date.UTC(2026, 7, 15) + n * 864e5);
   $("dfDate").textContent = d.getUTCDate() + "." + (d.getUTCMonth() + 1);
   $("dfProg").style.display = "none";
@@ -1897,10 +1918,7 @@ function dfSetDay(n) {
   dfRenderCopies();
   dfPoll();
 }
-dfSetDay(challengeDay(new Date()));
-$("dfDay").addEventListener("change", () => dfSetDay(parseInt($("dfDay").value, 10) || 1));
-$("dfPrev").addEventListener("click", () => dfSetDay(parseInt($("dfDay").value, 10) - 1));
-$("dfNext").addEventListener("click", () => dfSetDay(parseInt($("dfDay").value, 10) + 1));
+dfSetDay(Math.max(1, Math.min(100, challengeDay(new Date()))));
 
 $("dfOpenBtn").addEventListener("click", () => {
   dfSend("start").catch(() => {});
