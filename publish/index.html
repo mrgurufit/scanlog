@@ -17,7 +17,7 @@
   }
   .wrap { max-width: 1200px; margin: 0 auto; }
   header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-  header h1 { font-size: 26px; letter-spacing: 1px; }
+  header h1 { font-size: 20px; letter-spacing: .8px; }
   header h1 span { color: var(--accent); }
   .daybadge {
     background: var(--accent); color: #000; font-weight: 800;
@@ -253,7 +253,7 @@
   @media (max-width: 640px) {
     body { padding: 12px 10px; }
     header { gap: 10px; margin-bottom: 14px; }
-    header h1 { font-size: 20px; }
+    header h1 { font-size: 17px; }
     .card { padding: 14px 12px; border-radius: 12px; margin-bottom: 14px; }
     #tabs { gap: 4px; }
     .tab { flex: 1; padding: 10px 5px; font-size: 13px; text-align: center; }
@@ -293,7 +293,6 @@
 <div class="wrap">
   <header>
     <h1>TRANSFORMATION <span>//</span> PUBLISH CENTER</h1>
-    <div class="daybadge" id="dayBadge"></div>
     <div class="copysrc" id="copySrc"></div>
   </header>
 
@@ -304,7 +303,6 @@
   </div>
 
   <nav id="tabs">
-    <button class="tab" data-view="publish">🎬 העלאת הריל היומי</button>
     <button class="tab" data-view="stats">📊 סטטיסטיקות</button>
     <button class="tab" data-view="followers">👥 עוקבים</button>
   </nav>
@@ -450,7 +448,7 @@ const DEFAULT_WEBHOOK = "";
    reports average watch time per reel, so it is the only place a real
    drop-off number can come from. Never fill the others in by hand.        */
 
-const PERF = {
+let PERF = {
   synced: "2026-08-24T20:29:00Z",
   days: [
     { day: 1, date: "2026-08-16", note: "", platforms: {
@@ -1150,9 +1148,10 @@ async function refreshPerf() {
     return d;
   });
   PERF.synced = new Date().toISOString();
+  store.set("pc_perf_cache", JSON.stringify(PERF));
   renderPerf();
   btn.disabled = false;
-  rStatus(`עודכן — ${pulled} סרטונים על פני ${byDay.size} ימים. (מתאפס בטעינה מחדש; המשימה הלילית כותבת את זה לקובץ.)`, "ok");
+  rStatus(`עודכן — ${pulled} סרטונים על פני ${byDay.size} ימים. נשמר במכשיר הזה עד לרענון הבא.`, "ok");
 }
 
 /* ---------------- daily brief + publish-time log ---------------- */
@@ -1208,9 +1207,6 @@ function regenerateCopy() {
     card.querySelector(".pcopy").value = copyFor(p, d);
     if (DAY_COPY[d] && DAY_COPY[d][p.id]) usedWritten = true;
   });
-  const badge = $("dayBadge");
-  badge.style.display = "inline-block";
-  badge.textContent = `DAY ${d}/100`;
   const note = $("copySrc");
   if (note) {
     note.textContent = usedWritten
@@ -1566,6 +1562,7 @@ async function refreshFollowers() {
         .filter(([id]) => idToPf[id])
         .map(([id, arr]) => [idToPf[id], (arr || []).map(x => ({ date: x.date, followers: Math.round(x.followers) }))])),
     };
+    store.set("pc_fol_cache", JSON.stringify({ at: Date.now(), data: FOLLOWERS }));
     renderFollowers();
     const newest = Math.max(...FOLLOWERS.accounts.map(a => new Date(a.updated).getTime()));
     const ageH = Math.round((Date.now() - newest) / 36e5);
@@ -1597,12 +1594,24 @@ document.querySelectorAll(".tab").forEach(t =>
 $("folRefreshBtn").addEventListener("click", refreshFollowers);
 
 $("refreshBtn").addEventListener("click", refreshPerf);
+/* a refresh he ran survives closing the page - the device cache wins only
+   while it is FRESHER than the numbers baked into the file by the nightly task */
+try {
+  const pc = JSON.parse(store.get("pc_perf_cache") || "null");
+  if (pc && pc.synced && Date.parse(pc.synced) > Date.parse(PERF.synced)) PERF = pc;
+} catch { /* corrupt cache - baked numbers win */ }
+try {
+  const fc = JSON.parse(store.get("pc_fol_cache") || "null");
+  const seedNewest = Math.max(...FOLLOWERS.accounts.map(a => Date.parse(a.updated)));
+  if (fc && fc.at > seedNewest && fc.data && fc.data.accounts) FOLLOWERS = fc.data;
+} catch { /* corrupt cache */ }
+
 renderCalbar();
 renderPerf();
 renderFollowers();
 currentDay = 0;
 regenerateCopy();
-showView(store.get("pc_view") === "stats" ? "stats" : "publish");
+showView(store.get("pc_view") === "followers" ? "followers" : "stats");
 
 if (location.hostname.endsWith("github.io") && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
