@@ -1734,6 +1734,7 @@ function dfFolderUrl(n) {
 function dfMsg(id, t, cls) { const el = $(id); el.textContent = t || ""; el.className = "dfmsg " + (cls || ""); }
 
 async function dfSend(action, extra) {
+  if (!DF_WRITE) throw new Error("חסרות הגדרות — פתח את לינק ה-cfg מקלוד");
   const day = parseInt($("dfDay").value, 10);
   const body = new URLSearchParams({ day: String(day), action, notes: (extra && extra.notes) || "" });
   const r = await fetch(DF_WRITE, { method: "POST", body });
@@ -1743,17 +1744,20 @@ async function dfSend(action, extra) {
 
 let dfTimer = null;
 async function dfPoll() {
+  if (!DF_READ) { $("dfProg").style.display = "none"; return; }
   const day = parseInt($("dfDay").value, 10);
   try {
     const r = await fetch(DF_READ + "?day=" + day);
     if (!r.ok) throw new Error("HTTP " + r.status);
-    const parts = (await r.text()).split("|~|");
+    const raw = await r.text();
+    if (!raw.includes("|~|") || raw.includes("<")) throw new Error("תשובה לא צפויה");
+    const parts = raw.split("|~|");
     const stage = parts[0] || "";
     const percent = Math.max(0, Math.min(100, parseFloat(parts[1]) || 0));
     const preview = (parts[2] || "").trim();
     $("dfProg").style.display = "block";
     $("dfBarFill").style.width = percent + "%";
-    $("dfStage").innerHTML = `<b>${Math.round(percent)}%</b> · ${stage || "…"}`;
+    $("dfStage").textContent = Math.round(percent) + "% · " + (stage || "…");
     if (preview && preview.startsWith("http")) {
       $("dfPreviewWrap").style.display = "block";
       if ($("dfPreview").src !== preview) $("dfPreview").src = preview;
