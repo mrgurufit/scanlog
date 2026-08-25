@@ -1759,6 +1759,7 @@ async function dfPoll() {
       if ($("dfPreview").src !== preview) $("dfPreview").src = preview;
     }
     if (percent >= 100) dfStopPoll();
+    else if (percent > 0) dfStartPoll();
   } catch (e) {
     $("dfStage").textContent = "אין קשר לסטטוס (" + e.message + ") — ממשיך לנסות";
   }
@@ -1777,7 +1778,8 @@ function esc2(x) { return String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<":
 
 $("dfDay").value = Math.max(1, Math.min(100, challengeDay(new Date())));
 dfRenderCopies();
-$("dfDay").addEventListener("change", dfRenderCopies);
+dfPoll();
+$("dfDay").addEventListener("change", () => { dfRenderCopies(); dfPoll(); });
 
 $("dfOpenBtn").addEventListener("click", () => {
   dfSend("start").catch(() => {});
@@ -1824,6 +1826,7 @@ document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => {
     showView(t.dataset.view);
     if (t.dataset.view === "followers" && !FOLLOWERS.fetched) refreshFollowers();
+    if (t.dataset.view === "day") dfPoll();
   }));
 $("folRefreshBtn").addEventListener("click", refreshFollowers);
 
