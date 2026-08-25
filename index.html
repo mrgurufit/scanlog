@@ -33,6 +33,10 @@
 
   /* search results */
   #searchRes { display:none; margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  #missRes { display:none; margin:0 0 10px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  #missRes.on { display:block; }
+  .misshead { font-size:12px; color:var(--muted); padding:7px 10px; line-height:1.5; }
+  #missRes .sr { border-top:1px solid var(--line); }
   #searchRes.on { display:block; }
   .sr {
     display:flex; align-items:center; gap:10px; width:100%; text-align:right;
@@ -301,6 +305,7 @@
 
   <div class="card" id="entry">
     <div id="foundTag" class="foundtag newp">מוצר חדש</div>
+    <div id="missRes"></div>
     <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:11px">
       <img id="shot" alt="">
       <div style="flex:1">
@@ -858,11 +863,7 @@ const GENERIC = [
 const SEARCH_PROXY = "https://hook.us2.make.com/wfvh3tmswu9cgl151p3ucab080okz9hb";
 let searchToken = 0, lastResults = [];
 
-function doSearch(q) {
-  q = q.trim();
-  const box = $("searchRes");
-  if (q.length < 2) { box.className = ""; box.innerHTML = ""; return; }
-  const token = ++searchToken;
+function localMatches(q) {
   const res = [];
   for (const [code, pr] of Object.entries(PRODUCTS))
     if ((pr.name || "").includes(q))
@@ -870,22 +871,128 @@ function doSearch(q) {
   for (const g of GENERIC)
     if (g.n.includes(q) || (g.a || []).some(x => x.includes(q)))
       res.push({ name: g.n, k: g.k, p: g.p, c: g.c, f: g.f, src: "מאגר" });
+  return res;
+}
+
+async function offSearch(q) {
+  try {
+    const r = await fetch(SEARCH_PROXY + "?q=" + encodeURIComponent(q));
+    if (!r.ok) return [];
+    const d = await r.json();
+    const out = [];
+    for (const h of (d.hits || [])) {
+      const nm = h.product_name_he || h.product_name;
+      const nu = h.nutriments || {};
+      if (!nm || nu["energy-kcal_100g"] == null) continue;
+      out.push({ name: nm, k: nu["energy-kcal_100g"], p: nu.proteins_100g ?? "", c: nu.carbohydrates_100g ?? "", f: nu.fat_100g ?? "", barcode: h.code || "", photo: h.image_small_url || "", src: "עולמי" });
+    }
+    return out;
+  } catch { return []; }
+}
+
+function doSearch(q) {
+  q = q.trim();
+  const box = $("searchRes");
+  if (q.length < 2) { box.className = ""; box.innerHTML = ""; return; }
+  const token = ++searchToken;
+  const res = localMatches(q);
   renderSearch(res, token, true);
-  fetch(SEARCH_PROXY + "?q=" + encodeURIComponent(q))
-    .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      if (token !== searchToken || !d) return;
-      const seen = new Set(res.map(r => r.name));
-      for (const h of (d.hits || [])) {
-        const nm = h.product_name_he || h.product_name;
-        const nu = h.nutriments || {};
-        if (!nm || seen.has(nm) || nu["energy-kcal_100g"] == null) continue;
-        seen.add(nm);
-        res.push({ name: nm, k: nu["energy-kcal_100g"], p: nu.proteins_100g ?? "", c: nu.carbohydrates_100g ?? "", f: nu.fat_100g ?? "", barcode: h.code || "", photo: h.image_small_url || "", src: "עולמי" });
-      }
-      renderSearch(res, token, false);
-    })
-    .catch(() => { if (token === searchToken) renderSearch(res, token, false); });
+  offSearch(q).then(hits => {
+    if (token !== searchToken) return;
+    const seen = new Set(res.map(r => r.name));
+    for (const h of hits) {
+      if (seen.has(h.name)) continue;
+      seen.add(h.name);
+      res.push(h);
+    }
+    renderSearch(res, token, false);
+  });
+}
+
+/* ---------------- unknown-barcode rescue ----------------
+   A scanned code that neither this phone nor the barcode database knows
+   still deserves a real try: read the words printed on the product front
+   (same on-phone tesseract as the label reader) and search the name
+   sources with them - plus the raw digits - then rank matches by how many
+   of the printed words they contain. Picking one keeps the SCANNED
+   barcode, so the match is remembered under it forever. */
+let missResults = [];
+
+const MISS_STOP = /[0-9%]|קלורי|אנרגי|חלבו|שומן|פחמימ|נתרן|סוכר|ליטר|גרם|משקל|כשר|בד"ץ|תאריך|יצרן|ברקוד|טעם|חדש|kcal|energy|protein|fat|carb|net|weight|new/i;
+
+async function frontLabelWords(dataUrl) {
+  const img = new Image();
+  await new Promise((ok, bad) => { img.onload = ok; img.onerror = bad; img.src = dataUrl; });
+  const c = document.createElement("canvas");
+  const sc = Math.min(1, 1400 / Math.max(img.width, img.height));
+  c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const worker = await getWorker(() => {});
+  const text = (await worker.recognize(c)).data.text || "";
+  const words = [];
+  for (const raw of text.split(/\s+/)) {
+    const w = raw.replace(/[^A-Za-zא-ת]/g, "");
+    if (w.length >= 3 && !MISS_STOP.test(raw) && !words.includes(w)) words.push(w);
+  }
+  words.sort((a, b) => b.length - a.length);
+  return words.slice(0, 4);
+}
+
+async function missSearch(code, photo) {
+  const box = $("missRes");
+  box.className = "on";
+  box.innerHTML = `<div class="misshead">🔎 מחפש התאמות לפי הברקוד והכיתוב שעל המוצר…</div>`;
+  let words = [];
+  if (photo && photo.length > 5000) {
+    try { words = await frontLabelWords(photo); } catch { words = []; }
+  }
+  if (!pending || pending.barcode !== code) return;
+  const queries = [];
+  if (words.length >= 2) queries.push(words[0] + " " + words[1]);
+  if (words.length) queries.push(words[0]);
+  if (words.length >= 3) queries.push(words[2]);
+  queries.push(code);
+  const all = [];
+  for (const q of queries) all.push(...localMatches(q));
+  const offLists = await Promise.all(queries.map(q => offSearch(q)));
+  if (!pending || pending.barcode !== code) return;
+  for (const l of offLists) all.push(...l);
+  const seen = new Set();
+  const merged = [];
+  for (const r of all) {
+    if (r.barcode === code || seen.has(r.name)) continue;
+    seen.add(r.name);
+    merged.push(r);
+  }
+  const score = r => words.reduce((a, w) => a + (r.name.includes(w) ? 1 : 0), 0);
+  merged.sort((a, b) => score(b) - score(a));
+  missResults = merged.slice(0, 5);
+  if (!missResults.length) {
+    box.innerHTML = `<div class="misshead">לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="misshead">🔎 אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:</div>` +
+    missResults.map((r, i) =>
+      `<button class="sr" data-mi="${i}">
+         <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${r.src}</span>
+         <span class="srn">${esc(r.name)}</span>
+         <span class="srv">${Math.round(r.k)} קק״ל · ח ${r.p === "" ? "?" : r.p}</span>
+       </button>`).join("");
+}
+
+function applyMissPick(r) {
+  $("pName").value = r.name;
+  $("p100kcal").value = r.k;
+  $("p100pro").value = r.p;
+  $("p100carb").value = r.c;
+  $("p100fat").value = r.f;
+  if (!$("shot").getAttribute("src") && r.photo) $("shot").src = r.photo;
+  $("foundTag").textContent = "✓ התאמה: " + r.name + " — ייזכר תחת הברקוד שנסרק";
+  $("foundTag").className = "foundtag known";
+  $("missRes").className = ""; $("missRes").innerHTML = "";
+  preview();
+  $("grams").focus();
+  if (!$("shot").getAttribute("src")) autoImage(r.name);
 }
 
 function renderSearch(res, token, stillLoading) {
@@ -905,6 +1012,7 @@ function renderSearch(res, token, stillLoading) {
 
 function openProduct(r) {
   stopScan();
+  $("missRes").className = ""; $("missRes").innerHTML = "";
   pending = { barcode: r.barcode || "", photo: "" };
   $("foundTag").textContent = r.src === "מאגר" ? "מהמאגר המובנה — ערכים מקובלים ל-100 ג׳" : "✓ " + r.name;
   $("foundTag").className = "foundtag known";
@@ -1145,6 +1253,7 @@ async function readLabel(file) {
 /* ---------------- entry ---------------- */
 async function onBarcode(code, photo) {
   stopScan();
+  $("missRes").className = ""; $("missRes").innerHTML = "";
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch {} }
   pending = { barcode: code || "", photo: photo || "" };
   const known = code && PRODUCTS[code];
@@ -1186,8 +1295,9 @@ async function onBarcode(code, photo) {
       $("grams").focus();
       if (off.name) autoImage(off.name);
     } else {
-      $("foundTag").textContent = "לא במאגר · " + code + " — מלא מהמדבקה פעם אחת וזה ייזכר";
+      $("foundTag").textContent = "לא במאגר · " + code;
       $("foundTag").className = "foundtag newp";
+      missSearch(code, photo);
     }
   }
 }
@@ -1318,6 +1428,10 @@ $("log").addEventListener("click", e => {
   if (e.target.closest("input")) return;
   const row = e.target.closest(".item");
   if (row && row.dataset.id && row.dataset.id !== editId) { editId = row.dataset.id; renderLog(); }
+});
+$("missRes").addEventListener("click", e => {
+  const b = e.target.closest("[data-mi]");
+  if (b && missResults[+b.dataset.mi]) applyMissPick(missResults[+b.dataset.mi]);
 });
 $("copyBtn").addEventListener("click", async () => {
   const text = report(viewDay);
