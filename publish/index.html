@@ -150,6 +150,39 @@
     border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px;
   }
   .perffoot b { color: var(--text); }
+  /* ---- day flow wizard ---- */
+  .dfstep { border-top: 1px solid var(--border); padding: 16px 0 14px; }
+  .dfstep:first-of-type { border-top: 0; }
+  .dfstep.off { opacity: .38; pointer-events: none; }
+  .dfh { font-size: 15px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 9px; }
+  .dfnum {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #000;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex: 0 0 auto;
+  }
+  .dfrow { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .dfrow label { font-size: 13px; color: var(--muted); }
+  #dfDay {
+    width: 74px; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 9px; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .dfhint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .dfbar { height: 10px; border-radius: 6px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; margin: 10px 0 6px; }
+  .dfbar > i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .6s; }
+  .dfstage { font-size: 13px; color: var(--muted); }
+  .dfstage b { color: var(--accent); }
+  #dfPreview { width: 100%; max-width: 300px; border-radius: 12px; border: 1px solid var(--border); background: #000; display: block; margin: 4px auto 10px; }
+  #dfNotes {
+    width: 100%; min-height: 76px; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 10px; font-size: 14px; line-height: 1.6; font-family: inherit; resize: vertical; margin-bottom: 8px;
+  }
+  .dfmsg { font-size: 12.5px; min-height: 16px; margin-top: 7px; }
+  .dfmsg.ok { color: var(--green); } .dfmsg.err { color: var(--red); } .dfmsg.pend { color: var(--accent); }
+  .dfcopy { margin-bottom: 8px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; }
+  .dfcopy summary { cursor: pointer; font-weight: 700; font-size: 13.5px; }
+  .dfcopy pre {
+    white-space: pre-wrap; font-family: inherit; font-size: 12.5px; line-height: 1.55; color: var(--text);
+    margin-top: 8px; direction: ltr; text-align: left; max-height: 220px; overflow-y: auto;
+  }
   /* ---- followers tab ---- */
   #folRefreshBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
   #folRefreshBtn:disabled { opacity: .55; cursor: wait; }
@@ -302,6 +335,7 @@
   </div>
 
   <nav id="tabs">
+    <button class="tab" data-view="day">🎬 העלאת ריל יומי</button>
     <button class="tab" data-view="stats">📊 סטטיסטיקות</button>
     <button class="tab" data-view="followers">👥 עוקבים</button>
   </nav>
@@ -430,6 +464,55 @@
       </div>
     </div>
   </div><!-- /viewFollowers -->
+
+  <!-- ============ VIEW: DAY FLOW ============ -->
+  <div class="view" id="viewDay">
+    <div class="card">
+      <h2 class="viewtitle">העלאת ריל יומי</h2>
+      <p class="viewsub">מהצילומים ועד הפרסום — צעד אחר צעד. קלוד עושה את העבודה, אתה מאשר.</p>
+
+      <div class="dfstep" id="dfS1">
+        <div class="dfh"><span class="dfnum">1</span> התחלת יום</div>
+        <div class="dfrow">
+          <label for="dfDay">יום</label>
+          <input type="number" id="dfDay" min="1" max="100" inputmode="numeric">
+          <button id="dfOpenBtn" class="b-pub" style="flex:1">📁 פתח את תיקיית ההעלאה</button>
+        </div>
+        <div class="dfhint">התיקייה של היום נפתחת בדרייב — העלה לשם את כל הסרטונים. חכה שכל קובץ יגיע ל-100% לפני שממשיכים.</div>
+      </div>
+
+      <div class="dfstep" id="dfS2">
+        <div class="dfh"><span class="dfnum">2</span> יצירת הריל</div>
+        <button id="dfCreateBtn" class="b-pub wide" style="width:100%">🎬 הכל עלה — צור את הריל</button>
+        <div id="dfProg" style="display:none">
+          <div class="dfbar"><i id="dfBarFill"></i></div>
+          <div class="dfstage" id="dfStage">ממתין…</div>
+        </div>
+        <div class="dfmsg" id="dfCreateMsg"></div>
+      </div>
+
+      <div class="dfstep" id="dfS3">
+        <div class="dfh"><span class="dfnum">3</span> צפייה והערות</div>
+        <div id="dfPreviewWrap" style="display:none">
+          <video id="dfPreview" controls playsinline preload="metadata"></video>
+        </div>
+        <textarea id="dfNotes" placeholder="הערות לשינויים — למשל: תחתוך את השנייה הראשונה, שים את הצעקה של הסט האחרון…"></textarea>
+        <button id="dfNotesBtn" class="b-copy">📝 שלח הערות לקלוד</button>
+        <div class="dfmsg" id="dfNotesMsg"></div>
+      </div>
+
+      <div class="dfstep" id="dfS4">
+        <div class="dfh"><span class="dfnum">4</span> פרסום</div>
+        <div id="dfCopies"></div>
+        <button id="dfPublishBtn" class="b-pub wide" style="width:100%">🚀 פרסם בכל הפלטפורמות</button>
+        <div class="dfmsg" id="dfPubMsg"></div>
+      </div>
+
+      <div class="perffoot">
+        הכפתורים כאן שולחים בקשות לקלוד: "צור" מתחיל את העריכה, ההערות מגיעות אליו לפני גרסה מתוקנת, ו"פרסם" משגר לכל ארבע הפלטפורמות דרך זרניו כולל אימות. מד ההתקדמות מתעדכן בזמן שקלוד עובד.
+      </div>
+    </div>
+  </div><!-- /viewDay -->
 
   <div id="log"></div>
 </div>
@@ -905,6 +988,8 @@ const store = {
     if (c.p) store.set("pc_proxy", c.p);
     if (c.cn) store.set("cld_name", c.cn);
     if (c.up) store.set("cld_preset", c.up);
+    if (c.dr) store.set("df_read", c.dr);
+    if (c.dw) store.set("df_write", c.dw);
     history.replaceState(null, "", location.pathname + location.search);
   } catch { /* bad fragment - ignore */ }
 })();
@@ -1573,6 +1658,107 @@ async function refreshFollowers() {
   }
   btn.disabled = false;
 }
+
+/* ---------------- day flow wizard ----------------
+   Front-end for the daily pipeline. The heavy lifting happens on the PC
+   (Claude); this page opens the Drive folder, files requests through the
+   DAY FLOW write hook, and polls the read hook while the reel is built.
+   Folder links: the current day's direct URL is refreshed by the nightly
+   deploy; any other day falls back to an exact-name Drive search. */
+
+const DF_READ = store.get("df_read") || "";
+const DF_WRITE = store.get("df_write") || "";
+const DF_FOLDER_DIRECT = {
+  10: "https://drive.google.com/drive/folders/1zTfzBPFRS85fv2qkITvZntUICFUpTw_1",
+};
+
+function dfFolderName(n) {
+  const d = new Date(Date.UTC(2026, 7, 15) + n * 864e5);
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd} ${mm} ${d.getUTCFullYear()} - DAY${n}`;
+}
+function dfFolderUrl(n) {
+  return DF_FOLDER_DIRECT[n] ||
+    "https://drive.google.com/drive/search?q=" + encodeURIComponent('"' + dfFolderName(n) + '"');
+}
+function dfMsg(id, t, cls) { const el = $(id); el.textContent = t || ""; el.className = "dfmsg " + (cls || ""); }
+
+async function dfSend(action, extra) {
+  const day = parseInt($("dfDay").value, 10);
+  const body = new URLSearchParams({ day: String(day), action, notes: (extra && extra.notes) || "" });
+  const r = await fetch(DF_WRITE, { method: "POST", body });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r;
+}
+
+let dfTimer = null;
+async function dfPoll() {
+  const day = parseInt($("dfDay").value, 10);
+  try {
+    const r = await fetch(DF_READ + "?day=" + day);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const parts = (await r.text()).split("|~|");
+    const stage = parts[0] || "";
+    const percent = Math.max(0, Math.min(100, parseFloat(parts[1]) || 0));
+    const preview = (parts[2] || "").trim();
+    $("dfProg").style.display = "block";
+    $("dfBarFill").style.width = percent + "%";
+    $("dfStage").innerHTML = `<b>${Math.round(percent)}%</b> · ${stage || "…"}`;
+    if (preview && preview.startsWith("http")) {
+      $("dfPreviewWrap").style.display = "block";
+      if ($("dfPreview").src !== preview) $("dfPreview").src = preview;
+    }
+    if (percent >= 100) dfStopPoll();
+  } catch (e) {
+    $("dfStage").textContent = "אין קשר לסטטוס (" + e.message + ") — ממשיך לנסות";
+  }
+}
+function dfStartPoll() { if (!dfTimer) { dfPoll(); dfTimer = setInterval(dfPoll, 20000); } }
+function dfStopPoll() { if (dfTimer) { clearInterval(dfTimer); dfTimer = null; } }
+
+function dfRenderCopies() {
+  const d = parseInt($("dfDay").value, 10);
+  $("dfCopies").innerHTML = PLATFORMS.map(p => `
+    <details class="dfcopy"><summary>${p.name} — הקופי שיעלה</summary>
+      <pre>${esc2(copyFor(p, d))}</pre>
+    </details>`).join("");
+}
+function esc2(x) { return String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+$("dfDay").value = Math.max(1, Math.min(100, challengeDay(new Date())));
+dfRenderCopies();
+$("dfDay").addEventListener("change", dfRenderCopies);
+
+$("dfOpenBtn").addEventListener("click", () => {
+  dfSend("start").catch(() => {});
+  window.open(dfFolderUrl(parseInt($("dfDay").value, 10)), "_blank");
+});
+$("dfCreateBtn").addEventListener("click", async () => {
+  dfMsg("dfCreateMsg", "שולח בקשת יצירה…", "pend");
+  try {
+    await dfSend("create");
+    dfMsg("dfCreateMsg", "נשלח ✓ קלוד מתחיל לעבוד — ההתקדמות תופיע כאן", "ok");
+    dfStartPoll();
+  } catch (e) { dfMsg("dfCreateMsg", "השליחה נכשלה: " + e.message, "err"); }
+});
+$("dfNotesBtn").addEventListener("click", async () => {
+  const t = $("dfNotes").value.trim();
+  if (!t) { dfMsg("dfNotesMsg", "כתוב קודם מה לשנות", "err"); return; }
+  dfMsg("dfNotesMsg", "שולח…", "pend");
+  try {
+    await dfSend("notes", { notes: t });
+    dfMsg("dfNotesMsg", "ההערות אצל קלוד ✓ גרסה מתוקנת בדרך", "ok");
+  } catch (e) { dfMsg("dfNotesMsg", "השליחה נכשלה: " + e.message, "err"); }
+});
+$("dfPublishBtn").addEventListener("click", async () => {
+  if (!confirm("לפרסם את הריל בכל ארבע הפלטפורמות?")) return;
+  dfMsg("dfPubMsg", "שולח בקשת פרסום…", "pend");
+  try {
+    await dfSend("publish");
+    dfMsg("dfPubMsg", "בקשת הפרסום נשלחה ✓ קלוד מפרסם ומאמת בכל פלטפורמה", "ok");
+  } catch (e) { dfMsg("dfPubMsg", "השליחה נכשלה: " + e.message, "err"); }
+});
 
 /* ---------------- tabs ---------------- */
 
