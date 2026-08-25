@@ -150,6 +150,18 @@
     border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px;
   }
   .perffoot b { color: var(--text); }
+  /* ---- audience demographics ---- */
+  #demoBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  #demoStatus { font-size: 13px; color: var(--muted); }
+  #demoStatus.ok { color: var(--green); } #demoStatus.err { color: var(--red); } #demoStatus.pend { color: var(--accent); }
+  .demoh { font-size: 13.5px; font-weight: 800; margin: 14px 0 8px; color: var(--text); }
+  .drow { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; font-size: 12.5px; }
+  .drow .dl { width: 74px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  .drow .dbar { flex: 1; height: 9px; border-radius: 5px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; }
+  .drow .dbar > i { display: block; height: 100%; background: var(--accent); }
+  .drow.f .dbar > i { background: #ff5c8a; }
+  .drow.c .dbar > i { background: var(--green); }
+  .drow .dv { width: 58px; text-align: left; font-variant-numeric: tabular-nums; direction: ltr; }
   /* ---- day flow wizard ---- */
   .dfstep { border-top: 1px solid var(--border); padding: 16px 0 14px; }
   .dfstep:first-of-type { border-top: 0; }
@@ -166,6 +178,12 @@
     border-radius: 9px; padding: 9px; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums;
   }
   .dfhint { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .dfarrow {
+    width: 38px; height: 40px; padding: 0; font-size: 20px; font-weight: 800;
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; cursor: pointer;
+  }
+  .dfdate { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
   .dfbar { height: 10px; border-radius: 6px; background: var(--panel2); border: 1px solid var(--border); overflow: hidden; margin: 10px 0 6px; }
   .dfbar > i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .6s; }
   .dfstage { font-size: 13px; color: var(--muted); }
@@ -446,6 +464,18 @@
         <b>איפה המספרים נמדדים:</b> הכל נשאב אוטומטית מזרינו ומתעדכן כל ערב. <b>אחוז נטישה קיים רק באינסטגרם</b> — היא הפלטפורמה היחידה שמדווחת זמן צפייה ממוצע לכל ריל. טיקטוק ופייסבוק לא מדווחים ריטנשן בכלל דרך ה-API, וביוטיוב הנתון קיים רק ב-YouTube Studio. איפה שכתוב "לא נמדד" — הוא באמת לא נמדד, ולא ממציאים מספר.
       </div>
     </div>
+    <div class="card">
+      <h2 class="viewtitle">👥 מי הקהל</h2>
+      <p class="viewsub">יוטיוב · צופים מחוברים · 90 הימים האחרונים. גיל ומין באחוזים, מדינות בצפיות.</p>
+      <div class="refreshrow">
+        <button id="demoBtn">🔄 רענן דמוגרפיה</button>
+        <span id="demoStatus"></span>
+      </div>
+      <div id="demoWrap"></div>
+      <div class="perffoot">
+        <b>למה רק יוטיוב:</b> אינסטגרם חושפת דמוגרפיה רק מ-100 עוקבים (יופעל כאן אוטומטית כשנגיע), וטיקטוק לא חושפת דרך ה-API בכלל — רואים רק באפליקציה: פרופיל ← תפריט ← TikTok Studio ← Analytics.
+      </div>
+    </div>
   </div><!-- /viewStats -->
 
   <!-- ============ VIEW: FOLLOWERS ============ -->
@@ -474,8 +504,10 @@
       <div class="dfstep" id="dfS1">
         <div class="dfh"><span class="dfnum">1</span> התחלת יום</div>
         <div class="dfrow">
-          <label for="dfDay">יום</label>
+          <button class="dfarrow" id="dfPrev" title="יום אחורה">‹</button>
           <input type="number" id="dfDay" min="1" max="100" inputmode="numeric">
+          <button class="dfarrow" id="dfNext" title="יום קדימה">›</button>
+          <span class="dfdate" id="dfDate"></span>
           <button id="dfOpenBtn" class="b-pub" style="flex:1">📁 פתח את תיקיית ההעלאה</button>
         </div>
         <div class="dfhint">התיקייה של היום נפתחת בדרייב — העלה לשם את כל הסרטונים. חכה שכל קובץ יגיע ל-100% לפני שממשיכים.</div>
@@ -586,6 +618,12 @@ let PERF = {
       facebook:  { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-24T20:51:00Z", url: "https://www.facebook.com/reel/1225293443096179/" },
       instagram: { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-24T20:51:33Z", url: "https://www.instagram.com/mrgurufit/" },
       tiktok:    { views: null, likes: 0, comments: 0, er: null, at: "2026-08-24T20:51:27Z", url: "https://www.tiktok.com/@mrgurufit", flag: "כרטיס-פרסום — כמו יום 8 שנפתר" },
+    }},
+    { day: 10, date: "2026-08-25", note: "יום העשור 🏁 פורסם 22:42 — הכי מוקדם עד כה, והפעם דרך האשף החדש מקצה לקצה. אל תקרא מספרים לפני 24 שעות.", platforms: {
+      youtube:   { views: null, likes: 0, comments: 0, er: null, at: "2026-08-25T19:42:44Z", url: "https://www.youtube.com/watch?v=CH5cXyjt3hM" },
+      facebook:  { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-25T19:42:38Z", url: "https://www.facebook.com/Mrgurufit" },
+      instagram: { views: null, reach: null, likes: 0, comments: 0, er: null, at: "2026-08-25T19:43:01Z", url: "https://www.instagram.com/mrgurufit/" },
+      tiktok:    { views: null, likes: 0, comments: 0, er: null, at: "2026-08-25T19:43:02Z", url: "https://www.tiktok.com/@mrgurufit" },
     }},
   ]
 };
@@ -1708,6 +1746,68 @@ async function refreshFollowers() {
   btn.disabled = false;
 }
 
+/* ---------------- audience demographics ----------------
+   YouTube is the only platform that hands demographics to the API at this
+   account size. Served keylessly through the analytics proxy (?type=demo);
+   cached per device so the card opens instantly. */
+
+const DEMO_NAMES = { GB: "בריטניה", US: "ארה\"ב", IL: "ישראל", ID: "אינדונזיה", DE: "גרמניה",
+  CA: "קנדה", AU: "אוסטרליה", IN: "הודו", RU: "רוסיה", TR: "טורקיה", ZA: "דרא\"פ",
+  PL: "פולין", ES: "ספרד", GR: "יוון", SE: "שבדיה", IE: "אירלנד", NZ: "ניו זילנד",
+  UZ: "אוזבקיסטן", FR: "צרפת", NL: "הולנד", IT: "איטליה", BR: "ברזיל", UA: "אוקראינה" };
+
+function flagOf(cc) {
+  return cc.replace(/./g, ch => String.fromCodePoint(0x1F1A5 + ch.charCodeAt(0)));
+}
+
+function renderDemo(d) {
+  const g = d.demographics || {};
+  const age = (g.age || []).slice().sort((a, b) => b.value - a.value);
+  const gender = g.gender || [];
+  const country = (g.country || []).filter(c => c.value > 0).slice(0, 10);
+  const cMax = Math.max(1, ...country.map(c => c.value));
+  let h = "";
+  if (age.length) {
+    h += `<div class="demoh">גיל</div>` + age.map(a =>
+      `<div class="drow"><span class="dl">${a.dimension}</span><div class="dbar"><i style="width:${a.value}%"></i></div><span class="dv">${a.value}%</span></div>`).join("");
+  }
+  if (gender.length) {
+    h += `<div class="demoh">מין</div>` + gender.map(x =>
+      `<div class="drow${x.dimension === "female" ? " f" : ""}"><span class="dl">${x.dimension === "male" ? "גברים" : x.dimension === "female" ? "נשים" : x.dimension}</span><div class="dbar"><i style="width:${x.value}%"></i></div><span class="dv">${x.value}%</span></div>`).join("");
+  }
+  if (country.length) {
+    h += `<div class="demoh">מדינות (צפיות)</div>` + country.map(c =>
+      `<div class="drow c"><span class="dl">${flagOf(c.dimension)} ${DEMO_NAMES[c.dimension] || c.dimension}</span><div class="dbar"><i style="width:${Math.round(c.value / cMax * 100)}%"></i></div><span class="dv">${c.value}</span></div>`).join("");
+  }
+  $("demoWrap").innerHTML = h || `<div class="perfnote">אין עדיין מספיק נתונים — יוטיוב מסתיר דמוגרפיה כשאין מספיק צופים מחוברים.</div>`;
+}
+
+function demoStatus(m, c) { const el = $("demoStatus"); el.textContent = m; el.className = c || ""; }
+
+async function refreshDemo() {
+  if (!ANALYTICS_PROXY) { demoStatus("חסרות הגדרות — פתח את לינק ה-cfg", "err"); return; }
+  const btn = $("demoBtn");
+  btn.disabled = true;
+  demoStatus("מושך…", "pend");
+  try {
+    const r = await fetch(ANALYTICS_PROXY + "?type=demo");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    if (!d.success) throw new Error("אין נתונים");
+    store.set("pc_demo_cache", JSON.stringify({ at: Date.now(), data: d }));
+    renderDemo(d);
+    demoStatus("עודכן ✓ (יוטיוב מעדכן בפיגור של 2–3 ימים)", "ok");
+  } catch (e) { demoStatus("הרענון נכשל (" + e.message + ")", "err"); }
+  btn.disabled = false;
+}
+
+try {
+  const dc = JSON.parse(store.get("pc_demo_cache") || "null");
+  if (dc && dc.data) renderDemo(dc.data);
+} catch { /* no cache */ }
+
+$("demoBtn").addEventListener("click", refreshDemo);
+
 /* ---------------- day flow wizard ----------------
    Front-end for the daily pipeline. The heavy lifting happens on the PC
    (Claude); this page opens the Drive folder, files requests through the
@@ -1765,7 +1865,9 @@ async function dfPoll() {
     if (percent >= 100) dfStopPoll();
     else if (percent > 0) dfStartPoll();
   } catch (e) {
-    $("dfStage").textContent = "אין קשר לסטטוס (" + e.message + ") — ממשיך לנסות";
+    $("dfProg").style.display = "block";
+    $("dfStage").textContent = "אין עדיין נתונים ליום הזה";
+    $("dfBarFill").style.width = "0%";
   }
 }
 function dfStartPoll() { if (!dfTimer) { dfPoll(); dfTimer = setInterval(dfPoll, 20000); } }
@@ -1780,10 +1882,23 @@ function dfRenderCopies() {
 }
 function esc2(x) { return String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
-$("dfDay").value = Math.max(1, Math.min(100, challengeDay(new Date())));
-dfRenderCopies();
-dfPoll();
-$("dfDay").addEventListener("change", () => { dfRenderCopies(); dfPoll(); });
+function dfSetDay(n) {
+  n = Math.max(1, Math.min(100, n));
+  $("dfDay").value = n;
+  const d = new Date(Date.UTC(2026, 7, 15) + n * 864e5);
+  $("dfDate").textContent = d.getUTCDate() + "." + (d.getUTCMonth() + 1);
+  $("dfProg").style.display = "none";
+  $("dfBarFill").style.width = "0%";
+  $("dfPreviewWrap").style.display = "none";
+  $("dfPreview").removeAttribute("src");
+  dfStopPoll();
+  dfRenderCopies();
+  dfPoll();
+}
+dfSetDay(challengeDay(new Date()));
+$("dfDay").addEventListener("change", () => dfSetDay(parseInt($("dfDay").value, 10) || 1));
+$("dfPrev").addEventListener("click", () => dfSetDay(parseInt($("dfDay").value, 10) - 1));
+$("dfNext").addEventListener("click", () => dfSetDay(parseInt($("dfDay").value, 10) + 1));
 
 $("dfOpenBtn").addEventListener("click", () => {
   dfSend("start").catch(() => {});
@@ -1831,6 +1946,7 @@ document.querySelectorAll(".tab").forEach(t =>
     showView(t.dataset.view);
     if (t.dataset.view === "followers" && !FOLLOWERS.fetched) refreshFollowers();
     if (t.dataset.view === "day") dfPoll();
+    if (t.dataset.view === "stats" && !store.get("pc_demo_cache")) refreshDemo();
   }));
 $("folRefreshBtn").addEventListener("click", refreshFollowers);
 
