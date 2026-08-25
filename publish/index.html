@@ -1848,8 +1848,10 @@ async function dfPoll() {
   const day = parseInt($("dfDay").value, 10);
   try {
     const r = await fetch(DF_READ + "?day=" + day);
+    if (parseInt($("dfDay").value, 10) !== day) return;
     if (!r.ok) throw new Error("HTTP " + r.status);
     const raw = await r.text();
+    if (parseInt($("dfDay").value, 10) !== day) return;
     if (!raw.includes("|~|") || raw.includes("<")) throw new Error("תשובה לא צפויה");
     const parts = raw.split("|~|");
     const stage = parts[0] || "";
