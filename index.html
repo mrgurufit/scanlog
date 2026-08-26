@@ -397,6 +397,20 @@ const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
 };
+/* one-time device setup: open the app once with #cfg=<base64url {pr,pk}>
+   and the report push hook lands in THIS device's storage - the public file
+   ships with nothing baked in */
+(function () {
+  const m = location.hash.match(/cfg=([A-Za-z0-9+/=_-]+)/);
+  if (!m) return;
+  try {
+    const c = JSON.parse(atob(m[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (c.pr) localStorage.setItem("fl_push", c.pr);
+    if (c.pk) localStorage.setItem("fl_pushkey", c.pk);
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch { /* bad fragment */ }
+})();
+
 let LOG = store.get(LS_LOG, []);
 let PRODUCTS = store.get(LS_PROD, {});
 // height/age are his stated stats; 107.6 is the last weigh-in known when this
@@ -486,6 +500,7 @@ function renderEnergy(kcalIn) {
 }
 
 function saveDayData() {
+  scheduleAutoPush();
   const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
   const w = parseFloat($("wIn").value);
   const a = parseFloat($("actIn").value);
@@ -607,14 +622,43 @@ function renderLog() {
     g.focus(); g.select();
     g.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveEditedGrams(); } });
   }
+  const pushOn = localStorage.getItem("fl_push") && localStorage.getItem("fl_pushkey");
   $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
-    הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.`;
+    ${pushOn ? "הדוח היומי מסתנכרן לקלוד אוטומטית ✓" : 'הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.'}`;
   renderTotals(); renderCal(); renderStreak();
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
-function save() { if (!store.set(LS_LOG, LOG)) msg("entryMsg", "אין מקום בזיכרון הדפדפן", "err"); }
+/* every change to today's log ships the report to Claude automatically -
+   no more copy-paste (Ido, 2026-08-26). Debounced so a burst of edits sends
+   once; silent because failure only means the old copy-report path. */
+let pushTimer = null;
+
+function challengeDayNum() {
+  return Math.floor((Date.now() - Date.UTC(2026, 7, 16)) / 864e5) + 1;
+}
+
+function scheduleAutoPush() {
+  const url = localStorage.getItem("fl_push"), key = localStorage.getItem("fl_pushkey");
+  if (!url || !key) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    try {
+      const body = new URLSearchParams({
+        day: String(challengeDayNum()),
+        k: key,
+        report: report(todayKey()),
+      });
+      fetch(url, { method: "POST", mode: "no-cors", body });
+    } catch { /* offline - the copy button still works */ }
+  }, 8000);
+}
+
+function save() {
+  if (!store.set(LS_LOG, LOG)) msg("entryMsg", "אין מקום בזיכרון הדפדפן", "err");
+  scheduleAutoPush();
+}
 function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
 
 /* ---------------- camera + barcode ---------------- */

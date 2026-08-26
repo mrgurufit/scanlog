@@ -1948,7 +1948,7 @@ async function dfPoll() {
       $("dfPreviewWrap").style.display = "block";
       if ($("dfPreview").src !== preview) $("dfPreview").src = preview;
     }
-    if (percent >= 100) dfStopPoll();
+    if (percent >= 100 && stage.includes("פורסם")) dfStopPoll();
     else if (percent > 0) dfStartPoll();
   } catch (e) {
     $("dfProg").style.display = "block";
@@ -2010,7 +2010,8 @@ $("dfPublishBtn").addEventListener("click", async () => {
   dfMsg("dfPubMsg", "שולח בקשת פרסום…", "pend");
   try {
     await dfSend("publish");
-    dfMsg("dfPubMsg", "בקשת הפרסום נשלחה ✓ קלוד מפרסם ומאמת בכל פלטפורמה", "ok");
+    dfMsg("dfPubMsg", "בקשת הפרסום נשלחה ✓ קלוד מפרסם ומאמת בכל פלטפורמה — הסטטוס יתעדכן למעלה", "ok");
+    dfStartPoll();
   } catch (e) { dfMsg("dfPubMsg", "השליחה נכשלה: " + e.message, "err"); }
 });
 
