@@ -108,6 +108,7 @@
   .viewsub { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
   /* ---- performance dashboard ---- */
   .refreshrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  #refreshBtn, #folRefreshBtn, #demoBtn { display: none !important; }
   #refreshBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
   #refreshBtn:hover:not(:disabled) { border-color: var(--accent); }
   #refreshBtn:disabled { opacity: .55; cursor: wait; }
@@ -217,9 +218,9 @@
   .fdelta.down { background: #3a1c1c; color: #ff8f8f; }
   .fdelta.flat { color: var(--muted); }
   .tot .tx.stale { color: #e0a34a; }
-  .tot.grand { background: var(--accent); border-color: var(--accent); }
+  .tot.grand { background: var(--accent); border-color: var(--accent); text-align: center; }
   .tot.grand .tl, .tot.grand .tx { color: rgba(0,0,0,.62); }
-  .tot.grand .tv { color: #000; }
+  .tot.grand .tv { color: #000; font-size: 26px; }
   /* ---- tiktok variant slot ---- */
   #ttdrop {
     border: 2px dashed #5a3a48; border-radius: 12px; padding: 14px 16px;
@@ -1171,12 +1172,14 @@ function renderPerf() {
   const grand = PF_ORDER.reduce((a, p) => a + tot[p].views, 0);
   const grandN = PF_ORDER.reduce((a, p) => a + tot[p].n, 0);
   $("perfHead").innerHTML =
-    `<div class="totals">` +
-    `<div class="tot grand">
-      <div class="tl">סה"כ צפיות</div>
-      <div class="tv">${nf(grand)}</div>
-      <div class="tx">${grandN} פרסומים · כל הפלטפורמות</div>
-    </div>` + PF_ORDER.map(p => {
+    `<div class="totals">
+      <div class="tot grand" style="flex:0 0 calc(50% - 5px); margin:0 auto">
+        <div class="tl">סה"כ צפיות</div>
+        <div class="tv">${nf(grand)}</div>
+        <div class="tx">${grandN} פרסומים · כל הפלטפורמות</div>
+      </div>
+    </div>
+    <div class="totals">` + PF_ORDER.map(p => {
       const t = tot[p];
       const avg = t.n ? Math.round(t.views / t.n) : 0;
       return `<div class="tot">
@@ -1971,12 +1974,24 @@ function showView(name) {
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 
+/* the tabs refresh themselves - entering stats or followers pulls fresh
+   numbers automatically, throttled so tab-hopping does not hammer the proxy */
+let lastPerfAuto = 0, lastFolAuto = 0, lastDemoAuto = 0;
+function autoStats() {
+  const now = Date.now();
+  if (ANALYTICS_PROXY && now - lastPerfAuto > 600000) { lastPerfAuto = now; refreshPerf(); }
+  if (ANALYTICS_PROXY && now - lastDemoAuto > 21600000) { lastDemoAuto = now; refreshDemo(); }
+}
+function autoFollowers() {
+  const now = Date.now();
+  if (ANALYTICS_PROXY && now - lastFolAuto > 600000) { lastFolAuto = now; refreshFollowers(); }
+}
 document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => {
     showView(t.dataset.view);
-    if (t.dataset.view === "followers" && !FOLLOWERS.fetched) refreshFollowers();
+    if (t.dataset.view === "followers") autoFollowers();
     if (t.dataset.view === "day") dfPoll();
-    if (t.dataset.view === "stats" && !store.get("pc_demo_cache")) refreshDemo();
+    if (t.dataset.view === "stats") autoStats();
   }));
 $("folRefreshBtn").addEventListener("click", refreshFollowers);
 
@@ -1998,7 +2013,9 @@ renderPerf();
 renderFollowers();
 currentDay = 0;
 regenerateCopy();
-showView(store.get("pc_view") === "followers" ? "followers" : "stats");
+const _initView = store.get("pc_view") === "followers" ? "followers" : "stats";
+showView(_initView);
+if (_initView === "followers") autoFollowers(); else autoStats();
 
 if (location.hostname.endsWith("github.io") && "serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
