@@ -217,6 +217,9 @@
   .fdelta.down { background: #3a1c1c; color: #ff8f8f; }
   .fdelta.flat { color: var(--muted); }
   .tot .tx.stale { color: #e0a34a; }
+  .tot.grand { background: var(--accent); border-color: var(--accent); }
+  .tot.grand .tl, .tot.grand .tx { color: rgba(0,0,0,.62); }
+  .tot.grand .tv { color: #000; }
   /* ---- tiktok variant slot ---- */
   #ttdrop {
     border: 2px dashed #5a3a48; border-radius: 12px; padding: 14px 16px;
@@ -496,7 +499,7 @@
       <div id="folTotals"></div>
       <div id="folLedger"></div>
       <div class="perffoot">
-        <b>למה אין שמות:</b> אף פלטפורמה לא חושפת לכלים חיצוניים מי עקב ומי הסיר — טיקטוק, אינסטגרם, יוטיוב ופייסבוק מוסרים דרך ה-API רק את המספר. את השמות אפשר לראות רק בהתראות בתוך כל אפליקציה. מה שכן נמדד כאן, יום-יום: כמה נכנסו וכמה עזבו. חשוב: <b>זרינו מצלם את המספרים פעם ביום בלבד</b> — לחיצה על רענון מביאה את הצילום האחרון, לא את הרגע הנוכחי. כתום ליד השעה = הצילום בן יותר מ-20 שעות. את המספר החי של הרגע רואים רק בפרופיל עצמו; ההיסטוריה כאן מצטברת מרגע חיבור הערוץ.
+        <b>למה אין שמות:</b> אף פלטפורמה לא חושפת לכלים חיצוניים מי עקב ומי הסיר — טיקטוק, אינסטגרם, יוטיוב ופייסבוק מוסרים דרך ה-API רק את המספר. את השמות אפשר לראות רק בהתראות בתוך כל אפליקציה. מה שכן נמדד כאן, יום-יום: כמה נכנסו וכמה עזבו. חשוב: <b>זרינו מצלם את המספרים פעם ביום בלבד</b> — לחיצה על רענון מביאה את הצילום האחרון, לא את הרגע הנוכחי. כתום ליד השעה = פוספס יום שלם של צילום (מעל 26 שעות). את המספר החי של הרגע רואים רק בפרופיל עצמו; ההיסטוריה כאן מצטברת מרגע חיבור הערוץ.
       </div>
     </div>
   </div><!-- /viewFollowers -->
@@ -1165,8 +1168,15 @@ function renderPerf() {
       if (m && m.views != null) { tot[p].views += m.views; tot[p].n++; }
     }
   }
+  const grand = PF_ORDER.reduce((a, p) => a + tot[p].views, 0);
+  const grandN = PF_ORDER.reduce((a, p) => a + tot[p].n, 0);
   $("perfHead").innerHTML =
-    `<div class="totals">` + PF_ORDER.map(p => {
+    `<div class="totals">` +
+    `<div class="tot grand">
+      <div class="tl">סה"כ צפיות</div>
+      <div class="tv">${nf(grand)}</div>
+      <div class="tx">${grandN} פרסומים · כל הפלטפורמות</div>
+    </div>` + PF_ORDER.map(p => {
       const t = tot[p];
       const avg = t.n ? Math.round(t.views / t.n) : 0;
       return `<div class="tot">
@@ -1704,10 +1714,10 @@ function renderFollowers() {
       const chip = d == null ? "" :
         d > 0 ? `<span class="fdelta up">+${d}</span>` :
         d < 0 ? `<span class="fdelta down">${d}</span>` : `<span class="fdelta flat">±0</span>`;
-      const ageH = (Date.now() - new Date(a.updated).getTime()) / 36e5;
+      const ageH = (Date.now() - new Date(a.updated).getTime()) / 36e5;   // orange = a snapshot was actually missed
       return `<div class="tot"><div class="tl">${PLATFORM_LABELS[a.platform]}</div>
         <div class="tv">${a.count} ${chip}</div>
-        <div class="tx${ageH > 20 ? " stale" : ""}">צולם ${new Date(a.updated).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div></div>`;
+        <div class="tx${ageH > 26 ? " stale" : ""}">צולם ${new Date(a.updated).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div></div>`;
     }).join("") + `</div>`;
 
   const dates = [...new Set(Object.values(FOLLOWERS.history).flat().map(x => x.date))].sort().reverse();
