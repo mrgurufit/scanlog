@@ -19,10 +19,16 @@ self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
+// Only ever delete OUR OWN old caches. Publish Center is a second app on this
+// same origin with its own worker; a blanket "delete everything that is not
+// mine" meant each app wiped the other's offline store on every deploy, and
+// since Publish Center redeploys nightly, Scan & Log woke up with no cache and
+// would not open without a connection.
+const MINE = /^scanlog-/;
 self.addEventListener("activate", e => {
   const keep = [CACHE, IMG_CACHE];
   e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => !keep.includes(k)).map(k => caches.delete(k))))
+    .then(ks => Promise.all(ks.filter(k => MINE.test(k) && !keep.includes(k)).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
