@@ -241,6 +241,8 @@
   .msg { font-size:12.5px; margin-top:9px; min-height:16px; line-height:1.6; }
   .msg.err { color:var(--red); } .msg.ok { color:var(--green); } .msg.pend { color:var(--accent); }
   .diag { font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:6px; direction:ltr; text-align:left; }
+  .offbar { display:none; margin-top:8px; padding:8px 11px; border-radius:9px; background:#3a2a12; color:#ffcf87; font-size:12.5px; line-height:1.5; }
+  body.off .offbar { display:block; }
   .foot { color:var(--muted); font-size:11.5px; line-height:1.75; margin-top:6px; }
   .foot b { color:var(--text); }
   .daynav { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
@@ -302,6 +304,7 @@
   <button id="fab" aria-label="סריקה והוספת מזון">+</button>
   <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
+  <div class="offbar" id="offbar">אין חיבור לאינטרנט. הרישום, המוצרים השמורים, המאגר המובנה והחישובים עובדים רגיל. מה שיחזור עם החיבור: חיפוש מוצר חדש במאגר העולמי וקריאת טבלת ערכים בצילום.</div>
 
   <div class="card" id="entry">
     <div id="foundTag" class="foundtag newp">מוצר חדש</div>
@@ -975,6 +978,7 @@ function localMatches(q) {
 async function offSearch(q) {
   try {
     const r = await fetch(SEARCH_PROXY + "?q=" + encodeURIComponent(q));
+    noteNet(true);
     if (!r.ok) return [];
     const d = await r.json();
     const out = [];
@@ -985,7 +989,7 @@ async function offSearch(q) {
       out.push({ name: nm, k: nu["energy-kcal_100g"], p: nu.proteins_100g ?? "", c: nu.carbohydrates_100g ?? "", f: nu.fat_100g ?? "", barcode: h.code || "", photo: h.image_small_url || "", src: "עולמי" });
     }
     return out;
-  } catch { return []; }
+  } catch { noteNet(false); return []; }
 }
 
 function doSearch(q) {
@@ -1227,6 +1231,7 @@ async function lookupOFF(code) {
       { signal: ctl.signal });
     if (!r.ok) return null;
     const d = await r.json();
+    noteNet(true);
     if (d.status !== 1 || !d.product) return null;
     const p = d.product, n = p.nutriments || {};
     const name = p.product_name_he || p.product_name || "";
@@ -1239,7 +1244,7 @@ async function lookupOFF(code) {
       fat:  n.fat_100g ?? "",
       photo: p.image_small_url || "",
     };
-  } catch { return null; }
+  } catch { noteNet(false); return null; }
   finally { clearTimeout(t); }
 }
 
@@ -1626,12 +1631,45 @@ $("impInput").addEventListener("change", e => {
   rd.readAsText(f);
 });
 
-// offline shell — only on the GitHub Pages origin, where sw.js exists
-if ("serviceWorker" in navigator && location.hostname.endsWith("github.io")) {
+// offline shell. Register wherever the app is genuinely served over http(s)
+// in a secure context - that is github.io today. Anywhere sw.js is not
+// deployed the request 404s and the catch swallows it, which is cheaper
+// than hard-coding a hostname the app then cannot be tested on.
+if ("serviceWorker" in navigator && window.isSecureContext && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
 window.addEventListener("pagehide", stopScan);
+
+/* ---------------- offline ----------------
+   Everything that matters without a connection is already local: the log,
+   the remembered products, the built-in staples and every calculation. Only
+   looking up a NEW product needs the network, so say that plainly instead of
+   letting a search spin. warmImages pulls every picture the log and the
+   product memory point at through the service worker while there IS signal,
+   because those thumbnails live on Wikipedia and Open Food Facts and used to
+   turn into broken boxes the moment the phone went offline. */
+let netDown = false;
+function markConnection() { document.body.classList.toggle("off", !navigator.onLine || netDown); }
+// navigator.onLine only reports that an interface exists, not that anything
+// is reachable, so the lookups report what actually happened to them
+function noteNet(ok) { if (netDown === !ok) return; netDown = !ok; markConnection(); }
+
+async function warmImages() {
+  if (!navigator.onLine || !("caches" in window)) return;
+  const urls = new Set(Object.values(PINNED));
+  for (const e of LOG) if (e.photo && /^https?:/.test(e.photo)) urls.add(e.photo);
+  for (const p of Object.values(PRODUCTS)) if (p.photo && /^https?:/.test(p.photo)) urls.add(p.photo);
+  for (const u of urls) {
+    // no-cors is enough: the service worker only has to see the request go by
+    try { await fetch(u, { mode: "no-cors" }); } catch {}
+  }
+}
+
+window.addEventListener("online", () => { markConnection(); warmImages(); });
+window.addEventListener("offline", markConnection);
+markConnection();
+setTimeout(warmImages, 2000);   // after first paint, never in its way
 
 scrubImages();
 renderLog();
