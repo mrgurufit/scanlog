@@ -732,6 +732,7 @@ async function startScan() {
   $("video").srcObject = stream;
   $("video").classList.remove("off");
   $("camHint").textContent = "כוון את הברקוד למרכז — הזיהוי אוטומטי";
+  lockCode = null; lockHits = 0;
   scanning = true;
   // a torch helps barcodes in bad light - offer it only where the camera has one
   torchOn = false;
@@ -764,13 +765,34 @@ function camFallback(why) {
   $("diag").textContent = camDiagnosis();
 }
 
+let lockCode = null, lockSince = 0, lockHits = 0;
+
 async function loop() {
   if (!scanning) return;
   const v = $("video");
   if (v.readyState >= 2) {
     try {
       const codes = await detector.detect(v);
-      if (codes.length) { onBarcode(codes[0].rawValue, grabFrame(v)); return; }
+      if (codes.length) {
+        const c = codes[0].rawValue;
+        const now = performance.now();
+        if (c !== lockCode) {
+          lockCode = c; lockSince = now; lockHits = 1;
+          $("camHint").textContent = "מזהה… החזק יציב";
+        } else {
+          lockHits++;
+          const held = now - lockSince;
+          $("camHint").textContent = held >= 650 ? "עוד רגע…" : "מזהה… החזק יציב";
+          if (held >= 1000 && lockHits >= 3) {
+            lockCode = null; lockHits = 0;
+            onBarcode(c, grabFrame(v));
+            return;
+          }
+        }
+      } else if (lockCode && performance.now() - lockSince > 1800) {
+        lockCode = null; lockHits = 0;
+        $("camHint").textContent = "כוון את הברקוד למרכז — הזיהוי אוטומטי";
+      }
     } catch { /* frame not ready */ }
   }
   requestAnimationFrame(loop);
