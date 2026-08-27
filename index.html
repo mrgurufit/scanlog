@@ -209,6 +209,13 @@
   }
   #calcPreview b { color:var(--accent); font-size:17px; }
   #shot { width:64px; height:64px; border-radius:9px; object-fit:cover; border:1px solid var(--line); background:var(--panel2); }
+  /* an <img> with no src draws the browser's broken-image glyph - show a calm
+     plate icon instead, in the entry card and in every log row */
+  #shot.blank, .item img.blank { background:var(--panel2) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23566' stroke-width='1.6'><circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='3.2'/></svg>") center/58% no-repeat; }
+  .shotwrap { position:relative; }
+  .shotwrap button { position:absolute; inset:auto 0 -2px 0; width:64px; padding:2px 0; font-size:10px; line-height:1.4;
+    border:0; border-radius:0 0 9px 9px; background:rgba(0,0,0,.66); color:#ffd84d; cursor:pointer; }
+  .item img { cursor:pointer; }
 
   /* log */
   .loghead { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
@@ -301,6 +308,7 @@
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+  <input type="file" id="picInput" accept="image/*" hidden>
   <button id="fab" aria-label="סריקה והוספת מזון">+</button>
   <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
@@ -310,7 +318,10 @@
     <div id="foundTag" class="foundtag newp">מוצר חדש</div>
     <div id="missRes"></div>
     <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:11px">
-      <img id="shot" alt="">
+      <div class="shotwrap">
+        <img id="shot" class="blank" alt="">
+        <button type="button" id="picBtn" title="בחר תמונה למוצר">החלף</button>
+      </div>
       <div style="flex:1">
         <div class="field" style="margin:0">
           <label for="pName">שם המוצר</label>
@@ -596,7 +607,7 @@ function renderLog() {
       const c = computed(e);
       if (e.id === editId) {
         return `<div class="item editing" data-id="${e.id}">
-          <img src="${e.photo || ""}" alt="">
+          <img${e.photo ? ` src="${e.photo}"` : ' class="blank"'} data-pic="${e.id}" alt="">
           <div class="mid">
             <div class="nm">${esc(e.name)}</div>
             <div class="editrow">
@@ -610,7 +621,7 @@ function renderLog() {
         </div>`;
       }
       return `<div class="item" data-id="${e.id}">
-        <img src="${e.photo || ""}" alt="">
+        <img${e.photo ? ` src="${e.photo}"` : ' class="blank"'} data-pic="${e.id}" alt="">
         <div class="mid">
           <div class="nm">${esc(e.name)}</div>
           <div class="meta">${e.t} · ${e.grams} ג׳ · ח ${c.pro.toFixed(1)} · פ ${c.carb.toFixed(1)} · ש ${c.fat.toFixed(1)} · ✎</div>
@@ -1088,13 +1099,13 @@ function applyMissPick(r) {
   $("p100pro").value = r.p;
   $("p100carb").value = r.c;
   $("p100fat").value = r.f;
-  if (!$("shot").getAttribute("src") && r.photo) $("shot").src = r.photo;
+  if (!shotSrc() && r.photo) setShot(r.photo);
   $("foundTag").textContent = "✓ התאמה: " + r.name + " — ייזכר תחת הברקוד שנסרק";
   $("foundTag").className = "foundtag known";
   $("missRes").className = ""; $("missRes").innerHTML = "";
   preview();
   $("grams").focus();
-  if (!$("shot").getAttribute("src")) autoImage(r.name);
+  if (!shotSrc()) autoImage(r.name);
 }
 
 function renderSearch(res, token, stillLoading) {
@@ -1123,7 +1134,7 @@ function openProduct(r) {
   $("p100pro").value = r.p;
   $("p100carb").value = r.c;
   $("p100fat").value = r.f;
-  $("shot").src = r.photo || "";
+  setShot(r.photo || "");
   $("grams").value = "";
   $("calcPreview").textContent = "הזן גרמים כדי לחשב";
   $("entry").classList.add("on");
@@ -1157,14 +1168,111 @@ const stripPrep = name => (name || "").split(/\s+/).filter(w => w && !PREP.test(
 const PINNED = {
   "פטריות": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
   "פטרייה": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
-  "פטריה":  "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+  "פטריה": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+  "שמפיניון": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+  "אורז לבן מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Steamed_rice_in_bowl_01.jpg/250px-Steamed_rice_in_bowl_01.jpg",
+  "אורז מלא מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Par_cooked_brown_rice_-_stonesoup_cropped.jpg/250px-Par_cooked_brown_rice_-_stonesoup_cropped.jpg",
+  "פסטה מבושלת": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Barilla_penne_2.jpg/250px-Barilla_penne_2.jpg",
+  "קוסקוס מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/%D9%85%D8%B3%D9%81%D9%88%D9%81_%D8%AA%D9%88%D9%86%D8%B3%D9%8A_%D8%A8%D8%A7%D9%84%D8%B1%D9%85%D8%A7%D9%86_%D9%88%D8%A7%D9%84%D8%B2%D8%A8%D9%8A%D8%A8.jpg/250px-%D9%85%D8%B3%D9%81%D9%88%D9%81_%D8%AA%D9%88%D9%86%D8%B3%D9%8A_%D8%A8%D8%A7%D9%84%D8%B1%D9%85%D8%A7%D9%86_%D9%88%D8%A7%D9%84%D8%B2%D8%A8%D9%8A%D8%A8.jpg",
+  "בורגול מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Bulgur.jpg/330px-Bulgur.jpg",
+  "פתיתים מבושלים": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Liat_Portal_for_Foodie_Disorder_-_Israeli_couscous_also_known_as_Ptitim_or_Ben-Gurion_rice.jpg/250px-Liat_Portal_for_Foodie_Disorder_-_Israeli_couscous_also_known_as_Ptitim_or_Ben-Gurion_rice.jpg",
+  "תפוח אדמה מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Patates.jpg/330px-Patates.jpg",
+  "בטטה מבושלת": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Ipomoea_batatas_006.JPG/330px-Ipomoea_batatas_006.JPG",
+  "לחם לבן": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Transparent_Slice_of_Sara_Lee_white_whole_grain_bread_in_the_Franklin_Farm_section_of_Oak_Hill%2C_Fairfax_County%2C_Virginia.png/250px-Transparent_Slice_of_Sara_Lee_white_whole_grain_bread_in_the_Franklin_Farm_section_of_Oak_Hill%2C_Fairfax_County%2C_Virginia.png",
+  "לחם מלא": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Vegan_no-knead_whole_wheat_bread_loaf%2C_September_2010.jpg/330px-Vegan_no-knead_whole_wheat_bread_loaf%2C_September_2010.jpg",
+  "פיתה": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Homemade_hummus_and_pita_03.jpg/250px-Homemade_hummus_and_pita_03.jpg",
+  "לחמנייה": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Basket_of_rolls.jpg/250px-Basket_of_rolls.jpg",
+  "לחמניה": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Basket_of_rolls.jpg/250px-Basket_of_rolls.jpg",
+  "שיבולת שועל יבשה": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Rolled_oats.jpg/250px-Rolled_oats.jpg",
+  "קורנפלקס": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Spoonful_of_cereal.jpg/250px-Spoonful_of_cereal.jpg",
+  "עגבנייה": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Tomato_je.jpg/250px-Tomato_je.jpg",
+  "עגבניה": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Tomato_je.jpg/250px-Tomato_je.jpg",
+  "מלפפון": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/ARS_cucumber.jpg/330px-ARS_cucumber.jpg",
+  "גזר": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Vegetable-Carrot-Bundle-wStalks.jpg/330px-Vegetable-Carrot-Bundle-wStalks.jpg",
+  "פלפל": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg/250px-Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg",
+  "פלפל אדום": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg/250px-Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg",
+  "פלפל ירוק": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg/250px-Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg",
+  "גמבה": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg/250px-Baby_Bell_pepper_%27%27Capsicum_annuum%27%27_.jpg",
+  "בצל": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Mixed_onions.jpg/250px-Mixed_onions.jpg",
+  "כרוב": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Cabbage_and_cross_section_on_white.jpg/330px-Cabbage_and_cross_section_on_white.jpg",
+  "ברוקולי מבושל": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Broccoli_and_cross_section_edit.jpg/330px-Broccoli_and_cross_section_edit.jpg",
+  "ברוקולי": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Broccoli_and_cross_section_edit.jpg/330px-Broccoli_and_cross_section_edit.jpg",
+  "כרובית מבושלת": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Chou-fleur_02.jpg/330px-Chou-fleur_02.jpg",
+  "כרובית": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Chou-fleur_02.jpg/330px-Chou-fleur_02.jpg",
+  "קישוא": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/CSA-Striped-Zucchini.jpg/330px-CSA-Striped-Zucchini.jpg",
+  "תירס": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/VegCorn.jpg/330px-VegCorn.jpg",
+  "אפונה": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Peas_in_pods_-_Studio.jpg/330px-Peas_in_pods_-_Studio.jpg",
+  "אבוקדו": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Persea_americana_fruit_2.JPG/330px-Persea_americana_fruit_2.JPG",
+  "בננה": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Bananavarieties.jpg/330px-Bananavarieties.jpg",
+  "תפוח": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/250px-Red_Apple.jpg",
+  "תפוז": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Oranges_-_whole-halved-segment.jpg/250px-Oranges_-_whole-halved-segment.jpg",
+  "מלון": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Canteloupe_and_cross_section.jpg/250px-Canteloupe_and_cross_section.jpg",
+  "ענבים": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Wine_grapes03.jpg/250px-Wine_grapes03.jpg",
+  "תות שדה": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg/330px-Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg",
+  "תות": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg/330px-Garden_strawberry_%28Fragaria_%C3%97_ananassa%29_single2.jpg",
+  "אגס": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Four_pears.jpg/250px-Four_pears.jpg",
+  "אפרסק": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Autumn_Red_peaches.jpg/250px-Autumn_Red_peaches.jpg",
+  "תמר מג'הול": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Medjool_dates_as_luxury_item.jpg/250px-Medjool_dates_as_luxury_item.jpg",
+  "תמר": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Medjool_dates_as_luxury_item.jpg/250px-Medjool_dates_as_luxury_item.jpg",
+  "תמרים": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Medjool_dates_as_luxury_item.jpg/250px-Medjool_dates_as_luxury_item.jpg",
+  "ביצה": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Chicken_Egg_without_Eggshell_5859.jpg/250px-Chicken_Egg_without_Eggshell_5859.jpg",
+  "ביצים": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Chicken_Egg_without_Eggshell_5859.jpg/250px-Chicken_Egg_without_Eggshell_5859.jpg",
+  "ביצה קשה": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Soft-boiled-egg.jpg/330px-Soft-boiled-egg.jpg",
+  "פרגית צלויה": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Liat_Portal_for_Foodie_Disorder_-_Homemade_grilled_chicken_thighs_with_rice_and_Israeli_salad.jpg/250px-Liat_Portal_for_Foodie_Disorder_-_Homemade_grilled_chicken_thighs_with_rice_and_Israeli_salad.jpg",
+  "שניצל מטוגן": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Breitenlesau_Krug_Br%C3%A4u_Schnitzel.JPG/330px-Breitenlesau_Krug_Br%C3%A4u_Schnitzel.JPG",
+  "בשר בקר טחון רזה": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Hackfleisch-1.jpg/250px-Hackfleisch-1.jpg",
+  "טונה במים": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Chicharros_en_escabeche.jpg/330px-Chicharros_en_escabeche.jpg",
+  "טונה": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Chicharros_en_escabeche.jpg/330px-Chicharros_en_escabeche.jpg",
+  "סלמון": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Sashimi_-_Maguro_Restaurant%2C_Bangna%2C_Bangkok_%2844856596864%29.jpg/330px-Sashimi_-_Maguro_Restaurant%2C_Bangna%2C_Bangkok_%2844856596864%29.jpg",
+  "טופו": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Japanese_SilkyTofu_%28Kinugoshi_Tofu%29.JPG/330px-Japanese_SilkyTofu_%28Kinugoshi_Tofu%29.JPG",
+  "עדשים מבושלות": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/3_types_of_lentil.png/330px-3_types_of_lentil.png",
+  "קוטג' 5%": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Cottage_Cheese.jpg/250px-Cottage_Cheese.jpg",
+  "גבינה לבנה 5%": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Skimmed_milk_quark.jpg/250px-Skimmed_milk_quark.jpg",
+  "יוגורט 3%": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Joghurt.jpg/250px-Joghurt.jpg",
+  "יוגורט": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Joghurt.jpg/250px-Joghurt.jpg",
+  "חלב 3%": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Glass_of_Milk_%2833657535532%29.jpg/330px-Glass_of_Milk_%2833657535532%29.jpg",
+  "חלב": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Glass_of_Milk_%2833657535532%29.jpg/330px-Glass_of_Milk_%2833657535532%29.jpg",
+  "גבינה צהובה": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Somerset-Cheddar.jpg/330px-Somerset-Cheddar.jpg",
+  "גבינה בולגרית 5%": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Feta_Cheese.jpg/330px-Feta_Cheese.jpg",
+  "שמן זית": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Oliven_V1.jpg/330px-Oliven_V1.jpg",
+  "טחינה גולמית": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Tahina.JPG/330px-Tahina.JPG",
+  "חומוס מוכן": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Lebanese_style_hummus.jpg/330px-Lebanese_style_hummus.jpg",
+  "חמאת בוטנים": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/2020-03-24_20_57_22_An_open_jar_of_Skippy_Creamy_Peanut_Butter_in_the_Dulles_section_of_Sterling%2C_Loudoun_County%2C_Virginia.jpg/330px-2020-03-24_20_57_22_An_open_jar_of_Skippy_Creamy_Peanut_Butter_in_the_Dulles_section_of_Sterling%2C_Loudoun_County%2C_Virginia.jpg",
+  "שקדים": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg/330px-Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg",
+  "דבש": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Runny_hunny.jpg/330px-Runny_hunny.jpg",
+  "קטשופ": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/French_Fries_with_Ketchup_02.jpg/250px-French_Fries_with_Ketchup_02.jpg",
+  "מיונז": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Mayonnaise_%281%29.jpg/250px-Mayonnaise_%281%29.jpg",
+  "אבקת חלבון": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Bodybuilding_supplement_high_protein_drink_mix_700g.jpg/250px-Bodybuilding_supplement_high_protein_drink_mix_700g.jpg"
 };
 
 /* last-ditch filter on whatever the search returns: anatomy plates, and the
    montage-style lead images that are unreadable at thumbnail size anyway */
 const BAD_IMG = /Genital|Vulva|Vagina|Penis|Anatom|Diversity|Collage|Montage|_composite/i;
 
-const pinned = name => PINNED[(name || "").trim()] || "";
+/* Reading .src on an <img> with an empty src attribute returns the PAGE url,
+   which is truthy - that bug is why an Open Food Facts product photo never
+   made it onto the card. Everything goes through these two now. */
+const shotSrc = () => $("shot").getAttribute("src") || "";
+function setShot(u) {
+  if (u) $("shot").setAttribute("src", u); else $("shot").removeAttribute("src");
+  $("shot").classList.toggle("blank", !u);
+}
+
+/* "פטריות, טריות" and "פלפל אדום, טרי" are the same foods as "פטריות" and
+   "פלפל אדום" - Open Food Facts writes them with a trailing qualifier. Try the
+   name as given, then without the qualifier, then without preparation words. */
+function nameKeys(name) {
+  const raw = (name || "").trim(), out = [];
+  const push = v => { v = (v || "").replace(/[\s,.\u05be-]+$/, "").trim(); if (v && !out.includes(v)) out.push(v); };
+  push(raw);
+  const head = raw.split(",")[0];
+  push(head); push(stripPrep(head)); push(stripPrep(raw));
+  return out;
+}
+function pinned(name) {
+  for (const k of nameKeys(name)) if (PINNED[k]) return PINNED[k];
+  return "";
+}
 
 async function wikiImage(term) {
   const r = await fetch(
@@ -1183,7 +1291,7 @@ async function wikiImage(term) {
 }
 
 async function autoImage(name) {
-  if (!name || $("shot").getAttribute("src")) return;
+  if (!name || shotSrc()) return;
   const token = ++imgToken;
   const clean = stripPrep(name);
   let src = pinned(clean) || pinned(name);
@@ -1193,7 +1301,7 @@ async function autoImage(name) {
   if (!src && clean && clean !== name) {
     try { src = await wikiImage(name); } catch {}
   }
-  if (token === imgToken && src && !$("shot").getAttribute("src")) $("shot").src = src;
+  if (token === imgToken && src && !shotSrc()) setShot(src);
 }
 
 /* Already-saved rows keep whatever picture they were given at the time, so
@@ -1201,17 +1309,32 @@ async function autoImage(name) {
    runs once per load: any stored photo that BAD_IMG rejects is swapped for the
    pinned photo when the name has one, and otherwise dropped so the row falls
    back to the neutral placeholder. */
+// A photo that came out of a Wikipedia SEARCH is a guess; a pinned photo is
+// a decision. So when a row holds a searched picture and its food has a pin
+// now, the pin wins. Pictures he chose himself (data:) and real product
+// shots from Open Food Facts are never touched.
+const SEARCHED = /^https:\/\/upload\.wikimedia\.org\//;
+function betterPhoto(cur, name) {
+  const pin = pinned(name);
+  if (cur && BAD_IMG.test(cur)) return pin;
+  if (!cur) return pin;                     // an empty row gets filled
+  if (pin && cur && SEARCHED.test(cur) && cur !== pin) return pin;
+  return cur;
+}
+
 function scrubImages() {
   let touched = false;
   for (const e of LOG) {
-    if (e.photo && BAD_IMG.test(e.photo)) { e.photo = pinned(e.name); touched = true; }
+    const nx = betterPhoto(e.photo, e.name);
+    if (nx !== e.photo) { e.photo = nx; touched = true; }
   }
   // store.set, not save() — save() also schedules a report push, and a picture
   // fix at boot is no reason to send one
   if (touched) store.set(LS_LOG, LOG);
   let prodTouched = false;
   for (const p of Object.values(PRODUCTS)) {
-    if (p.photo && BAD_IMG.test(p.photo)) { p.photo = pinned(p.name); prodTouched = true; }
+    const nx = betterPhoto(p.photo, p.name);
+    if (nx !== p.photo) { p.photo = nx; prodTouched = true; }
   }
   if (prodTouched) store.set(LS_PROD, PRODUCTS);
 }
@@ -1417,7 +1540,10 @@ async function onBarcode(code, photo) {
   $("p100pro").value = known ? known.pro : "";
   $("p100carb").value = known ? known.carb : "";
   $("p100fat").value = known ? known.fat : "";
-  $("shot").src = photo || (known && known.photo) || "";
+  // The camera frame is a snapshot of a barcode, not a picture of the food.
+  // It stays in `pending` so "השתמש בתמונה שצילמתי" can still use it, but it
+  // is never the automatic thumbnail any more.
+  setShot((known && known.photo) || "");
   $("grams").value = "";
   $("calcPreview").textContent = "הזן גרמים כדי לחשב";
   $("entry").classList.add("on");
@@ -1438,7 +1564,7 @@ async function onBarcode(code, photo) {
       if (!$("p100pro").value && off.pro !== "") $("p100pro").value = off.pro;
       if (!$("p100carb").value && off.carb !== "") $("p100carb").value = off.carb;
       if (!$("p100fat").value && off.fat !== "") $("p100fat").value = off.fat;
-      if (!$("shot").src && off.photo) $("shot").src = off.photo;
+      if (!shotSrc() && off.photo) setShot(off.photo);
       const complete = off.name && off.kcal !== "";
       $("foundTag").textContent = complete
         ? "✓ זוהה: " + off.name
@@ -1482,7 +1608,7 @@ function addEntry() {
     barcode: pending ? pending.barcode : "",
     name, grams,
     k100, pro100: num($("p100pro").value), carb100: num($("p100carb").value), fat100: num($("p100fat").value),
-    photo: $("shot").src && ($("shot").src.startsWith("data:") || $("shot").src.startsWith("https:")) ? $("shot").src : "",
+    photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "",
   };
   LOG.push(e);
   save();
@@ -1576,6 +1702,10 @@ $("log").addEventListener("click", e => {
     }
     return;
   }
+  // a tap on the thumbnail replaces that row's picture instead of opening the
+  // grams editor
+  const pic = e.target.dataset && e.target.dataset.pic;
+  if (pic) { picTarget = pic; $("picInput").click(); return; }
   if (e.target.dataset && e.target.dataset.esave) { saveEditedGrams(); return; }
   if (e.target.dataset && e.target.dataset.ecancel) { editId = null; renderLog(); return; }
   if (e.target.closest("input")) return;
@@ -1670,6 +1800,82 @@ window.addEventListener("online", () => { markConnection(); warmImages(); });
 window.addEventListener("offline", markConnection);
 markConnection();
 setTimeout(warmImages, 2000);   // after first paint, never in its way
+setTimeout(fillMissingImages, 2600);
+
+/* ---------------- choosing a picture by hand ----------------
+   Whatever the automatic lookup decides, he can always override it: the החלף
+   button on the entry card, or a tap on any thumbnail in the log. The file is
+   downscaled to a 256px JPEG first - localStorage is a few megabytes and a
+   phone photo straight off the camera would blow through it in a dozen rows. */
+let picTarget = null;   // null = the entry card, otherwise a log entry id
+
+function toThumb(file, px = 256, q = 0.82) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error("read"));
+    fr.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error("decode"));
+      im.onload = () => {
+        const sc = Math.min(1, px / Math.max(im.width, im.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.width * sc));
+        c.height = Math.max(1, Math.round(im.height * sc));
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", q));
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+async function pickedPicture(file) {
+  let data;
+  try { data = await toThumb(file); }
+  catch { msg(picTarget ? "scanMsg" : "entryMsg", "לא הצלחתי לקרוא את התמונה הזאת.", "err"); return; }
+  if (picTarget == null) { setShot(data); return; }
+  const e = LOG.find(x => x.id === picTarget);
+  if (!e) return;
+  e.photo = data;
+  // teach the product memory too, so the next time he logs it the picture is there
+  if (e.barcode && PRODUCTS[e.barcode]) { PRODUCTS[e.barcode].photo = data; store.set(LS_PROD, PRODUCTS); }
+  store.set(LS_LOG, LOG);
+  renderLog();
+  msg("scanMsg", "התמונה הוחלפה.", "ok");
+}
+
+$("picBtn").addEventListener("click", () => { picTarget = null; $("picInput").click(); });
+$("picInput").addEventListener("change", e => {
+  if (e.target.files[0]) pickedPicture(e.target.files[0]);
+  e.target.value = "";
+});
+
+/* Rows whose food has no pinned picture still deserve one. Once, in the
+   background and only while online, ask Wikipedia for each distinct missing
+   name and keep whatever comes back - the same filtered lookup the entry card
+   uses, so the blocklist still applies. Names that come back empty are
+   remembered as tried, so this does not re-ask on every launch. */
+const LS_TRIED = "fl_imgtried";
+async function fillMissingImages() {
+  if (!navigator.onLine) return;
+  const tried = new Set(store.get(LS_TRIED, []));
+  const want = new Map();
+  for (const e of LOG) if (!e.photo && e.name && !tried.has(e.name)) want.set(e.name, 1);
+  for (const p of Object.values(PRODUCTS)) if (!p.photo && p.name && !tried.has(p.name)) want.set(p.name, 1);
+  if (!want.size) return;
+  let changed = false;
+  for (const name of [...want.keys()].slice(0, 25)) {
+    let src = "";
+    try { src = await wikiImage(stripPrep(name.split(",")[0]) || name); } catch {}
+    tried.add(name);
+    if (!src) continue;
+    for (const e of LOG) if (!e.photo && e.name === name) { e.photo = src; changed = true; }
+    for (const p of Object.values(PRODUCTS)) if (!p.photo && p.name === name) { p.photo = src; changed = true; }
+  }
+  store.set(LS_TRIED, [...tried]);
+  if (changed) { store.set(LS_LOG, LOG); store.set(LS_PROD, PRODUCTS); renderLog(); warmImages(); }
+}
 
 scrubImages();
 renderLog();
