@@ -1134,32 +1134,82 @@ function openProduct(r) {
    When a product arrives with no picture (a built-in staple, a typed-in
    product, an OFF hit without one), Hebrew Wikipedia fills the gap: its API
    allows browser CORS (origin=*) and its thumbnails hotlink freely.
-   Preparation words are stripped first so "אורז לבן מבושל" searches "אורז לבן". */
+   Preparation words are stripped first so "אורז לבן מבושל" searches "אורז לבן".
+
+   THE PREP WORDS ARE STRIPPED PER WHOLE WORD, NEVER AS SUBSTRINGS. Doing it
+   with a plain /טרי/g cost us a real incident: "פטריות" contains טרי, so the
+   stripper turned it into "פות" — a vulgar word — and Hebrew Wikipedia duly
+   answered with the anatomy article's lead image, which then sat in the food
+   log. Splitting on spaces and dropping only exact matches is the fix; keep it
+   that way. PINNED and BAD_IMG below are the second and third lines of defence. */
 let imgToken = 0;
+
+/* preparation words, matched as complete words only */
+const PREP = /^(מבושל(ת|ים|ות)?|צלוי(ה|ות|ים)?|מטוגן(ת|ים)?|אפוי(ה|ים)?|קשה|טרי(ה|ים)?|גולמי(ת)?|יבש(ה|ים)?)$/;
+const stripPrep = name => (name || "").split(/\s+/).filter(w => w && !PREP.test(w)).join(" ").trim();
+
+/* hand-picked photos: the wiki search for these lands on an article that is
+   accurate and still unusable as a food thumbnail */
+const PINNED = {
+  "פטריות": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+  "פטרייה": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+  "פטריה":  "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Portobello_mushrooms.jpg/250px-Portobello_mushrooms.jpg",
+};
+
+/* last-ditch filter on whatever the search returns: anatomy plates, and the
+   montage-style lead images that are unreadable at thumbnail size anyway */
+const BAD_IMG = /Genital|Vulva|Vagina|Penis|Anatom|Diversity|Collage|Montage|_composite/i;
+
+const pinned = name => PINNED[(name || "").trim()] || "";
 
 async function wikiImage(term) {
   const r = await fetch(
     "https://he.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
-    "&prop=pageimages&piprop=thumbnail&pithumbsize=240&generator=search&gsrlimit=1" +
+    "&prop=pageimages&piprop=thumbnail&pithumbsize=240&generator=search&gsrlimit=5" +
     "&gsrsearch=" + encodeURIComponent(term));
   if (!r.ok) return "";
   const d = await r.json();
   const pages = d.query && d.query.pages ? Object.values(d.query.pages) : [];
-  return (pages.length && pages[0].thumbnail && pages[0].thumbnail.source) || "";
+  pages.sort((a, b) => (a.index || 0) - (b.index || 0));
+  for (const p of pages) {
+    const src = p.thumbnail && p.thumbnail.source;
+    if (src && !BAD_IMG.test(src)) return src;
+  }
+  return "";
 }
 
 async function autoImage(name) {
   if (!name || $("shot").getAttribute("src")) return;
   const token = ++imgToken;
-  const clean = name
-    .replace(/מבושל(ת|ים|ות)?|צלוי(ה|ות|ים)?|מטוגן(ת|ים)?|אפוי(ה|ים)?|קשה|טרי(ה|ים)?|גולמי(ת)?|יבש(ה|ים)?/g, "")
-    .replace(/\s+/g, " ").trim();
-  let src = "";
-  try { src = await wikiImage(clean || name); } catch {}
+  const clean = stripPrep(name);
+  let src = pinned(clean) || pinned(name);
+  if (!src) {
+    try { src = await wikiImage(clean || name); } catch {}
+  }
   if (!src && clean && clean !== name) {
     try { src = await wikiImage(name); } catch {}
   }
   if (token === imgToken && src && !$("shot").getAttribute("src")) $("shot").src = src;
+}
+
+/* Already-saved rows keep whatever picture they were given at the time, so
+   fixing the picker alone leaves the bad thumbnail sitting in the log. This
+   runs once per load: any stored photo that BAD_IMG rejects is swapped for the
+   pinned photo when the name has one, and otherwise dropped so the row falls
+   back to the neutral placeholder. */
+function scrubImages() {
+  let touched = false;
+  for (const e of LOG) {
+    if (e.photo && BAD_IMG.test(e.photo)) { e.photo = pinned(e.name); touched = true; }
+  }
+  // store.set, not save() — save() also schedules a report push, and a picture
+  // fix at boot is no reason to send one
+  if (touched) store.set(LS_LOG, LOG);
+  let prodTouched = false;
+  for (const p of Object.values(PRODUCTS)) {
+    if (p.photo && BAD_IMG.test(p.photo)) { p.photo = pinned(p.name); prodTouched = true; }
+  }
+  if (prodTouched) store.set(LS_PROD, PRODUCTS);
 }
 
 /* ---------------- product lookup ----------------
@@ -1583,6 +1633,7 @@ if ("serviceWorker" in navigator && location.hostname.endsWith("github.io")) {
 
 window.addEventListener("pagehide", stopScan);
 
+scrubImages();
 renderLog();
 if (PROFILE.autoScan !== false &&
     window.isSecureContext && navigator.mediaDevices && "BarcodeDetector" in window) {
