@@ -7,9 +7,13 @@ self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
+// Only ever delete OUR OWN old caches. Scan & Log is a second app on this same
+// origin with its own worker; deleting every cache that is not mine wiped its
+// offline store on every deploy of this page - and this page deploys nightly.
+const MINE = /^publishcenter-/;
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    .then(ks => Promise.all(ks.filter(k => MINE.test(k) && k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
