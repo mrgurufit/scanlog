@@ -1344,31 +1344,75 @@ function scrubImages() {
    real label beat any database), then Open Food Facts — 8,000+ Israeli
    products with Hebrew names. Only possible now that the app is served
    top-level; the old artifact sandbox blocked every external request. */
-async function lookupOFF(code) {
+/* Identifying a product from its barcode.
+
+   "Partial" used to mean whatever sat in product_name_he / product_name, and
+   nothing else was even asked for. Open Food Facts spreads the name across a
+   dozen fields and usually only one is filled, so read them all and build a
+   real name out of base + brand + size ("במבה" -> "במבה אסם 80 ג").
+
+   Two more things that turn a miss into a hit: the same product is often
+   stored under the barcode's OTHER length (a 12-digit UPC lives as a 13-digit
+   EAN with a leading zero), and non-grocery items live in the sibling
+   databases, which are the same API on the same terms. */
+const OFF_HOSTS = ["world.openfoodfacts.org", "world.openproductsfacts.org",
+                   "world.openbeautyfacts.org", "world.openpetfoodfacts.org"];
+const OFF_FIELDS = ["product_name", "product_name_he", "product_name_en", "generic_name",
+                    "generic_name_he", "generic_name_en", "abbreviated_product_name",
+                    "brands", "quantity", "image_small_url", "image_url", "nutriments"].join(",");
+
+function codeVariants(code) {
+  const c = String(code || "").trim(), out = [c];
+  if (/^\d{12}$/.test(c)) out.push("0" + c);
+  else if (/^0\d{12}$/.test(c)) out.push(c.slice(1));
+  else if (/^\d{8}$/.test(c)) out.push(c.padStart(13, "0"));
+  return out;
+}
+
+function offName(p) {
+  const first = (...v) => v.map(x => (x || "").trim()).find(Boolean) || "";
+  const base = first(p.product_name_he, p.product_name, p.product_name_en,
+                     p.generic_name_he, p.generic_name, p.generic_name_en,
+                     p.abbreviated_product_name);
+  if (!base) return "";
+  const brand = (p.brands || "").split(",")[0].trim();
+  const qty = (p.quantity || "").trim();
+  let out = base;
+  if (brand && !base.includes(brand)) out += " " + brand;
+  if (qty && !base.includes(qty)) out += " " + qty;
+  return out.trim();
+}
+
+async function offFetch(host, code) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 6000);
   try {
-    const r = await fetch(
-      "https://world.openfoodfacts.org/api/v2/product/" + encodeURIComponent(code) +
-      ".json?fields=product_name,product_name_he,brands,image_small_url,nutriments",
-      { signal: ctl.signal });
-    if (!r.ok) return null;
-    const d = await r.json();
+    const r = await fetch("https://" + host + "/api/v2/product/" +
+      encodeURIComponent(code) + ".json?fields=" + OFF_FIELDS, { signal: ctl.signal });
     noteNet(true);
-    if (d.status !== 1 || !d.product) return null;
-    const p = d.product, n = p.nutriments || {};
-    const name = p.product_name_he || p.product_name || "";
-    if (!name && n["energy-kcal_100g"] == null) return null;
-    return {
-      name,
-      kcal: n["energy-kcal_100g"] ?? "",
-      pro:  n.proteins_100g ?? "",
-      carb: n.carbohydrates_100g ?? "",
-      fat:  n.fat_100g ?? "",
-      photo: p.image_small_url || "",
-    };
+    if (!r.ok) return null;                 // 404 = simply not in this database
+    const d = await r.json();
+    return (d.status === 1 && d.product) ? d.product : null;
   } catch { noteNet(false); return null; }
   finally { clearTimeout(t); }
+}
+
+async function lookupOFF(code) {
+  let p = null;
+  for (const c of codeVariants(code)) { p = await offFetch(OFF_HOSTS[0], c); if (p) break; }
+  if (!p) for (const h of OFF_HOSTS.slice(1)) { p = await offFetch(h, code); if (p) break; }
+  if (!p) return null;
+  const n = p.nutriments || {};
+  const name = offName(p);
+  if (!name && n["energy-kcal_100g"] == null) return null;
+  return {
+    name,
+    kcal: n["energy-kcal_100g"] ?? "",
+    pro:  n.proteins_100g ?? "",
+    carb: n.carbohydrates_100g ?? "",
+    fat:  n.fat_100g ?? "",
+    photo: p.image_small_url || p.image_url || "",
+  };
 }
 
 /* ---------------- nutrition-label OCR ----------------
