@@ -201,6 +201,16 @@
     border-radius: 10px; padding: 10px; font-size: 14px; line-height: 1.6; font-family: inherit; resize: vertical; margin-bottom: 8px;
   }
   .dfmsg { font-size: 12.5px; min-height: 16px; margin-top: 7px; }
+  #dfPubBar { display: flex; gap: 7px; flex-wrap: wrap; margin: 4px 0 10px; }
+  #dfPubBar:empty { margin: 0; }
+  .pubchip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .pubchip.ok { color: var(--green); border-color: #1d5c39; background: #12301f; }
+  .pubchip.wait { color: var(--accent); border-color: #6b5a12; background: #2a2410; }
+  .pubchip.err { color: #ff8f8f; border-color: #6b2b2b; background: #3a1c1c; }
   .dfmsg.ok { color: var(--green); } .dfmsg.err { color: var(--red); } .dfmsg.pend { color: var(--accent); }
   .dfcopy { margin-bottom: 8px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; }
   .dfcopy summary { cursor: pointer; font-weight: 700; font-size: 13.5px; }
@@ -544,6 +554,7 @@
       <div class="dfstep" id="dfS4">
         <div class="dfh"><span class="dfnum">4</span> פרסום</div>
         <div id="dfCopies"></div>
+        <div id="dfPubBar"></div>
         <button id="dfPublishBtn" class="b-pub wide" style="width:100%">🚀 פרסם בכל הפלטפורמות</button>
         <div class="dfmsg" id="dfPubMsg"></div>
       </div>
@@ -2057,6 +2068,18 @@ async function dfPoll() {
     if (preview && preview.startsWith("http")) {
       $("dfPreviewWrap").style.display = "block";
       if ($("dfPreview").src !== preview) $("dfPreview").src = preview;
+    }
+    const pubState = (parts[7] || "").trim();
+    if (pubState.startsWith("pub:")) {
+      const NAMES = { yt: "יוטיוב", ig: "אינסטגרם", fb: "פייסבוק", tt: "טיקטוק" };
+      const ICONS = { ok: "✓", wait: "⏳", err: "✗" };
+      $("dfPubBar").innerHTML = pubState.slice(4).split(",").map(pair => {
+        const [k, v] = pair.split("=");
+        if (!NAMES[k]) return "";
+        return `<span class="pubchip ${v === "ok" ? "ok" : v === "err" ? "err" : "wait"}">${ICONS[v] || "⏳"} ${NAMES[k]}</span>`;
+      }).join("");
+    } else {
+      $("dfPubBar").innerHTML = "";
     }
     if (percent >= 100 && stage.includes("פורסם")) dfStopPoll();
     else if (percent > 0) dfStartPoll();
