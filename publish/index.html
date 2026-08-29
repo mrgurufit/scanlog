@@ -613,10 +613,12 @@
         <div id="dfPubBar"></div>
         <button id="dfPublishBtn" class="b-pub wide" style="width:100%">🚀 פרסם בכל הפלטפורמות</button>
         <div class="dfmsg" id="dfPubMsg"></div>
+        <button id="dfSiteBtn" class="b-copy wide" style="width:100%;margin-top:8px">🌐 פרסם באתר mrgurufit.com</button>
+        <div class="dfmsg" id="dfSiteMsg"></div>
       </div>
 
       <div class="perffoot">
-        הכפתורים כאן שולחים בקשות לקלוד: "צור" מתחיל את העריכה, ההערות מגיעות אליו לפני גרסה מתוקנת, ו"פרסם" משגר לכל ארבע הפלטפורמות דרך זרניו כולל אימות. מד ההתקדמות מתעדכן בזמן שקלוד עובד.
+        הכפתורים כאן שולחים בקשות לקלוד: "צור" מתחיל את העריכה, ההערות מגיעות אליו לפני גרסה מתוקנת, "פרסם" משגר לכל ארבע הפלטפורמות דרך זרניו כולל אימות, ו"פרסם באתר" מוסיף את הפרק לוולוג ב-mrgurufit.com (אחרי שיוטיוב באוויר, כי הנגן באתר צריך את המזהה משם). מד ההתקדמות מתעדכן בזמן שקלוד עובד.
       </div>
     </div>
   </div><!-- /viewDay -->
@@ -2227,7 +2229,7 @@ async function dfPoll() {
     }
     const pubState = (parts[7] || "").trim();
     if (pubState.startsWith("pub:")) {
-      const NAMES = { yt: "יוטיוב", ig: "אינסטגרם", fb: "פייסבוק", tt: "טיקטוק" };
+      const NAMES = { yt: "יוטיוב", ig: "אינסטגרם", fb: "פייסבוק", tt: "טיקטוק", site: "האתר" };
       const ICONS = { ok: "✓", wait: "⏳", err: "✗" };
       $("dfPubBar").innerHTML = pubState.slice(4).split(",").map(pair => {
         const [k, v] = pair.split("=");
@@ -2302,6 +2304,15 @@ $("dfPublishBtn").addEventListener("click", async () => {
     dfMsg("dfPubMsg", "בקשת הפרסום נשלחה ✓ קלוד מפרסם ומאמת בכל פלטפורמה — הסטטוס יתעדכן למעלה", "ok");
     dfStartPoll();
   } catch (e) { dfMsg("dfPubMsg", "השליחה נכשלה: " + e.message, "err"); }
+});
+$("dfSiteBtn").addEventListener("click", async () => {
+  if (!confirm("להעלות את הפרק לאתר mrgurufit.com?")) return;
+  dfMsg("dfSiteMsg", "שולח בקשה…", "pend");
+  try {
+    await dfSend("publish_site");
+    dfMsg("dfSiteMsg", "נשלח ✓ קלוד מוסיף את הפרק לוולוג ומעלה את האתר", "ok");
+    dfStartPoll();
+  } catch (e) { dfMsg("dfSiteMsg", "השליחה נכשלה: " + e.message, "err"); }
 });
 
 /* ---------------- tabs ---------------- */
