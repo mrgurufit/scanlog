@@ -1399,7 +1399,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.33";
+const APP_BUILD = "2026.08.29.35";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1427,6 +1427,49 @@ async function showDbg() {
   } catch (e) {
     box.textContent = T("אבחון לא זמין בגרסה הזו: ") + ((e && e.message) || e);
   }
+}
+
+
+/* ---------------- shared product cache ----------------
+   Every product anyone identifies is contributed here, so the next person who
+   scans that barcode gets it instantly - and offline afterwards, because the
+   answer is written into this phone's own product memory the moment it lands. */
+const SHARED_LOOKUP = "https://hook.us2.make.com/dvnhts66ozhjd7auedcj9xn18o11kjp0";
+const SHARED_PUT = "https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo";
+
+async function sharedLookup(code) {
+  if (!code) return null;
+  try {
+    const r = await fetch(SHARED_LOOKUP + "?barcode=" + encodeURIComponent(code), { cache: "no-store" });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.name) return null;
+    return {
+      name: d.name,
+      kcal: parseFloat(d.kcal) || 0,
+      pro: parseFloat(d.pro) || 0,
+      carb: parseFloat(d.carb) || 0,
+      fat: parseFloat(d.fat) || 0,
+      photo: d.photo || "",
+    };
+  } catch { return null; }
+}
+
+function sharedContribute(code, p) {
+  if (!code || !p || !p.name) return;
+  try {
+    fetch(SHARED_PUT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        barcode: code, name: p.name,
+        kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0,
+        photo: (p.photo || "").startsWith("http") ? p.photo : "",
+        src: p.src || "app",
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch { /* contributing must never break a scan */ }
 }
 
 /* ---------------- native bridge (Android APK only) ----------------
@@ -2621,6 +2664,28 @@ async function onBarcode(code, photo) {
   // moved on to a different scan meanwhile
   if (!known && code) {
     $("foundTag").textContent = T("מחפש במאגר העולמי…");
+
+    // someone has already identified this barcode - take theirs and remember it
+    // on this phone, so it works offline from now on
+    const shared = await sharedLookup(code);
+    if (!pending || pending.barcode !== code) return;
+    if (shared) {
+      if (!$("pName").value) $("pName").value = shared.name;
+      if (!$("p100kcal").value && shared.kcal) $("p100kcal").value = shared.kcal;
+      if (!$("p100pro").value && shared.pro) $("p100pro").value = shared.pro;
+      if (!$("p100carb").value && shared.carb) $("p100carb").value = shared.carb;
+      if (!$("p100fat").value && shared.fat) $("p100fat").value = shared.fat;
+      if (!shotSrc() && shared.photo) setShot(shared.photo);
+      PRODUCTS[code] = { name: shared.name, kcal: shared.kcal, pro: shared.pro,
+                         carb: shared.carb, fat: shared.fat, photo: shared.photo || "" };
+      store.set(LS_PROD, PRODUCTS);
+      $("foundTag").textContent = T("✓ זוהה:") + " " + shared.name;
+      $("foundTag").className = "foundtag known";
+      preview();
+      $("grams").focus();
+      return;
+    }
+
     const off = await lookupOFF(code);
     if (!pending || pending.barcode !== code) return;
     if (off) {
@@ -2638,6 +2703,11 @@ async function onBarcode(code, photo) {
       preview();
       $("grams").focus();
       if (off.name) autoImage(off.name);
+      // pass it on: the next person who scans this gets it without the round trip
+      if (complete) sharedContribute(code, {
+        name: off.name, kcal: off.kcal, pro: off.pro, carb: off.carb, fat: off.fat,
+        photo: off.photo, src: "off",
+      });
     } else {
       $("foundTag").textContent = T("לא במאגר · ") + code;
       $("foundTag").className = "foundtag newp";
@@ -2682,6 +2752,7 @@ function addEntry() {
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
     store.set(LS_PROD, PRODUCTS);
+    sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
