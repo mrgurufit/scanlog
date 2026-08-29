@@ -725,20 +725,37 @@ async function ensureDetector() {
 
 let hcLastSync = 0;
 
+function hcConnectedUI() {
+  $("hcBtn").textContent = "🔄 רענן מ-Health Connect";
+}
+
 async function hcInit() {
   const hb = HB(); if (!hb) return;
+  $("hcRow").style.display = "flex";
   try {
     const a = await hb.available();
-    if (!a || !a.healthConnect) return;
-    $("hcRow").style.display = "flex";
-    if (localStorage.getItem("fl_hc")) { $("hcBtn").style.display = "none"; hcSync(true); }
-  } catch { /* not fatal - the app works without it */ }
+    if (!a || !a.healthConnect) {
+      $("hcState").textContent = "Health Connect לא מותקן במכשיר הזה";
+      return;
+    }
+    if (localStorage.getItem("fl_hc")) {
+      hcConnectedUI();
+      $("hcState").textContent = "מחובר · מרענן…";
+      hcSync(true);
+    }
+  } catch { $("hcState").textContent = "בדיקת Health Connect נכשלה"; }
 }
 
 function hcDone() {
   localStorage.setItem("fl_hc", "1");
-  $("hcBtn").style.display = "none";
+  hcConnectedUI();
+  $("hcState").textContent = "מחובר · מרענן…";
   hcSync(true);
+}
+
+function hcTap() {
+  if (localStorage.getItem("fl_hc")) hcSync(true);
+  else hcConnect();
 }
 
 async function hcConnect() {
@@ -791,13 +808,24 @@ async function hcSync(force) {
     if (r.activeKcal != null) bits.push("שריפה " + Math.round(r.activeKcal));
     if (r.steps != null) bits.push(Number(r.steps).toLocaleString("he-IL") + " צעדים");
     if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
-    $("hcState").textContent = bits.length ? "מסונכרן ✓ " + bits.join(" · ") : "מסונכרן ✓";
+    $("hcState").textContent = bits.length
+      ? "מסונכרן ✓ " + bits.join(" · ")
+      : "מחובר ✓ אין עדיין נתונים היום — ודא שהשעון מסנכרן ל-Health Connect";
     if (changed) {
       store.set(LS_DAY, DAYDATA);
       scheduleAutoPush();
       renderTotals();
     }
-  } catch { /* sync is a bonus; the manual fields keep working */ }
+  } catch {
+    const g = await HB().grantedPermissions().catch(() => null);
+    if (g && !g.granted) {
+      localStorage.removeItem("fl_hc");
+      $("hcBtn").textContent = "🩺 חבר ל-Health Connect";
+      $("hcState").textContent = "ההרשאות הוסרו — חבר מחדש";
+    } else {
+      $("hcState").textContent = "הקריאה מ-Health Connect נכשלה — לחץ רענן";
+    }
+  }
 }
 
 /* every added item is also written to Health Connect as a nutrition record */
@@ -1875,7 +1903,7 @@ $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
-$("hcBtn").addEventListener("click", hcConnect);
+$("hcBtn").addEventListener("click", hcTap);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) hcSync(); });
 hcInit();
 function calScroll(dir) {
