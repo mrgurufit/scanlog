@@ -390,7 +390,7 @@
         <input type="number" id="wIn" inputmode="decimal" step="0.1">
       </div>
       <div class="efield">
-        <label for="actIn">שרפת באימון (קק"ל)</label>
+        <label for="actIn">נשרף היום סה"כ (צעדים + אימון)</label>
         <input type="number" id="actIn" inputmode="numeric" placeholder="0">
       </div>
     </div>
@@ -512,7 +512,7 @@ function renderEnergy(kcalIn) {
     : `<b class="sur">עודף ${e.bal.toLocaleString("he-IL")}</b>`;
   $("ebal").innerHTML =
     `<span class="dim">יצא:</span> BMR ${e.bmr.toLocaleString("he-IL")}` +
-    (e.act ? ` + אימון ${e.act.toLocaleString("he-IL")}` : "") +
+    (e.act ? ` + פעילות ${e.act.toLocaleString("he-IL")}` : "") +
     ` = <b>${e.out.toLocaleString("he-IL")}</b>` +
     ` &nbsp;·&nbsp; <span class="dim">נכנס:</span> <b>${e.in.toLocaleString("he-IL")}</b>` +
     ` &nbsp;·&nbsp; ${balTxt}`;
@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.15";
+const APP_BUILD = "2026.08.29.16";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -847,29 +847,23 @@ async function hcSync(force) {
       const w = Math.round(r.weightKg * 10) / 10;
       if (d.weight !== w) { d.weight = w; changed = true; }
     }
-    // ONLY Samsung's own numbers count (Ido, 2026-08-29). Priority:
-    // 1) measured activity/workout calories, 2) total minus SAMSUNG's own
-    // BMR record, 3) total minus the resting rate visible in its overnight
-    // chunks. Our BMR is never used here - it ran ~100 kcal hot.
-    let workout = Math.round(Math.max(r.workoutKcal || 0, r.activeKcal || 0));
-    if (!workout && r.totalKcal > 0 && r.samsungBmrKcalDay) {
-      const dayFrac = Math.min(1, (Date.now() - dayStart.getTime()) / 86400000);
-      workout = Math.max(0, Math.round(r.totalKcal - r.samsungBmrKcalDay * dayFrac));
-    }
-    if (!workout && r.activityEstKcal != null) workout = Math.round(r.activityEstKcal);
-    workout = workout || null;
+    // IDO'S FORMULA (2026-08-29): burned today = steps-kcal + workout-kcal.
+    // steps-kcal = steps x weight x 0.00048, calibrated on his own numbers
+    // (899 steps = 46 kcal at ~105 kg). Steps inside a workout session are
+    // excluded so a StairMaster session never counts twice. Steps come from
+    // the biggest single source (the deduped aggregate drops a writer).
+    const origins = Object.values(r.stepsByOrigin || {}).map(Number).filter(isFinite);
+    const stepsBest = Math.max(Number(r.steps) || 0, ...(origins.length ? origins : [0]));
+    const freeSteps = Math.max(0, stepsBest - (Number(r.sessionSteps) || 0));
+    const wNow = dayEnergy(today, 0).w || 105;
+    const stepsKcal = Math.round(freeSteps * wNow * 0.00048);
+    const workoutKcal = Math.round(r.workoutKcal || 0);
+    const workout = (stepsKcal + workoutKcal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
-    if (workout) bits.push("פעילות " + workout + ' קק"ל');
-    if (r.steps != null || r.stepsByOrigin) {
-      // two writers (phone + watch) overlap and the deduped aggregate picks
-      // wrong; the biggest single source is Samsung's own merged stream and
-      // matches what Samsung Health displays
-      const origins = Object.values(r.stepsByOrigin || {}).map(Number).filter(isFinite);
-      const best = Math.max(Number(r.steps) || 0, ...(origins.length ? origins : [0]));
-      if (best > 0) bits.push(best.toLocaleString("he-IL") + " צעדים");
-    }
+    if (workout) bits.push('נשרף ' + workout + ' קק"ל' + (workoutKcal ? ' (צעדים ' + stepsKcal + ' + אימון ' + workoutKcal + ')' : ''));
+    if (stepsBest > 0) bits.push(stepsBest.toLocaleString("he-IL") + " צעדים");
     if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
     $("hcState").textContent = bits.length
       ? "מסונכרן ✓ " + bits.join(" · ")
