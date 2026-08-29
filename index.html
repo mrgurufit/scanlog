@@ -250,6 +250,16 @@
   #ob p { font-size:14px; line-height:1.6; color:#c2cad8; margin:0 0 10px; }
   #ob .obsmall { font-size:12.5px; color:var(--muted); }
   #ob .obart { display:flex; justify-content:center; margin:14px 0 4px; }
+  .oblang { display:flex; gap:7px; justify-content:center; margin:2px 0 12px; }
+  .oblangb {
+    padding:7px 16px; border-radius:999px; font-size:13px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted);
+  }
+  .oblangb.on { background:#241a0e; border-color:var(--accent); color:var(--accent); }
+  .obback {
+    width:100%; margin-top:8px; padding:11px; border:0; border-radius:12px;
+    background:var(--panel2); color:var(--muted); font-size:13.5px; font-family:inherit;
+  }
   .obdots { display:flex; gap:6px; justify-content:center; margin-bottom:6px; }
   .obdots i { width:22px; height:4px; border-radius:2px; background:#252d3c; }
   .obdots i.on { background:var(--accent); }
@@ -449,6 +459,10 @@
     <div class="obdots"><i></i><i></i><i></i><i></i></div>
 
     <section class="obstep" data-step="0">
+      <div class="oblang">
+        <button type="button" class="oblangb" id="obLangEn">English</button>
+        <button type="button" class="oblangb" id="obLangHe">עברית</button>
+      </div>
       <div class="obart">
         <svg viewBox="0 0 120 120" width="104" height="104" aria-hidden="true">
           <rect x="14" y="20" width="92" height="80" rx="14" fill="#12161f" stroke="#2a3244"/>
@@ -481,6 +495,7 @@
       </div>
       <div class="oberr" id="obErr1"></div>
       <button class="obnext" data-go="2">המשך ←</button>
+      <button type="button" class="obback" data-back="0">→ חזרה</button>
     </section>
 
     <section class="obstep" data-step="2" hidden>
@@ -494,6 +509,7 @@
       <div class="obbank">הבנק שלך: <b id="obBank">100,000</b> קלוריות לשרוף</div>
       <p class="obsmall">אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.</p>
       <button class="obnext" data-go="3">המשך ←</button>
+      <button type="button" class="obback" data-back="1">→ חזרה</button>
     </section>
 
     <section class="obstep" data-step="3" hidden>
@@ -558,6 +574,7 @@
       </div>
 
       <button class="obnext" data-go="done">סיימתי, קדימה לסריקה ←</button>
+      <button type="button" class="obback" data-back="2">→ חזרה</button>
       <button class="obskip" data-go="done">דלג</button>
     </section>
   </div>
@@ -701,6 +718,7 @@
    already seen. Typing a product's label values once teaches it
    forever.                                                        */
 const I18N = {
+  "→ חזרה": "← Back",
   "🔥 נותרו": "🔥",
   "קק\"ל בבנק": "kcal left in the bank",
   "נשרפו": "burned",
@@ -1381,7 +1399,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.30";
+const APP_BUILD = "2026.08.29.31";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1655,6 +1673,7 @@ function hcWriteEntry(e) {
 /* in the APK the Google scan sheet replaces the in-page camera loop
    (the Android WebView has no BarcodeDetector) */
 async function nativeScan() {
+  ovPush();
   $("cam").classList.add("on");
   document.body.style.overflow = "hidden";
   $("video").classList.add("off");
@@ -1693,6 +1712,7 @@ function camDiagnosis() {
 }
 
 async function startScan() {
+  ovPush();
   msg("scanMsg", "");
   $("diag").textContent = "";
   // the window opens regardless - if the camera fails, the name search and
@@ -2713,6 +2733,7 @@ $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("setBtn").addEventListener("click", () => {
+  ovPush();
   $("setModal").classList.add("on");
   document.body.style.overflow = "hidden";
 });
@@ -2720,7 +2741,7 @@ function closeSettings() {
   $("setModal").classList.remove("on");
   document.body.style.overflow = "";
 }
-$("setClose").addEventListener("click", closeSettings);
+$("setClose").addEventListener("click", () => { closeSettings(); ovDrop(); });
 $("setModal").addEventListener("click", e => { if (e.target === $("setModal")) closeSettings(); });
 $("bankWrap").addEventListener("click", bankSetup);
 $("hcBtn").addEventListener("click", hcTap);
@@ -2877,6 +2898,35 @@ document.querySelectorAll(".obkgb").forEach(b => {
     obRenderKg();
   });
 });
+document.querySelectorAll(".obback").forEach(b => {
+  b.addEventListener("click", () => obShow(Number(b.dataset.back)));
+});
+document.getElementById("obLang" + (LANG === "he" ? "He" : "En")).classList.add("on");
+$("obLangEn").addEventListener("click", () => { if (LANG !== "en") setLang("en"); });
+$("obLangHe").addEventListener("click", () => { if (LANG !== "he") setLang("he"); });
+
+/* The phone's Back button should step out of whatever is open - the scanner,
+   the entry card, settings - instead of closing the app. Each opener pushes a
+   history entry; Back consumes it and closes the top layer. */
+let ovGuards = 0;
+function ovPush() {
+  ovGuards++;
+  history.pushState({ ov: ovGuards }, "");
+}
+function ovDrop() {
+  if (ovGuards > 0) { ovGuards--; history.back(); }
+}
+function closeTopOverlay() {
+  if ($("setModal").classList.contains("on")) { closeSettings(); return true; }
+  if ($("entry").classList.contains("on")) { $("entry").classList.remove("on"); pending = null; return true; }
+  if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); return true; }
+  if ($("coach").classList.contains("on")) { obEndCoach(); return true; }
+  return false;
+}
+window.addEventListener("popstate", () => {
+  if (closeTopOverlay() && ovGuards > 0) ovGuards--;
+});
+
 $("obSk").addEventListener("click", () => {
   if (HB()) skOpen(); else alert(T("הפתיחה המהירה זמינה באפליקציה המותקנת"));
 });
