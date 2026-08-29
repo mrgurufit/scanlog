@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.10";
+const APP_BUILD = "2026.08.29.11";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -847,14 +847,13 @@ async function hcSync(force) {
       const w = Math.round(r.weightKg * 10) / 10;
       if (d.weight !== w) { d.weight = w; changed = true; }
     }
-    // the workout field fills from the sessions' calories - that is what the
-    // watch actually reports per training, matching what he used to type
-    const workout = (r.workoutKcal != null) ? Math.round(r.workoutKcal) : null;
+    // "שרפת באימון" fills from the larger of: today's workout sessions, or
+    // Samsung's all-day activity calories (which include the workouts anyway)
+    const workout = Math.round(Math.max(r.workoutKcal || 0, r.activeKcal || 0)) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
-    if (workout) bits.push("אימון " + workout + ' קק"ל');
-    else if (r.activeKcal != null && r.activeKcal > 0) bits.push("פעילות " + Math.round(r.activeKcal) + ' קק"ל');
+    if (workout) bits.push("פעילות " + workout + ' קק"ל');
     if (r.steps != null || r.stepsByOrigin) {
       // two writers (phone + watch) overlap and the deduped aggregate picks
       // wrong; the biggest single source is Samsung's own merged stream and
