@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>100 Days on Camera — Mr Guru Fit</title>
+<meta name="description" content="Every day of a 25 kg transformation, filmed and posted. The weight, the food in grams, the training. No skipped days.">
+<meta property="og:title" content="100 Days on Camera">
+<meta property="og:description" content="Every day of a 25 kg transformation, filmed and posted.">
+<meta name="theme-color" content="#0d0f14">
+<link rel="icon" href="../icon-192.png">
+<style>
+  :root {
+    --bg:#0d0f14; --panel:#151a24; --panel2:#1b2130; --line:#232a38;
+    --text:#eef2f8; --muted:#8b95a7; --accent:#ffd21e; --green:#3ddc84;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text); line-height:1.6;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:760px; margin:0 auto; padding:24px 16px 70px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:13.5px; letter-spacing:1px; }
+  h1 { font-size:30px; line-height:1.2; margin:22px 0 8px; letter-spacing:-.4px; }
+  h1 span { color:var(--accent); }
+  .sub { color:#c2cad8; font-size:15px; margin:0 0 22px; }
+  .stats { display:flex; gap:8px; margin:0 0 28px; }
+  .stat { flex:1; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:12px 8px; text-align:center; }
+  .stat b { display:block; font-size:20px; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .stat small { font-size:11px; color:var(--muted); }
+  h2 { font-size:15px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted); margin:34px 0 12px; }
+  .ep { background:var(--panel); border:1px solid var(--line); border-radius:15px; overflow:hidden; }
+  .ep.big { margin-bottom:8px; }
+  .thumb {
+    display:block; width:100%; padding:0; border:0; background:#000; cursor:pointer;
+    position:relative; aspect-ratio:16/9; overflow:hidden;
+  }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; opacity:.82; transition:opacity .2s; }
+  .thumb:hover img { opacity:1; }
+  .thumb .play {
+    position:absolute; inset:0; margin:auto; width:56px; height:56px; border-radius:50%;
+    background:rgba(255,210,30,.94); color:#141005; font-size:22px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ep.big .thumb .play { width:70px; height:70px; font-size:27px; }
+  .meta { padding:12px 14px 14px; }
+  .row1 { display:flex; align-items:baseline; gap:9px; }
+  .row1 b { font-size:15px; letter-spacing:.6px; }
+  .kg { font-size:12.5px; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .meta p { margin:4px 0 0; font-size:13.5px; color:#b6c0cf; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:12px; }
+  form { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; margin:34px 0 0; }
+  form h3 { font-size:19px; margin:0 0 6px; }
+  form p { font-size:13.5px; color:var(--muted); margin:0 0 14px; }
+  input[type=email] {
+    width:100%; padding:14px; font-size:16px; font-family:inherit; color:var(--text);
+    background:var(--panel2); border:1px solid var(--line); border-radius:11px;
+  }
+  button.sub {
+    width:100%; margin-top:10px; padding:15px; font-size:16px; font-weight:800; font-family:inherit;
+    background:var(--accent); color:#141005; border:0; border-radius:11px; cursor:pointer;
+  }
+  .consent { display:flex; gap:9px; align-items:flex-start; margin-top:12px; font-size:12px; color:var(--muted); }
+  .consent input { margin-top:3px; width:16px; height:16px; accent-color:var(--accent); }
+  .consent a { color:#8ab4f8; }
+  .msg { margin-top:11px; font-size:14px; min-height:20px; }
+  .msg.ok { color:var(--green); } .msg.err { color:#ff8f8f; }
+  footer { margin-top:36px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:#5b6474; text-align:center; }
+  footer a { color:#6f7a8c; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+      <rect width="26" height="26" rx="7" fill="#12161f" stroke="#2a3244"/>
+      <g fill="#f1f4fa">
+        <rect x="6" y="6" width="2" height="11"/><rect x="9.5" y="6" width="1.2" height="11"/>
+        <rect x="12" y="6" width="2.6" height="11"/><rect x="16" y="6" width="1.2" height="11"/>
+        <rect x="18.5" y="6" width="2" height="11"/>
+      </g>
+      <rect x="6" y="19" width="14.5" height="2" rx="1" fill="#ffd21e"/>
+    </svg>
+    MR GURU FIT
+  </div>
+
+  <h1>100 days. <span>Every single one</span> on camera.</h1>
+  <p class="sub">
+    The morning weight whether it is good or ugly, every gram of food, and the training.
+    New episode every day until day 100.
+  </p>
+
+  <div class="stats">
+    <div class="stat"><b>111.5</b><small>day 1</small></div>
+    <div class="stat"><b>105.3</b><small>day 13</small></div>
+    <div class="stat"><b>86.5</b><small>the goal</small></div>
+  </div>
+
+  <h2>Latest episode</h2>
+      <article class="ep big">
+        <button class="thumb" data-yt="gjttLdvwBrE" aria-label="Play day 13">
+          <img loading="lazy" src="https://i.ytimg.com/vi/gjttLdvwBrE/hqdefault.jpg" alt="Day 13">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 13</b><span class="kg">105.3 kg</span></div>
+          <p>Second new low in a row. Abs day.</p>
+        </div>
+      </article>
+
+  <h2>Every episode</h2>
+  <div class="grid">
+      <article class="ep">
+        <button class="thumb" data-yt="QL4fAePJKGo" aria-label="Play day 12">
+          <img loading="lazy" src="https://i.ytimg.com/vi/QL4fAePJKGo/hqdefault.jpg" alt="Day 12">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 12</b><span class="kg">106.2 kg</span></div>
+          <p>New low. The zigzag pays back.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="_8ZnnU5-lN8" aria-label="Play day 11">
+          <img loading="lazy" src="https://i.ytimg.com/vi/_8ZnnU5-lN8/hqdefault.jpg" alt="Day 11">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 11</b><span class="kg">106.4 kg</span></div>
+          <p>Three mornings up, then the drop. Patience paid.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="CH5cXyjt3hM" aria-label="Play day 10">
+          <img loading="lazy" src="https://i.ytimg.com/vi/CH5cXyjt3hM/hqdefault.jpg" alt="Day 10">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 10</b><span class="kg">107.3 kg</span></div>
+          <p>Double digits. 10% done.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="_Hadwj3cDck" aria-label="Play day 9">
+          <img loading="lazy" src="https://i.ytimg.com/vi/_Hadwj3cDck/hqdefault.jpg" alt="Day 9">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 9</b><span class="kg">107.1 kg</span></div>
+          <p>The scale went up. Here is why that is normal.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="S4yWKQ9sLYY" aria-label="Play day 8">
+          <img loading="lazy" src="https://i.ytimg.com/vi/S4yWKQ9sLYY/hqdefault.jpg" alt="Day 8">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 8</b><span class="kg">106.7 kg</span></div>
+          <p>Chest day, 50 kg dumbbells, and a scream you can hear.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="D5B5iSaJL1U" aria-label="Play day 7">
+          <img loading="lazy" src="https://i.ytimg.com/vi/D5B5iSaJL1U/hqdefault.jpg" alt="Day 7">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 7</b></div>
+          <p>One week in.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="QGZ8HE61xos" aria-label="Play day 6">
+          <img loading="lazy" src="https://i.ytimg.com/vi/QGZ8HE61xos/hqdefault.jpg" alt="Day 6">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 6</b></div>
+          <p>Uploaded late. Still uploaded.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="6ZrEZnc1o6w" aria-label="Play day 5">
+          <img loading="lazy" src="https://i.ytimg.com/vi/6ZrEZnc1o6w/hqdefault.jpg" alt="Day 5">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 5</b></div>
+          <p>The day the algorithm ignored me. Posted anyway.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="OIvXY7OA68c" aria-label="Play day 4">
+          <img loading="lazy" src="https://i.ytimg.com/vi/OIvXY7OA68c/hqdefault.jpg" alt="Day 4">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 4</b></div>
+          <p>Same plan, second week of habit building.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="W6ZnToeD6h8" aria-label="Play day 3">
+          <img loading="lazy" src="https://i.ytimg.com/vi/W6ZnToeD6h8/hqdefault.jpg" alt="Day 3">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 3</b></div>
+          <p>Training and every gram weighed.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="olY7rEAQlMk" aria-label="Play day 2">
+          <img loading="lazy" src="https://i.ytimg.com/vi/olY7rEAQlMk/hqdefault.jpg" alt="Day 2">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 2</b></div>
+          <p>The routine, unedited.</p>
+        </div>
+      </article>
+      <article class="ep">
+        <button class="thumb" data-yt="LhUtdpYMyo0" aria-label="Play day 1">
+          <img loading="lazy" src="https://i.ytimg.com/vi/LhUtdpYMyo0/hqdefault.jpg" alt="Day 1">
+          <span class="play">▶</span>
+        </button>
+        <div class="meta">
+          <div class="row1"><b>DAY 1</b><span class="kg">111.5 kg</span></div>
+          <p>Day one. 111.5 kg, and a camera pointed at all of it.</p>
+        </div>
+      </article>
+  </div>
+
+  <form id="f" novalidate>
+    <h3>Get tomorrow's episode by email 📩</h3>
+    <p>One short email a day: the video, the real numbers, and the one thing that day taught me.
+       Plus the full day of eating that had me down 6.2 kg by day 13.</p>
+    <input type="email" id="email" placeholder="your@email.com" autocomplete="email" required>
+    <label class="consent">
+      <input type="checkbox" id="ok" required>
+      <span>Email me the daily episode. Unsubscribe any time. <a href="../privacy/" target="_blank">Privacy</a>.</span>
+    </label>
+    <button type="submit" class="sub" id="go">Send me the daily episode</button>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <footer>
+    <a href="https://www.youtube.com/@mrgurufit">YouTube</a> ·
+    <a href="https://www.instagram.com/mrgurufit">Instagram</a> ·
+    <a href="https://www.facebook.com/Mrgurufit">Facebook</a> ·
+    <a href="https://www.tiktok.com/@mrgurufit">TikTok</a><br>
+    <a href="../privacy/">Privacy</a> · Not medical advice.
+  </footer>
+</div>
+
+<script>
+/* thumbnails become players only when clicked, so a page of 14 episodes
+   still loads like a page and not like fourteen videos */
+document.querySelectorAll(".thumb").forEach(b => {
+  b.addEventListener("click", () => {
+    const id = b.dataset.yt;
+    const f = document.createElement("iframe");
+    f.width = "100%"; f.height = "100%"; f.style.border = "0";
+    f.allow = "accelerometer; autoplay; encrypted-media; picture-in-picture";
+    f.allowFullscreen = true;
+    f.src = "https://www.youtube.com/embed/" + id + "?autoplay=1";
+    b.replaceWith(f);
+    f.style.aspectRatio = "16/9";
+    f.style.display = "block";
+  });
+});
+
+const ACCOUNT = "2590254";
+const FORM = "196504325381424635";
+const f = document.getElementById("f"), msg = document.getElementById("msg"), go = document.getElementById("go");
+f.addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    msg.className = "msg err"; msg.textContent = "That email does not look right."; return;
+  }
+  if (!document.getElementById("ok").checked) {
+    msg.className = "msg err"; msg.textContent = "Tick the box so I am allowed to email you."; return;
+  }
+  go.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
+  const body = new FormData();
+  body.append("fields[email]", email);
+  body.append("ml-submit", "1");
+  body.append("anticsrf", "true");
+  try {
+    const r = await fetch("https://assets.mailerlite.com/jsonp/" + ACCOUNT + "/forms/" + FORM + "/subscribe", { method: "POST", body });
+    const d = await r.json().catch(() => ({}));
+    if (!(d && (d.success || d.ok || r.ok))) throw new Error("rejected");
+    f.querySelectorAll("input,button").forEach(el => el.disabled = true);
+    msg.className = "msg ok";
+    msg.textContent = "Check your inbox and confirm. Tomorrow's episode lands there. 💪";
+  } catch {
+    go.disabled = false; msg.className = "msg err";
+    msg.textContent = "That did not go through. Try again, or email mr.guru.fit@gmail.com.";
+  }
+});
+</script>
+</body>
+</html>
