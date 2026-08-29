@@ -497,6 +497,7 @@ function renderTotals() {
   $("tCarb").textContent = Math.round(t.carb);
   $("tFat").textContent = Math.round(t.fat);
   renderEnergy(t.kcal);
+  renderBank();
 }
 
 /* ---------------- energy balance ----------------
@@ -572,7 +573,13 @@ const LS_BANK = "fl_bank";
 let BANK = store.get(LS_BANK, null);
 
 function bankDays() {
-  const days = [...new Set(LOG.map(e => e.day))].sort();
+  // any day he touched: food logged, or a burn / weight entered
+  const set = new Set(LOG.map(e => e.day));
+  Object.keys(DAYDATA || {}).forEach(d => {
+    const v = DAYDATA[d] || {};
+    if (v.activity || v.weight) set.add(d);
+  });
+  const days = [...set].sort();
   return BANK && BANK.startDay ? days.filter(d => d >= BANK.startDay) : days;
 }
 
@@ -581,7 +588,8 @@ function bankState() {
   let moved = 0, deficitDays = 0, deficitSum = 0;
   bankDays().forEach(d => {
     const kcalIn = entriesFor(d).reduce((a, e) => a + computed(e).kcal, 0);
-    if (!kcalIn) return;
+    const dd = DAYDATA[d] || {};
+    if (!kcalIn && !dd.activity) return;
     const bal = dayEnergy(d, kcalIn).bal;
     moved += bal;
     if (bal < 0) { deficitDays++; deficitSum += -bal; }
@@ -608,6 +616,13 @@ function renderBank() {
     : "🔥 נותרו <span style=\"font-variant-numeric:tabular-nums\">" + s.left.toLocaleString("he-IL") + "</span> קק\"ל בבנק";
   const burned = BANK.total - s.left;
   const bits = [Math.round(burned / BANK.total * 100) + "% נשרפו", "מתוך " + BANK.total.toLocaleString("he-IL")];
+  const tKcal = entriesFor(viewDay).reduce((a, e) => a + computed(e).kcal, 0);
+  const tBal = dayEnergy(viewDay, tKcal).bal;
+  if (tKcal || (DAYDATA[viewDay] && DAYDATA[viewDay].activity)) {
+    bits.unshift(tBal <= 0
+      ? "היום ‎−" + Math.abs(tBal).toLocaleString("he-IL")
+      : "היום ‎+" + tBal.toLocaleString("he-IL"));
+  }
   if (s.avg && s.left) {
     bits.push("בקצב הנוכחי (" + s.avg.toLocaleString("he-IL") + '/יום) עוד ' + Math.ceil(s.left / s.avg) + " ימים");
   }
@@ -779,7 +794,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.21";
+const APP_BUILD = "2026.08.29.22";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
