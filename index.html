@@ -398,6 +398,10 @@
       <button id="hcBtn" type="button" style="background:#1d5c39;color:#d9ffe8;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🩺 חבר ל-Health Connect</button>
       <span id="hcState" style="font-size:12px;color:#9aa3b2"></span>
     </div>
+    <div id="skRow" style="display:none;align-items:center;gap:8px;margin-top:8px">
+      <button id="skBtn" type="button" style="background:#26304a;color:#cfe0ff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚡ פתיחה מהירה מהלחצן הצידי</button>
+      <span id="skState" style="font-size:12px;color:#9aa3b2"></span>
+    </div>
     <div id="ebal"></div>
   </div>
 </div>
@@ -685,7 +689,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.16";
+const APP_BUILD = "2026.08.29.17";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -742,6 +746,7 @@ function hcConnectedUI() {
 async function hcInit() {
   const hb = HB(); if (!hb) return;
   $("hcRow").style.display = "flex";
+  $("skRow").style.display = "flex";
   try {
     const a = await hb.available();
     if (a && a.appVersion) { NATIVE_VER = a.appVersion; renderVer(); }
@@ -755,6 +760,12 @@ async function hcInit() {
       hcSync(true);
     }
   } catch { $("hcState").textContent = "בדיקת Health Connect נכשלה"; }
+}
+
+async function skOpen() {
+  $("skState").textContent = "במסך שנפתח: לחיצה פעמיים ← פתיחת אפליקציה ← Scan & Log";
+  try { await HB().openSideKeySettings(); }
+  catch { $("skState").textContent = "פתח ידנית: הגדרות ← תכונות מתקדמות ← לחצן צידי"; }
 }
 
 function hcDone() {
@@ -774,16 +785,23 @@ let hcOffered = false;
 /* Android refuses to show the permission sheet again after two denials -
    the request "succeeds" but nothing opens. The manual route through the
    Health Connect app itself always works, so offer it early and visibly. */
+/* prefer OUR app's screen inside Health Connect; old APKs fall back
+   to the Health Connect home */
+async function hcOpenPerms() {
+  const hb = HB();
+  try { await hb.openHealthPermissions(); return true; }
+  catch { try { await hb.openHealthSettings(); return true; } catch { return false; } }
+}
+
 function hcOfferSettings(prefix, n) {
   hcOffered = true;
   $("hcState").innerHTML = esc(prefix) + (n ? " (אושרו " + n + "/6)" : "") +
-    ' <u id="hcOpenSet" style="cursor:pointer;color:#8ab4f8">פתח את Health Connect לאישור ידני</u>';
+    ' <u id="hcOpenSet" style="cursor:pointer;color:#8ab4f8">פתח את מסך ההרשאות</u>';
   const u = document.getElementById("hcOpenSet");
   if (u) u.onclick = async () => {
-    try {
-      await HB().openHealthSettings();
-      $("hcState").textContent = "בתוך Health Connect: הרשאות אפליקציות ← Scan & Log ← אשר הכל, ואז חזור לכאן";
-    } catch {
+    if (await hcOpenPerms()) {
+      $("hcState").textContent = "אשר הכל במסך שנפתח, ואז חזור לכאן";
+    } else {
       $("hcState").textContent = "פתח ידנית: הגדרות הטלפון ← Health Connect ← הרשאות אפליקציות ← Scan & Log";
     }
   };
@@ -811,11 +829,10 @@ async function hcConnect() {
     g = await hb.grantedPermissions().catch(() => null);
     if (g && g.granted) { hcDone(); return; }
     if (!document.hidden) {
-      hcOfferSettings("פותח את Health Connect לאישור ידני…", (g && g.count) || 0);
-      try {
-        await HB().openHealthSettings();
-        $("hcState").innerHTML = 'בתוך Health Connect: <b>הרשאות אפליקציות ← Scan &amp; Log ← אשר הכל</b>, ואז חזור לכאן';
-      } catch { /* the manual link stays on screen */ }
+      hcOfferSettings("פותח את מסך ההרשאות…", (g && g.count) || 0);
+      if (await hcOpenPerms()) {
+        $("hcState").innerHTML = '<b>אשר הכל במסך שנפתח</b>, ואז חזור לכאן';
+      }
     }
     const t0 = Date.now();
     while (Date.now() - t0 < 180000) {
@@ -1962,6 +1979,7 @@ $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("hcBtn").addEventListener("click", hcTap);
+$("skBtn").addEventListener("click", skOpen);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) hcSync(); });
 renderVer();
 hcInit();
