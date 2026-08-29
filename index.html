@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.8";
+const APP_BUILD = "2026.08.29.9";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -847,14 +847,19 @@ async function hcSync(force) {
       const w = Math.round(r.weightKg * 10) / 10;
       if (d.weight !== w) { d.weight = w; changed = true; }
     }
-    if (r.activeKcal != null && !d.activityManual) {
-      const a = Math.round(r.activeKcal);
-      if (a > 0 && d.activity !== a) { d.activity = a; changed = true; }
-    }
+    // the workout field fills from the sessions' calories - that is what the
+    // watch actually reports per training, matching what he used to type
+    const workout = (r.workoutKcal != null) ? Math.round(r.workoutKcal) : null;
+    if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
-    if (r.activeKcal != null) bits.push("שריפה " + Math.round(r.activeKcal));
-    if (r.steps != null) bits.push(Number(r.steps).toLocaleString("he-IL") + " צעדים");
+    if (workout) bits.push("אימון " + workout + ' קק"ל');
+    else if (r.activeKcal != null && r.activeKcal > 0) bits.push("פעילות " + Math.round(r.activeKcal) + ' קק"ל');
+    if (r.steps != null) {
+      let st = Number(r.steps).toLocaleString("he-IL") + " צעדים";
+      if (r.stepsRaw && r.stepsRaw > r.steps) st += " (נרשמו " + Number(r.stepsRaw).toLocaleString("he-IL") + ")";
+      bits.push(st);
+    }
     if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
     $("hcState").textContent = bits.length
       ? "מסונכרן ✓ " + bits.join(" · ")
