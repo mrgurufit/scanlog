@@ -90,6 +90,23 @@
     scrollbar-width:none; overscroll-behavior-x:contain;
   }
   .calweek::-webkit-scrollbar { display:none; }
+  #bankWrap { margin-top: 9px; cursor: pointer; }
+  #bankBar {
+    position: relative; height: 30px; border-radius: 9px; overflow: hidden;
+    background: #171c26; border: 1px solid #232a38;
+  }
+  #bankFill {
+    position: absolute; inset: 0 auto 0 0; width: 0;
+    background: linear-gradient(90deg, #b98b09, #ffd21e);
+    transition: width .6s cubic-bezier(.4,0,.2,1);
+  }
+  #bankTxt {
+    position: relative; height: 100%; display: flex; align-items: center;
+    justify-content: center; gap: 7px; font-size: 13px; font-weight: 800;
+    color: #f2f5fa; text-shadow: 0 1px 3px rgba(0,0,0,.75); letter-spacing: .2px;
+  }
+  #bankSub { font-size: 10.5px; color: #6f7a8c; text-align: center; margin-top: 4px; }
+  #bankWrap.done #bankFill { background: linear-gradient(90deg, #1d7a45, #3ddc84); }
   .calweek .cd { flex:0 0 calc((100% - 30px)/7); scroll-snap-align:center; }
   .cd {
     background:var(--panel2); border:1px solid var(--line); border-radius:9px;
@@ -278,6 +295,7 @@
       <button class="calbtn" id="calNext" title="שבוע קדימה">›</button>
     </div>
     <div class="calweek" id="calWeek"></div>
+    <div id="bankWrap"><div id="bankBar"><div id="bankFill"></div><div id="bankTxt"></div></div><div id="bankSub"></div></div>
   </div>
 
 
@@ -545,6 +563,77 @@ function saveProfile() {
   renderTotals();
 }
 
+/* ---------------- calorie bank ----------------
+   Ido, 2026-08-29: turn the whole cut into one number to burn down. The bank
+   starts at (kg of fat to lose x 10,000 kcal) and every tracked day moves it:
+   a deficit drains it, a surplus puts calories back. Only days with logged
+   food count - an untracked day is not a 2,000 kcal deficit.              */
+const LS_BANK = "fl_bank";
+let BANK = store.get(LS_BANK, null);
+
+function bankDays() {
+  const days = [...new Set(LOG.map(e => e.day))].sort();
+  return BANK && BANK.startDay ? days.filter(d => d >= BANK.startDay) : days;
+}
+
+function bankState() {
+  if (!BANK || !BANK.total) return null;
+  let moved = 0, deficitDays = 0, deficitSum = 0;
+  bankDays().forEach(d => {
+    const kcalIn = entriesFor(d).reduce((a, e) => a + computed(e).kcal, 0);
+    if (!kcalIn) return;
+    const bal = dayEnergy(d, kcalIn).bal;
+    moved += bal;
+    if (bal < 0) { deficitDays++; deficitSum += -bal; }
+  });
+  const left = Math.max(0, Math.round(BANK.total + moved));
+  const avg = deficitDays ? Math.round(deficitSum / deficitDays) : 0;
+  return { left, moved, avg, days: deficitDays, pct: Math.max(0, Math.min(100, left / BANK.total * 100)) };
+}
+
+function renderBank() {
+  const wrap = $("bankWrap");
+  if (!BANK || !BANK.total) {
+    $("bankFill").style.width = "100%";
+    $("bankTxt").textContent = "🏦 הגדר את בנק הקלוריות שלך";
+    $("bankSub").textContent = "לחץ כדי לבחור כמה ק\"ג שומן אתה מוריד";
+    wrap.classList.remove("done");
+    return;
+  }
+  const s = bankState();
+  $("bankFill").style.width = s.pct + "%";
+  wrap.classList.toggle("done", s.left === 0);
+  $("bankTxt").innerHTML = s.left === 0
+    ? "🏆 הבנק אופס! " + BANK.kg + " ק\"ג שומן"
+    : "🔥 נותרו <span style=\"font-variant-numeric:tabular-nums\">" + s.left.toLocaleString("he-IL") + "</span> קק\"ל בבנק";
+  const burned = BANK.total - s.left;
+  const bits = [Math.round(burned / BANK.total * 100) + "% נשרפו", "מתוך " + BANK.total.toLocaleString("he-IL")];
+  if (s.avg && s.left) {
+    bits.push("בקצב הנוכחי (" + s.avg.toLocaleString("he-IL") + '/יום) עוד ' + Math.ceil(s.left / s.avg) + " ימים");
+  }
+  $("bankSub").textContent = bits.join(" · ");
+}
+
+function bankSetup() {
+  const cur = BANK && BANK.kg ? BANK.kg : "";
+  const msg = BANK && BANK.total
+    ? "כמה ק\"ג שומן אתה מוריד? (שינוי מאפס את הבנק)"
+    : "כמה ק\"ג שומן אתה רוצה להוריד?\nכל ק\"ג = 10,000 קק\"ל בבנק.";
+  const v = prompt(msg, cur);
+  if (v === null) return;
+  const kg = parseFloat(String(v).replace(",", "."));
+  if (!isFinite(kg) || kg <= 0 || kg > 100) { alert("הזן מספר ק\"ג בין 1 ל-100"); return; }
+  const days = [...new Set(LOG.map(e => e.day))].sort();
+  BANK = {
+    kg: Math.round(kg * 10) / 10,
+    total: Math.round(kg * 10000),
+    startDay: (BANK && BANK.startDay) || days[0] || todayKey(),
+    at: new Date().toISOString(),
+  };
+  store.set(LS_BANK, BANK);
+  renderBank();
+}
+
 /* ---------------- streak ----------------
    Consecutive days with at least one logged item. A day without entries only
    breaks the streak once it is OVER - so an empty "today" still counts the
@@ -651,7 +740,7 @@ function renderLog() {
   const pushOn = localStorage.getItem("fl_push") && localStorage.getItem("fl_pushkey");
   $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
     ${pushOn ? "הדוח היומי מסתנכרן לקלוד אוטומטית ✓" : 'הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.'}`;
-  renderTotals(); renderCal(); renderStreak();
+  renderTotals(); renderCal(); renderStreak(); renderBank();
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
@@ -690,7 +779,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.20";
+const APP_BUILD = "2026.08.29.21";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2019,6 +2108,7 @@ $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
+$("bankWrap").addEventListener("click", bankSetup);
 $("hcBtn").addEventListener("click", hcTap);
 $("skBtn").addEventListener("click", skOpen);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) hcSync(); });
