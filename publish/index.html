@@ -351,6 +351,40 @@
     #publishAllBtn { flex: 1; }
     button { padding: 10px 14px; }
   }
+  /* ---- gate ---- */
+  #gate {
+    position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #gate[hidden] { display: none; }
+  .gatecard {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 32px 28px; width: 100%; max-width: 380px; text-align: center;
+  }
+  .gatemark { font-size: 13px; letter-spacing: 1.4px; color: var(--muted); margin-bottom: 18px; }
+  .gatemark span { color: var(--accent); }
+  .gatelead { font-size: 15px; margin-bottom: 22px; }
+  #gGoogle { display: flex; justify-content: center; min-height: 44px; }
+  .gatehint { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .gatealt { margin-top: 22px; text-align: right; }
+  .gatealt summary {
+    cursor: pointer; font-size: 12px; color: var(--muted); text-align: center; list-style: none;
+  }
+  .gatealt summary::-webkit-details-marker { display: none; }
+  .gatealt summary:hover { color: var(--text); }
+  .gatealt input {
+    width: 100%; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel2); color: var(--text);
+    font-family: inherit; font-size: 14px; direction: ltr; text-align: center;
+  }
+  .gatebtn {
+    width: 100%; margin-top: 10px; padding: 10px; border: 0; border-radius: 8px;
+    background: var(--accent); color: #0d0f14; font-weight: 700; font-size: 14px;
+    font-family: inherit; cursor: pointer;
+  }
+  .gatemsg { margin-top: 16px; font-size: 13px; min-height: 18px; }
+  .gatemsg.bad { color: var(--red); }
+  .gatemsg.good { color: var(--green); }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0f14">
@@ -361,6 +395,28 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
+
+<!-- ===== gate: only Ido's Google account gets the keys ===== -->
+<div id="gate" hidden>
+  <div class="gatecard">
+    <div class="gatemark">TRANSFORMATION <span>//</span> PUBLISH CENTER</div>
+    <p class="gatelead">הדף הזה פרטי. התחבר כדי לפתוח אותו.</p>
+
+    <div id="gGoogle"></div>
+
+    <div id="gNoGoogle" class="gatehint" hidden>
+      התחברות עם גוגל עוד לא מופעלת בדף הזה — השתמש בביטוי השחזור.
+    </div>
+
+    <details class="gatealt">
+      <summary>אין לי גישה לחשבון גוגל כרגע</summary>
+      <input id="gPass" type="password" placeholder="ביטוי שחזור" autocomplete="off">
+      <button id="gGo" class="gatebtn">פתח</button>
+    </details>
+
+    <div id="gMsg" class="gatemsg"></div>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <h1>TRANSFORMATION <span>//</span> PUBLISH CENTER</h1>
@@ -568,8 +624,102 @@
   <div id="log"></div>
 </div>
 
+
+<script>
+/* ===== gate =====
+   Over http(s) this file is the public copy: every webhook was stripped out of
+   it before it was pushed, so it cannot reach a single data source until the
+   vault hands the keys back. The vault only does that once Google has verified
+   the ID token belongs to Ido, which is why the keys can live on a server
+   instead of in this file. Opened from Drive (file://) nothing here applies -
+   that copy already carries its own keys. */
+(function () {
+  "use strict";
+
+  const OVER_THE_WEB = /^https?:$/.test(location.protocol)
+    && !/^(localhost$|127\.)/.test(location.hostname);
+  if (!OVER_THE_WEB) return;
+
+  const VAULT = "https://hook.us2.make.com/or4kix6j6oldaaotnugj8t59y7pgpcu2";
+  const GOOGLE_CLIENT_ID = "";  /* filled in once the OAuth client exists */
+  const REMEMBER_DAYS = 30;
+
+  const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
+  const set = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
+
+  /* already signed in recently, and the keys survived - let the page run */
+  const seen = Number(get("pc_gate_at") || 0);
+  if (seen && Date.now() - seen < REMEMBER_DAYS * 864e5 && get("mk_webhook")) return;
+
+  window.__PC_LOCKED = true;
+  const gate = document.getElementById("gate");
+  gate.hidden = false;
+
+  const msg = document.getElementById("gMsg");
+  function say(text, kind) { msg.textContent = text; msg.className = "gatemsg " + (kind || ""); }
+
+  /* the keys come back from the vault and are kept exactly where the cfg link
+     used to put them, so everything downstream is unchanged */
+  async function unlock(payload) {
+    say("בודק…");
+    let cfg;
+    try {
+      const r = await fetch(VAULT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      cfg = await r.json();
+    } catch {
+      say("אין חיבור לרשת", "bad");
+      return;
+    }
+    if (!cfg || !cfg.w) { say("אין הרשאה לדף הזה", "bad"); return; }
+
+    set("mk_webhook", cfg.w);
+    set("pc_proxy", cfg.p);
+    set("cld_name", cfg.cn);
+    set("cld_preset", cfg.up);
+    set("df_read", cfg.dr);
+    set("df_write", cfg.dw);
+    set("pc_gate_at", String(Date.now()));
+    set("pc_gate_who", cfg.who || "");
+    say("נפתח, טוען…", "good");
+    location.reload();
+  }
+
+  document.getElementById("gGo").onclick = () => {
+    const pass = document.getElementById("gPass").value.trim();
+    if (pass) unlock({ pass });
+  };
+  document.getElementById("gPass").onkeydown = e => {
+    if (e.key === "Enter") document.getElementById("gGo").click();
+  };
+
+  if (!GOOGLE_CLIENT_ID) {
+    document.getElementById("gNoGoogle").hidden = false;
+    return;
+  }
+
+  window.__gateGoogle = resp => unlock({ id_token: resp.credential });
+  const s = document.createElement("script");
+  s.src = "https://accounts.google.com/gsi/client";
+  s.async = true;
+  s.onload = () => {
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: window.__gateGoogle });
+    google.accounts.id.renderButton(document.getElementById("gGoogle"),
+      { theme: "filled_black", size: "large", shape: "pill", text: "signin_with", locale: "he" });
+  };
+  s.onerror = () => { document.getElementById("gNoGoogle").hidden = false; };
+  document.head.appendChild(s);
+})();
+</script>
+
 <script>
 "use strict";
+
+/* the gate above found this copy locked - nothing below should run */
+if (window.__PC_LOCKED) throw new Error("Publish Center is locked");
 
 /* ---------------- defaults ---------------- */
 

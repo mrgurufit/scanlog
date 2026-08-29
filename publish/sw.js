@@ -1,6 +1,6 @@
 // Publish Center offline shell. Network-first so updates land immediately;
 // the cache answers when there is no connection.
-const CACHE = "publishcenter-v1";
+const CACHE = "publishcenter-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
