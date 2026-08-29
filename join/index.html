@@ -295,7 +295,9 @@ document.querySelectorAll(".lang button").forEach(b => {
 
 
 const ACCOUNT = "2590254";
-const FORM = "196504325381424635";
+/* one form per language: the choice on the page decides which stream
+   the subscriber joins, so the daily emails arrive in that language */
+const FORMS = { en: "196504325381424635", he: "197154687300928663" };
 const f = document.getElementById("f"), msg = document.getElementById("msg"), go = document.getElementById("go");
 f.addEventListener("submit", async e => {
   e.preventDefault();
@@ -312,7 +314,7 @@ f.addEventListener("submit", async e => {
   body.append("ml-submit", "1");
   body.append("anticsrf", "true");
   try {
-    const r = await fetch("https://assets.mailerlite.com/jsonp/" + ACCOUNT + "/forms/" + FORM + "/subscribe", { method: "POST", body });
+    const r = await fetch("https://assets.mailerlite.com/jsonp/" + ACCOUNT + "/forms/" + (FORMS[L] || FORMS.en) + "/subscribe", { method: "POST", body });
     const d = await r.json().catch(() => ({}));
     if (!(d && (d.success || d.ok || r.ok))) throw new Error("rejected");
     f.querySelectorAll("input,button").forEach(el => el.disabled = true);
