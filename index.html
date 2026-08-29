@@ -239,6 +239,87 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
   #stepsHint { font-size:11.5px; color:var(--muted); margin-top:4px; min-height:14px; }
+
+  #ob {
+    display:none; position:fixed; inset:0; z-index:90; background:#0a0c11;
+    overflow-y:auto; padding:22px 14px 30px;
+  }
+  #ob.on { display:block; }
+  #ob .obcard { max-width:520px; margin:0 auto; }
+  #ob h2 { font-size:21px; margin:14px 0 8px; }
+  #ob p { font-size:14px; line-height:1.6; color:#c2cad8; margin:0 0 10px; }
+  #ob .obsmall { font-size:12.5px; color:var(--muted); }
+  #ob .obart { display:flex; justify-content:center; margin:14px 0 4px; }
+  .obdots { display:flex; gap:6px; justify-content:center; margin-bottom:6px; }
+  .obdots i { width:22px; height:4px; border-radius:2px; background:#252d3c; }
+  .obdots i.on { background:var(--accent); }
+  .obnext {
+    width:100%; margin-top:16px; padding:14px; border:0; border-radius:12px;
+    background:var(--accent); color:#141005; font-weight:800; font-size:15px; font-family:inherit;
+  }
+  .obskip {
+    width:100%; margin-top:8px; padding:10px; border:0; border-radius:12px;
+    background:transparent; color:var(--muted); font-size:13px; font-family:inherit;
+  }
+  .obsex { display:flex; gap:8px; margin:10px 0; }
+  .obsexb {
+    flex:1; padding:12px; border-radius:12px; font-size:14px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
+  .obsexb.on { background:#241a0e; border-color:var(--accent); color:var(--accent); }
+  .obgrid { display:flex; flex-direction:column; gap:9px; }
+  .obgrid label { font-size:12.5px; color:var(--muted); display:flex; flex-direction:column; gap:5px; }
+  .obgrid input {
+    padding:12px; border-radius:11px; font-size:16px; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
+  .oberr { color:#ff8f8f; font-size:12.5px; min-height:16px; margin-top:7px; }
+  .obkg { display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0 10px; }
+  .obkg > div { text-align:center; min-width:110px; }
+  .obkg span { font-size:40px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .obkg small { display:block; font-size:12px; color:var(--muted); }
+  .obkgb {
+    width:52px; height:52px; border-radius:50%; font-size:26px; font-weight:800; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
+  .obbank {
+    text-align:center; font-size:13px; color:#c2cad8;
+    background:#12161f; border:1px solid #232a38; border-radius:12px; padding:10px;
+  }
+  .obhow { background:#10141d; border:1px solid #212836; border-radius:14px; padding:12px; margin-top:14px; }
+  .obrow { display:flex; gap:10px; align-items:flex-start; }
+  .obrow b { font-size:14.5px; }
+  .obrow p { margin:4px 0 0; }
+  .obnum {
+    flex:0 0 auto; width:25px; height:25px; border-radius:50%;
+    background:var(--accent); color:#141005; font-weight:800; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .obpics { display:flex; gap:8px; margin:12px 0 4px; }
+  .obpic { flex:1; text-align:center; position:relative; }
+  .obpic svg { width:100%; height:82px; }
+  .obpic small { display:block; font-size:10.5px; color:var(--muted); line-height:1.35; }
+  .obpn {
+    position:absolute; top:-4px; inset-inline-start:2px;
+    width:19px; height:19px; border-radius:50%; background:#ffd21e; color:#141005;
+    font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .obact {
+    width:100%; margin-top:10px; padding:11px; border-radius:11px; font-family:inherit;
+    font-size:13.5px; font-weight:700; background:#26304a; border:1px solid #33405e; color:#cfe0ff;
+  }
+  #coach { display:none; position:fixed; inset:0; z-index:38; background:rgba(4,6,10,.82); }
+  #coach.on { display:block; }
+  #coach .coachtxt {
+    position:absolute; right:16px; bottom:100px; left:16px; text-align:center; color:#eef2f8;
+  }
+  #coach .coachtxt b { font-size:18px; }
+  #coach .coachtxt p { font-size:14px; color:#c2cad8; margin:6px 0 0; }
+  body.coaching #fab { z-index:39; animation:coachpulse 1.5s ease-in-out infinite; }
+  @keyframes coachpulse {
+    0%,100% { box-shadow:0 6px 20px rgba(0,0,0,.55), 0 0 0 0 rgba(255,212,0,.55); }
+    50% { box-shadow:0 6px 20px rgba(0,0,0,.55), 0 0 0 18px rgba(255,212,0,0); }
+  }
   #torchBtn { display:none; }
   #torchBtn.avail { display:block; }
   #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
@@ -362,6 +443,133 @@
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
   <input type="file" id="picInput" accept="image/*" hidden>
+
+<div id="ob">
+  <div class="obcard">
+    <div class="obdots"><i></i><i></i><i></i><i></i></div>
+
+    <section class="obstep" data-step="0">
+      <div class="obart">
+        <svg viewBox="0 0 120 120" width="104" height="104" aria-hidden="true">
+          <rect x="14" y="20" width="92" height="80" rx="14" fill="#12161f" stroke="#2a3244"/>
+          <g fill="#f1f4fa">
+            <rect x="30" y="38" width="5" height="34"/><rect x="39" y="38" width="3" height="34"/>
+            <rect x="46" y="38" width="7" height="34"/><rect x="57" y="38" width="3" height="34"/>
+            <rect x="64" y="38" width="5" height="34"/><rect x="73" y="38" width="8" height="34"/>
+            <rect x="85" y="38" width="3" height="34"/>
+          </g>
+          <rect x="30" y="80" width="58" height="7" rx="3.5" fill="#ffd21e"/>
+        </svg>
+      </div>
+      <h2>ברוך הבא ל-SCAN // LOG</h2>
+      <p>סורק ברקוד, כותב כמה גרם, וזהו. האפליקציה מחשבת קלוריות וחלבון, עוקבת אחרי המשקל, ומראה לך בכל רגע כמה נשאר לך לשרוף עד היעד.</p>
+      <p class="obsmall">שתי דקות של הגדרה, ואתה בפנים.</p>
+      <button class="obnext" data-go="1">יאללה, מתחילים ←</button>
+    </section>
+
+    <section class="obstep" data-step="1" hidden>
+      <h2>קצת פרטים עליך</h2>
+      <p class="obsmall">מכאן מחושבת השריפה היומית במנוחה. הכל נשאר בטלפון שלך.</p>
+      <div class="obsex">
+        <button type="button" class="obsexb on" data-sex="m">👨 גבר</button>
+        <button type="button" class="obsexb" data-sex="f">👩 אישה</button>
+      </div>
+      <div class="obgrid">
+        <label>גובה (ס"מ)<input type="number" id="obH" inputmode="numeric" placeholder="182"></label>
+        <label>גיל<input type="number" id="obA" inputmode="numeric" placeholder="36"></label>
+        <label>משקל היום (ק"ג)<input type="number" id="obW" inputmode="decimal" step="0.1" placeholder="107.6"></label>
+      </div>
+      <div class="oberr" id="obErr1"></div>
+      <button class="obnext" data-go="2">המשך ←</button>
+    </section>
+
+    <section class="obstep" data-step="2" hidden>
+      <h2>כמה שומן אתה מוריד?</h2>
+      <p>כל קילו שומן = <b>10,000 קלוריות</b> שצריך לשרוף. זה הבנק שלך, והוא יתרוקן עם כל יום של גירעון.</p>
+      <div class="obkg">
+        <button type="button" class="obkgb" data-kg="-1">−</button>
+        <div><span id="obKg">10</span><small>ק"ג שומן</small></div>
+        <button type="button" class="obkgb" data-kg="1">+</button>
+      </div>
+      <div class="obbank">הבנק שלך: <b id="obBank">100,000</b> קלוריות לשרוף</div>
+      <p class="obsmall">אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.</p>
+      <button class="obnext" data-go="3">המשך ←</button>
+    </section>
+
+    <section class="obstep" data-step="3" hidden>
+      <h2>שני חיבורים שחוסכים זמן</h2>
+
+      <div class="obhow">
+        <div class="obrow"><span class="obnum">1</span>
+          <div>
+            <b>פתיחה מהירה בלחיצה כפולה</b>
+            <p class="obsmall">לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.</p>
+          </div>
+        </div>
+        <div class="obpics">
+          <div class="obpic">
+            <span class="obpn">1</span>
+            <svg viewBox="0 0 70 100" aria-hidden="true">
+              <rect x="14" y="6" width="42" height="88" rx="8" fill="#12161f" stroke="#39445a"/>
+              <rect x="58" y="30" width="4" height="18" rx="2" fill="#ffd21e"/>
+              <circle cx="60" cy="39" r="11" fill="none" stroke="#ffd21e" stroke-width="2" opacity=".55"/>
+              <circle cx="60" cy="39" r="16" fill="none" stroke="#ffd21e" stroke-width="1.5" opacity=".25"/>
+            </svg>
+            <small>לחץ על הכפתור למטה</small>
+          </div>
+          <div class="obpic">
+            <span class="obpn">2</span>
+            <svg viewBox="0 0 70 100" aria-hidden="true">
+              <rect x="8" y="6" width="54" height="88" rx="8" fill="#12161f" stroke="#39445a"/>
+              <rect x="15" y="18" width="40" height="9" rx="4" fill="#2a3244"/>
+              <rect x="15" y="33" width="40" height="9" rx="4" fill="#ffd21e"/>
+              <rect x="15" y="48" width="40" height="9" rx="4" fill="#2a3244"/>
+              <rect x="15" y="63" width="40" height="9" rx="4" fill="#2a3244"/>
+            </svg>
+            <small>בחר "לחיצה פעמיים"</small>
+          </div>
+          <div class="obpic">
+            <span class="obpn">3</span>
+            <svg viewBox="0 0 70 100" aria-hidden="true">
+              <rect x="8" y="6" width="54" height="88" rx="8" fill="#12161f" stroke="#39445a"/>
+              <rect x="20" y="34" width="30" height="30" rx="7" fill="#0d0f14" stroke="#2a3244"/>
+              <g fill="#f1f4fa">
+                <rect x="25" y="41" width="3" height="12"/><rect x="30" y="41" width="2" height="12"/>
+                <rect x="34" y="41" width="4" height="12"/><rect x="40" y="41" width="2" height="12"/>
+                <rect x="44" y="41" width="3" height="12"/>
+              </g>
+              <rect x="25" y="57" width="22" height="3" rx="1.5" fill="#ffd21e"/>
+            </svg>
+            <small>בחר SCAN // LOG</small>
+          </div>
+        </div>
+        <button type="button" class="obact" id="obSk">⚡ פתח את ההגדרה</button>
+      </div>
+
+      <div class="obhow">
+        <div class="obrow"><span class="obnum">2</span>
+          <div>
+            <b>חיבור ל-Health Connect</b>
+            <p class="obsmall">מושך אוטומטית את הצעדים והאימונים מהשעון, ורושם בחזרה את מה שאכלת. אשר את כל ההרשאות במסך שייפתח.</p>
+          </div>
+        </div>
+        <button type="button" class="obact" id="obHc">🩺 חבר ל-Health Connect</button>
+        <div class="obsmall" id="obHcState"></div>
+      </div>
+
+      <button class="obnext" data-go="done">סיימתי, קדימה לסריקה ←</button>
+      <button class="obskip" data-go="done">דלג</button>
+    </section>
+  </div>
+</div>
+
+<div id="coach">
+  <div class="coachtxt">
+    <b>זהו, אתה מוכן 🎉</b>
+    <p>לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך</p>
+  </div>
+</div>
+
   <div id="ptr">↓ משוך לרענון</div>
   <button id="fab" aria-label="סריקה והוספת מזון">+</button>
   <div class="msg" id="scanMsg"></div>
@@ -561,7 +769,9 @@ function weightFor(day) {
 }
 
 function bmrFor(w) {
-  return Math.round(10 * w + 6.25 * PROFILE.height - 5 * PROFILE.age + 5);
+  // Mifflin-St Jeor; the constant is the only thing that differs by sex
+  const k = PROFILE.sex === "f" ? -161 : 5;
+  return Math.round(10 * w + 6.25 * PROFILE.height - 5 * PROFILE.age + k);
 }
 
 function dayEnergy(day, kcalIn) {
@@ -844,7 +1054,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.26";
+const APP_BUILD = "2026.08.29.27";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2251,6 +2461,108 @@ document.addEventListener("touchend", () => {
 });
 renderVer();
 hcInit();
+
+/* ---------------- first-run onboarding ----------------
+   Four screens, then a spotlight on the scan button. Runs once; everything it
+   collects (sex/height/age/weight, the fat goal) is what the rest of the app
+   already reads, so nothing here is a special case later.                */
+const LS_OB = "fl_onboard";
+let obKg = 10;
+
+function obShow(n) {
+  document.querySelectorAll("#ob .obstep").forEach(s => {
+    s.hidden = Number(s.dataset.step) !== n;
+  });
+  document.querySelectorAll(".obdots i").forEach((d, i) => d.classList.toggle("on", i === n));
+  document.getElementById("ob").scrollTop = 0;
+}
+
+function obSaveBasics() {
+  // no silent fallback here - an empty field must not inherit whoever built
+  // the app; every new user states their own numbers
+  const h = parseFloat($("obH").value);
+  const a = parseFloat($("obA").value);
+  const w = parseFloat($("obW").value);
+  if (!(h > 100 && h < 230)) { $("obErr1").textContent = "הזן גובה בסנטימטרים (100-230) ס\"מ"; return false; }
+  if (!(a > 10 && a < 100)) { $("obErr1").textContent = "הזן את הגיל שלך (10-100)"; return false; }
+  if (!(w > 30 && w < 300)) { $("obErr1").textContent = "הזן את המשקל שלך היום"; return false; }
+  PROFILE.height = h; PROFILE.age = a;
+  store.set(LS_PROF, PROFILE);
+  const d = DAYDATA[todayKey()] || (DAYDATA[todayKey()] = {});
+  d.weight = w; d.weightManual = true;
+  store.set(LS_DAY, DAYDATA);
+  $("obErr1").textContent = "";
+  return true;
+}
+
+function obRenderKg() {
+  $("obKg").textContent = obKg;
+  $("obBank").textContent = (obKg * 10000).toLocaleString("he-IL");
+}
+
+function obFinish() {
+  BANK = { kg: obKg, total: obKg * 10000, startDay: todayKey(), at: new Date().toISOString() };
+  store.set(LS_BANK, BANK);
+  localStorage.setItem(LS_OB, "1");
+  $("ob").classList.remove("on");
+  document.body.style.overflow = "";
+  renderLog();
+  // spotlight the scan button so the first product is one tap away
+  document.body.classList.add("coaching");
+  $("coach").classList.add("on");
+}
+
+function obEndCoach() {
+  document.body.classList.remove("coaching");
+  $("coach").classList.remove("on");
+}
+
+function obStart() {
+  $("ob").classList.add("on");
+  document.body.style.overflow = "hidden";
+  $("obH").value = "";
+  $("obA").value = "";
+  obRenderKg();
+  obShow(0);
+}
+
+document.querySelectorAll("#ob .obnext, #ob .obskip").forEach(b => {
+  b.addEventListener("click", () => {
+    const go = b.dataset.go;
+    if (go === "done") { obFinish(); return; }
+    const n = Number(go);
+    if (n === 2 && !obSaveBasics()) return;
+    obShow(n);
+  });
+});
+document.querySelectorAll(".obsexb").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".obsexb").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    PROFILE.sex = b.dataset.sex;
+    store.set(LS_PROF, PROFILE);
+  });
+});
+document.querySelectorAll(".obkgb").forEach(b => {
+  b.addEventListener("click", () => {
+    obKg = Math.max(1, Math.min(80, obKg + Number(b.dataset.kg)));
+    obRenderKg();
+  });
+});
+$("obSk").addEventListener("click", () => {
+  if (HB()) skOpen(); else alert("הפתיחה המהירה זמינה באפליקציה המותקנת");
+});
+$("obHc").addEventListener("click", async () => {
+  if (!HB()) { $("obHcState").textContent = "זמין באפליקציה המותקנת"; return; }
+  $("obHcState").textContent = "פותח את מסך ההרשאות…";
+  await hcConnect();
+  $("obHcState").textContent = localStorage.getItem("fl_hc") ? "מחובר ✓" : "אפשר גם מאוחר יותר, בהגדרות";
+});
+$("coach").addEventListener("click", obEndCoach);
+$("fab").addEventListener("click", obEndCoach);
+
+if (!localStorage.getItem(LS_OB)) obStart();
+
 function calScroll(dir) {
   const w = $("calWeek");
   const step = (w.firstElementChild ? w.firstElementChild.offsetWidth + 5 : 50) * 7;
