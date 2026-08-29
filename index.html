@@ -202,6 +202,16 @@
   #camHint { text-align:center; color:var(--muted); font-size:12.5px; margin:9px 0; }
   #camBar { display:flex; gap:8px; }
   #camBar > * { flex:1; }
+  #stopBtn {
+    position:absolute; top:8px; left:8px; z-index:5;
+    width:34px; height:34px; padding:0; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; line-height:1; font-weight:800;
+    background:rgba(10,13,20,.72); color:#e7ecf3; border:1px solid #333c4e;
+    backdrop-filter:blur(3px);
+  }
+  #stopBtn:active { background:#2a3242; }
+  .campanel { position:relative; }
   #torchBtn { display:none; }
   #torchBtn.avail { display:block; }
   #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
@@ -308,16 +318,16 @@
 
   <div id="cam">
     <div class="campanel">
+      <button id="stopBtn" aria-label="סגור">✕</button>
       <video id="video" playsinline muted autoplay></video>
       <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
       <div id="camBar">
         <button id="torchBtn">🔦 פנס</button>
         <button id="shootBtn">📸 צלם ידנית</button>
-        <button id="stopBtn" class="danger">✕ סגור</button>
       </div>
       <input type="text" id="searchIn" class="camsearch" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
       <div id="searchRes"></div>
-      <div class="camfb">
+      <div class="camfb" style="display:none">
         <button id="photoBtn">🖼️ צלם תמונה</button>
         <button id="manualBtn">⌨️ הקלד ברקוד</button>
       </div>
@@ -803,7 +813,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.23";
+const APP_BUILD = "2026.08.29.24";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1195,6 +1205,7 @@ async function toggleTorch() {
    change that — so say it plainly once and send him back to the button that
    always works. */
 function camFallback(why) {
+  document.querySelector(".camfb").style.display = "flex";
   $("video").classList.add("off");
   $("camHint").textContent = why + ' אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.';
   $("diag").textContent = camDiagnosis();
