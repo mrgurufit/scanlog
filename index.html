@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.5";
+const APP_BUILD = "2026.08.29.6";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -769,8 +769,29 @@ function hcTap() {
   else hcConnect();
 }
 
+let hcOffered = false;
+
+/* Android refuses to show the permission sheet again after two denials -
+   the request "succeeds" but nothing opens. The manual route through the
+   Health Connect app itself always works, so offer it early and visibly. */
+function hcOfferSettings(prefix, n) {
+  hcOffered = true;
+  $("hcState").innerHTML = esc(prefix) + (n ? " (אושרו " + n + "/6)" : "") +
+    ' <u id="hcOpenSet" style="cursor:pointer;color:#8ab4f8">פתח את Health Connect לאישור ידני</u>';
+  const u = document.getElementById("hcOpenSet");
+  if (u) u.onclick = async () => {
+    try {
+      await HB().openHealthSettings();
+      $("hcState").textContent = "בתוך Health Connect: הרשאות אפליקציות ← Scan & Log ← אשר הכל, ואז חזור לכאן";
+    } catch {
+      $("hcState").textContent = "פתח ידנית: הגדרות הטלפון ← Health Connect ← הרשאות אפליקציות ← Scan & Log";
+    }
+  };
+}
+
 async function hcConnect() {
   const hb = HB(); if (!hb) return;
+  hcOffered = false;
   $("hcState").textContent = "מבקש הרשאות…";
   try {
     // the grants persist in the system the moment he approves, so the truth
@@ -784,14 +805,18 @@ async function hcConnect() {
     if (r && r.granted) { hcDone(); return; }
     $("hcState").textContent = "אשר את ההרשאות בחלון שנפתח…";
     const t0 = Date.now();
-    while (Date.now() - t0 < 90000) {
+    while (Date.now() - t0 < 120000) {
       await new Promise(res => setTimeout(res, 2000));
       g = await hb.grantedPermissions().catch(() => null);
       if (g && g.granted) { hcDone(); return; }
+      const n = (g && g.count) || 0;
+      if (!hcOffered && Date.now() - t0 > 14000) {
+        hcOfferSettings("החלון לא נפתח?", n);
+      } else if (!hcOffered && n) {
+        $("hcState").textContent = "אושרו " + n + " מתוך 6 הרשאות…";
+      }
     }
-    $("hcState").textContent = (g && g.count > 0)
-      ? "אושרו רק חלק מההרשאות — לחץ שוב ואשר את כולן"
-      : "לא אושרו הרשאות — לחץ שוב לנסות";
+    if (!hcOffered) hcOfferSettings((g && g.count > 0) ? "אושרו רק חלק מההרשאות." : "לא אושרו הרשאות.", (g && g.count) || 0);
   } catch { $("hcState").textContent = "Health Connect לא זמין במכשיר הזה"; }
 }
 
