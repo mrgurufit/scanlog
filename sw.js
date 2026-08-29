@@ -12,7 +12,7 @@ const IMG_CACHE = "scanlog-img-v1";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 // the only hosts we hold pictures from
-const IMG_HOST = /(^|\.)(wikimedia\.org|wikipedia\.org|openfoodfacts\.org)$/;
+const IMG_HOST = /(^|\.)(wikimedia\.org|wikipedia\.org|openfoodfacts\.org|jsdelivr\.net)$/;
 const IMG_MAX = 400;   // plenty for his catalogue, still bounded
 
 self.addEventListener("install", e => {

@@ -690,6 +690,39 @@ function HB() {
   catch { return null; }
 }
 
+/* The Android WebView has no BarcodeDetector, so inside the APK the SAME
+   in-frame live scan runs on zxing-wasm from jsDelivr instead (the service
+   worker caches it after first use, so it also works offline). */
+let zxingMod = null, zxingFail = false;
+async function ensureDetector() {
+  if ("BarcodeDetector" in window) return true;
+  if (zxingFail) return false;
+  try {
+    zxingMod = zxingMod || await import("https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/reader/index.js");
+    const MAP = { ean_13: "EAN-13", ean_8: "EAN-8", upc_a: "UPC-A", upc_e: "UPC-E", code_128: "Code128", code_39: "Code39", itf: "ITF" };
+    const scratch = document.createElement("canvas");
+    window.BarcodeDetector = class {
+      constructor(opts) {
+        this.formats = ((opts && opts.formats) || Object.keys(MAP)).map(f => MAP[f]).filter(Boolean);
+      }
+      async detect(source) {
+        const sw = source.videoWidth || source.naturalWidth || source.width || 0;
+        const sh = source.videoHeight || source.naturalHeight || source.height || 0;
+        if (!sw || !sh) return [];
+        const r = Math.min(1, 960 / sw);
+        scratch.width = Math.round(sw * r); scratch.height = Math.round(sh * r);
+        const ctx = scratch.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(source, 0, 0, scratch.width, scratch.height);
+        const found = await zxingMod.readBarcodes(ctx.getImageData(0, 0, scratch.width, scratch.height), {
+          formats: this.formats, maxNumberOfSymbols: 1, tryHarder: true,
+        });
+        return found.filter(x => x.text).map(x => ({ rawValue: x.text, format: x.format }));
+      }
+    };
+    return true;
+  } catch { zxingFail = true; return false; }
+}
+
 let hcLastSync = 0;
 
 async function hcInit() {
@@ -807,7 +840,6 @@ function camDiagnosis() {
 }
 
 async function startScan() {
-  if (HB()) { nativeScan(); return; }
   msg("scanMsg", "");
   $("diag").textContent = "";
   // the window opens regardless - if the camera fails, the name search and
@@ -848,8 +880,10 @@ async function startScan() {
     return camFallback(why);
   }
 
-  if (!("BarcodeDetector" in window)) {
+  $("camHint").textContent = "טוען מפענח ברקודים…";
+  if (!(await ensureDetector())) {
     stream.getTracks().forEach(t => t.stop()); stream = null;
+    if (HB()) { stopScan(); nativeScan(); return; }
     return camFallback("הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו.");
   }
 
@@ -957,7 +991,7 @@ async function fromPhoto(file) {
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   const thumb = c.toDataURL("image/jpeg", 0.6);
   let code = "";
-  if ("BarcodeDetector" in window) {
+  if (await ensureDetector()) {
     try {
       const d = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
       const found = await d.detect(img);
@@ -2040,7 +2074,7 @@ async function fillMissingImages() {
 scrubImages();
 renderLog();
 if (PROFILE.autoScan !== false &&
-    window.isSecureContext && navigator.mediaDevices && "BarcodeDetector" in window) {
+    window.isSecureContext && navigator.mediaDevices && ("BarcodeDetector" in window || HB())) {
   startScan();
 }
 </script>
