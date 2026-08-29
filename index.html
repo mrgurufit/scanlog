@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.14";
+const APP_BUILD = "2026.08.29.15";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -847,10 +847,17 @@ async function hcSync(force) {
       const w = Math.round(r.weightKg * 10) / 10;
       if (d.weight !== w) { d.weight = w; changed = true; }
     }
-    // ONLY measured activity calories count (Ido, 2026-08-29): what Samsung
-    // reports as burned-from-activity plus workout sessions. Never derive
-    // from total burn - a true 0 beats a wrong estimate.
-    const workout = Math.round(Math.max(r.workoutKcal || 0, r.activeKcal || 0)) || null;
+    // ONLY Samsung's own numbers count (Ido, 2026-08-29). Priority:
+    // 1) measured activity/workout calories, 2) total minus SAMSUNG's own
+    // BMR record, 3) total minus the resting rate visible in its overnight
+    // chunks. Our BMR is never used here - it ran ~100 kcal hot.
+    let workout = Math.round(Math.max(r.workoutKcal || 0, r.activeKcal || 0));
+    if (!workout && r.totalKcal > 0 && r.samsungBmrKcalDay) {
+      const dayFrac = Math.min(1, (Date.now() - dayStart.getTime()) / 86400000);
+      workout = Math.max(0, Math.round(r.totalKcal - r.samsungBmrKcalDay * dayFrac));
+    }
+    if (!workout && r.activityEstKcal != null) workout = Math.round(r.activityEstKcal);
+    workout = workout || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
