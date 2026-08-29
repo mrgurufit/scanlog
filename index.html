@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.6";
+const APP_BUILD = "2026.08.29.7";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -810,8 +810,14 @@ async function hcConnect() {
       g = await hb.grantedPermissions().catch(() => null);
       if (g && g.granted) { hcDone(); return; }
       const n = (g && g.count) || 0;
-      if (!hcOffered && Date.now() - t0 > 14000) {
-        hcOfferSettings("החלון לא נפתח?", n);
+      if (!hcOffered && n === 0 && Date.now() - t0 > 12000) {
+        hcOfferSettings("פותח את Health Connect לאישור ידני…", 0);
+        try {
+          await HB().openHealthSettings();
+          $("hcState").textContent = "בתוך Health Connect: הרשאות אפליקציות ← Scan & Log ← אשר הכל, ואז חזור לכאן";
+        } catch { /* the manual link stays on screen */ }
+      } else if (!hcOffered && Date.now() - t0 > 20000) {
+        hcOfferSettings("נשאר לאשר את השאר ב-Health Connect.", n);
       } else if (!hcOffered && n) {
         $("hcState").textContent = "אושרו " + n + " מתוך 6 הרשאות…";
       }
@@ -827,7 +833,7 @@ async function hcSync(force) {
   hcLastSync = Date.now();
   try {
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const r = await hb.readDay({ startMs: dayStart.getTime(), endMs: Date.now() });
+    const r = await hb.readDay({ startMs: dayStart.getTime(), endMs: Date.now(), weightDays: 14 });
     const today = todayKey();
     const d = DAYDATA[today] || (DAYDATA[today] = {});
     let changed = false;
@@ -852,14 +858,15 @@ async function hcSync(force) {
       scheduleAutoPush();
       renderTotals();
     }
-  } catch {
+  } catch (err) {
     const g = await HB().grantedPermissions().catch(() => null);
     if (g && !g.granted) {
       localStorage.removeItem("fl_hc");
       $("hcBtn").textContent = "🩺 חבר ל-Health Connect";
       $("hcState").textContent = "ההרשאות הוסרו — חבר מחדש";
     } else {
-      $("hcState").textContent = "הקריאה מ-Health Connect נכשלה — לחץ רענן";
+      const why = String((err && err.message) || err || "").slice(0, 160);
+      $("hcState").textContent = "הקריאה נכשלה: " + (why || "שגיאה לא ידועה") + " — לחץ רענן";
     }
   }
 }
