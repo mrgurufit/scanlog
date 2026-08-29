@@ -366,6 +366,7 @@
     </div>
     <div id="log"></div>
     <div class="foot" id="foot"></div>
+    <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
     <div class="row" style="margin-top:12px">
       <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
     </div>
@@ -681,6 +682,15 @@ function save() {
 }
 function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
 
+/* version line: APP_BUILD is bumped on every deploy of this file, so the
+   footer always answers "which version am I actually running?". The native
+   APK version joins it when the bridge reports one. */
+const APP_BUILD = "2026.08.29.5";
+let NATIVE_VER = "";
+function renderVer() {
+  $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
+}
+
 /* ---------------- native bridge (Android APK only) ----------------
    Inside the Scan & Log Android app a Capacitor plugin ("HealthBridge")
    exposes Health Connect and the Google barcode scanner. In any browser
@@ -734,6 +744,7 @@ async function hcInit() {
   $("hcRow").style.display = "flex";
   try {
     const a = await hb.available();
+    if (a && a.appVersion) { NATIVE_VER = a.appVersion; renderVer(); }
     if (!a || !a.healthConnect) {
       $("hcState").textContent = "Health Connect לא מותקן במכשיר הזה";
       return;
@@ -1905,6 +1916,7 @@ $("addBtn").addEventListener("click", addEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("hcBtn").addEventListener("click", hcTap);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) hcSync(); });
+renderVer();
 hcInit();
 function calScroll(dir) {
   const w = $("calWeek");
