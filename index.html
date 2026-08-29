@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.9";
+const APP_BUILD = "2026.08.29.10";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -855,10 +855,13 @@ async function hcSync(force) {
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
     if (workout) bits.push("אימון " + workout + ' קק"ל');
     else if (r.activeKcal != null && r.activeKcal > 0) bits.push("פעילות " + Math.round(r.activeKcal) + ' קק"ל');
-    if (r.steps != null) {
-      let st = Number(r.steps).toLocaleString("he-IL") + " צעדים";
-      if (r.stepsRaw && r.stepsRaw > r.steps) st += " (נרשמו " + Number(r.stepsRaw).toLocaleString("he-IL") + ")";
-      bits.push(st);
+    if (r.steps != null || r.stepsByOrigin) {
+      // two writers (phone + watch) overlap and the deduped aggregate picks
+      // wrong; the biggest single source is Samsung's own merged stream and
+      // matches what Samsung Health displays
+      const origins = Object.values(r.stepsByOrigin || {}).map(Number).filter(isFinite);
+      const best = Math.max(Number(r.steps) || 0, ...(origins.length ? origins : [0]));
+      if (best > 0) bits.push(best.toLocaleString("he-IL") + " צעדים");
     }
     if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
     $("hcState").textContent = bits.length
