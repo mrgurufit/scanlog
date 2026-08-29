@@ -238,6 +238,7 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+  #stepsHint { font-size:11.5px; color:var(--muted); margin-top:4px; min-height:14px; }
   #torchBtn { display:none; }
   #torchBtn.avail { display:block; }
   #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
@@ -325,10 +326,9 @@
   <div class="hdr">
     <div>
       <h1>SCAN <span>//</span> LOG</h1>
-      <div class="sub">סורק ברקוד, רושם כמה גרם, והשורה נשמרת עם השעה.</div>
     </div>
-    <button id="setBtn" title="הגדרות" aria-label="הגדרות">⚙️</button>
     <button id="streak" title="רצף ימי תיעוד">🔥<span id="streakN">0</span></button>
+    <button id="setBtn" title="הגדרות" aria-label="הגדרות">⚙️</button>
   </div>
   <div id="streakToast"></div>
 
@@ -414,16 +414,6 @@
     <div class="msg" id="entryMsg"></div>
   </div>
 
-  <div class="card">
-    <div class="loghead">
-      <h2 id="logTitle">היום</h2>
-    </div>
-    <div id="log"></div>
-    <div class="foot" id="foot"></div>
-    <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
-    <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
-  </div>
-
   <div class="card" id="ecard">
     <div id="totals">
       <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
@@ -439,9 +429,22 @@
       <div class="efield">
         <label for="actIn">נשרף היום סה"כ (צעדים + אימון)</label>
         <input type="number" id="actIn" inputmode="numeric" placeholder="0">
+        <div id="stepsHint"></div>
       </div>
     </div>
     <div id="ebal"></div>
+  </div>
+
+  <div class="card">
+    <div class="loghead">
+      <h2 id="logTitle">היום</h2>
+    </div>
+    <div id="log"></div>
+    <div class="foot" id="foot"></div>
+    <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
+    <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
+  </div>
+
       <div id="setModal">
         <div class="setpanel">
         <div class="sethead"><b>⚙️ הגדרות</b><button id="setClose" aria-label="סגור">✕</button></div>
@@ -469,8 +472,6 @@
         <input type="file" id="impInput" accept=".json,application/json" hidden>
         </div>
       </div>
-
-  </div>
 </div>
 
 <script>
@@ -575,6 +576,7 @@ function renderEnergy(kcalIn) {
   $("wIn").value = d.weight || "";
   $("wIn").placeholder = weightFor(viewDay);
   $("actIn").value = d.activity || "";
+  $("stepsHint").textContent = d.steps ? "👟 " + Number(d.steps).toLocaleString("he-IL") + " צעדים" : "";
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
   $("autoScanChk").checked = PROFILE.autoScan !== false;
@@ -842,7 +844,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.25";
+const APP_BUILD = "2026.08.29.26";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1064,6 +1066,7 @@ async function hcSync(force) {
     // the biggest single source (the deduped aggregate drops a writer).
     const origins = Object.values(r.stepsByOrigin || {}).map(Number).filter(isFinite);
     const stepsBest = Math.max(Number(r.steps) || 0, ...(origins.length ? origins : [0]));
+    if (stepsBest > 0 && d.steps !== stepsBest) { d.steps = stepsBest; changed = true; }
     const freeSteps = Math.max(0, stepsBest - (Number(r.sessionSteps) || 0));
     const wNow = dayEnergy(today, 0).w || 105;
     const stepsKcal = Math.round(freeSteps * wNow * 0.00048);
@@ -1073,7 +1076,6 @@ async function hcSync(force) {
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
     if (workout) bits.push('נשרף ' + workout + ' קק"ל' + (workoutKcal ? ' (צעדים ' + stepsKcal + ' + אימון ' + workoutKcal + ')' : ''));
-    if (stepsBest > 0) bits.push(stepsBest.toLocaleString("he-IL") + " צעדים");
     if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
     $("hcState").textContent = bits.length
       ? "מסונכרן ✓ " + bits.join(" · ")
