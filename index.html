@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>100 Days on Camera — Mr Guru Fit</title>
-<meta name="description" content="Every day of a 25 kg transformation, filmed and posted. The weight, the food in grams, the training. No skipped days.">
-<meta property="og:title" content="100 Days on Camera">
-<meta property="og:description" content="Every day of a 25 kg transformation, filmed and posted.">
+<meta name="description" content="Every day of a 25 kg transformation, filmed and posted. The weight, the food in grams, the training.">
+<meta property="og:title" content="100 Days on Camera — Mr Guru Fit">
+<meta property="og:description" content="Every day of a 25 kg transformation, filmed and posted. The weight, the food in grams, the training.">
 <meta name="theme-color" content="#0d0f14">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -20,61 +20,78 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap { max-width:760px; margin:0 auto; padding:24px 16px 70px; }
-  .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:13.5px; letter-spacing:1px; }
-  h1 { font-size:30px; line-height:1.2; margin:22px 0 8px; letter-spacing:-.4px; }
-  h1 span { color:var(--accent); }
-  .sub { color:#c2cad8; font-size:15px; margin:0 0 22px; }
-  .stats { display:flex; gap:8px; margin:0 0 28px; }
-  .stat { flex:1; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:12px 8px; text-align:center; }
-  .stat b { display:block; font-size:20px; color:var(--accent); font-variant-numeric:tabular-nums; }
-  .stat small { font-size:11px; color:var(--muted); }
-  h2 { font-size:15px; text-transform:uppercase; letter-spacing:1.4px; color:var(--muted); margin:34px 0 12px; }
-  .ep { background:var(--panel); border:1px solid var(--line); border-radius:15px; overflow:hidden; }
-  .ep.big { margin-bottom:8px; }
-  .thumb {
-    display:block; width:100%; padding:0; border:0; background:#000; cursor:pointer;
-    position:relative; aspect-ratio:16/9; overflow:hidden;
+  .wrap { max-width:640px; margin:0 auto; padding:22px 16px 64px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .brand { display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:1px; font-size:13px; }
+  .lang { display:flex; gap:6px; }
+  .lang button {
+    padding:6px 12px; border-radius:999px; font-size:12px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted); cursor:pointer;
   }
+  .lang button.on { background:#241a0e; border-color:var(--accent); color:var(--accent); }
+  h1 { font-size:29px; line-height:1.2; margin:22px 0 10px; letter-spacing:-.3px; }
+  h1 span { color:var(--accent); }
+  .lede { font-size:15.5px; color:#c2cad8; margin:0 0 22px; }
+  .nums { display:flex; gap:8px; margin:0 0 26px; }
+  .num { flex:1; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:12px 8px; text-align:center; }
+  .num b { display:block; font-size:20px; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .num small { font-size:11px; color:var(--muted); }
+  h2 { font-size:13.5px; text-transform:uppercase; letter-spacing:1.3px; color:var(--muted); margin:30px 0 11px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; margin:0 0 22px; }
+  .row { display:flex; align-items:flex-start; gap:11px; padding:9px 0; }
+  .row + .row { border-top:1px solid var(--line); }
+  .row .ic { flex:0 0 auto; width:30px; height:30px; border-radius:9px; background:var(--panel2);
+             display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .row b { display:block; font-size:14.5px; }
+  .row small { color:var(--muted); font-size:12.5px; }
+  .ep { background:var(--panel); border:1px solid var(--line); border-radius:15px; overflow:hidden; }
+  .thumb { display:block; width:100%; padding:0; border:0; background:#000; cursor:pointer;
+           position:relative; aspect-ratio:16/9; overflow:hidden; }
   .thumb img { width:100%; height:100%; object-fit:cover; display:block; opacity:.82; transition:opacity .2s; }
   .thumb:hover img { opacity:1; }
-  .thumb .play {
-    position:absolute; inset:0; margin:auto; width:56px; height:56px; border-radius:50%;
-    background:rgba(255,210,30,.94); color:#141005; font-size:22px;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .ep.big .thumb .play { width:70px; height:70px; font-size:27px; }
+  .thumb .play { position:absolute; inset:0; margin:auto; width:54px; height:54px; border-radius:50%;
+                 background:rgba(255,210,30,.94); color:#141005; font-size:21px;
+                 display:flex; align-items:center; justify-content:center; }
+  .ep.big .thumb .play { width:68px; height:68px; font-size:26px; }
   .meta { padding:12px 14px 14px; }
   .row1 { display:flex; align-items:baseline; gap:9px; }
-  .row1 b { font-size:15px; letter-spacing:.6px; }
+  .row1 b { font-size:15px; letter-spacing:.5px; }
   .kg { font-size:12.5px; color:var(--accent); font-variant-numeric:tabular-nums; }
   .meta p { margin:4px 0 0; font-size:13.5px; color:#b6c0cf; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:12px; }
-  form { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; margin:34px 0 0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  form { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; margin-top:26px; }
   form h3 { font-size:19px; margin:0 0 6px; }
-  form p { font-size:13.5px; color:var(--muted); margin:0 0 14px; }
+  form p { font-size:13px; color:var(--muted); margin:0 0 14px; }
   input[type=email] {
     width:100%; padding:14px; font-size:16px; font-family:inherit; color:var(--text);
     background:var(--panel2); border:1px solid var(--line); border-radius:11px;
   }
-  button.sub {
+  input[type=email]:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  form button {
     width:100%; margin-top:10px; padding:15px; font-size:16px; font-weight:800; font-family:inherit;
     background:var(--accent); color:#141005; border:0; border-radius:11px; cursor:pointer;
   }
+  form button:disabled { opacity:.6; }
   .consent { display:flex; gap:9px; align-items:flex-start; margin-top:12px; font-size:12px; color:var(--muted); }
-  .consent input { margin-top:3px; width:16px; height:16px; accent-color:var(--accent); }
+  .consent input { margin-top:3px; flex:0 0 auto; width:16px; height:16px; accent-color:var(--accent); }
   .consent a { color:#8ab4f8; }
   .msg { margin-top:11px; font-size:14px; min-height:20px; }
   .msg.ok { color:var(--green); } .msg.err { color:#ff8f8f; }
-  footer { margin-top:36px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:#5b6474; text-align:center; }
+  .who { margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
+  .who p { font-size:13.5px; color:var(--muted); margin:0; }
+  .who a { color:#8ab4f8; }
+  footer { margin-top:32px; padding-top:16px; border-top:1px solid var(--line);
+           font-size:11.5px; color:#5b6474; text-align:center; }
   footer a { color:#6f7a8c; }
+  h3.sec { font-size:17px; margin:26px 0 8px; color:var(--accent); }
+  .doc p, .doc li { font-size:14.5px; color:#d2d9e4; }
+  .doc ul { padding-inline-start:20px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-
-  <div class="brand">
-    <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+  <div class="top">
+    <div class="brand"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
       <rect width="26" height="26" rx="7" fill="#12161f" stroke="#2a3244"/>
       <g fill="#f1f4fa">
         <rect x="6" y="6" width="2" height="11"/><rect x="9.5" y="6" width="1.2" height="11"/>
@@ -82,38 +99,34 @@
         <rect x="18.5" y="6" width="2" height="11"/>
       </g>
       <rect x="6" y="19" width="14.5" height="2" rx="1" fill="#ffd21e"/>
-    </svg>
-    MR GURU FIT
+    </svg> MR GURU FIT</div>
+    <div class="lang">
+      <button type="button" data-l="en">English</button>
+      <button type="button" data-l="he">עברית</button>
+    </div>
   </div>
 
-  <h1>100 days. <span>Every single one</span> on camera.</h1>
-  <p class="sub">
-    The morning weight whether it is good or ugly, every gram of food, and the training.
-    New episode every day until day 100.
-  </p>
+  <h1 data-th="h1"></h1>
+  <p class="lede" data-t="lede"></p>
 
-  <div class="stats">
-    <div class="stat"><b>111.5</b><small>day 1</small></div>
-    <div class="stat"><b id="statNow">—</b><small id="statDay">today</small></div>
-    <div class="stat"><b>86.5</b><small>the goal</small></div>
+  <div class="nums">
+    <div class="num"><b>111.5</b><small data-t="d1"></small></div>
+    <div class="num"><b id="statNow">—</b><small id="statDay"></small></div>
+    <div class="num"><b>86.5</b><small data-t="goal"></small></div>
   </div>
 
-  <h2>Latest episode</h2>
+  <h2 data-t="latest"></h2>
   <div id="latest"></div>
 
-  <h2>Every episode</h2>
+  <h2 data-t="all"></h2>
   <div class="grid" id="grid"></div>
 
   <form id="f" novalidate>
-    <h3>Get tomorrow's episode by email 📩</h3>
-    <p>One short email a day: the video, the real numbers, and the one thing that day taught me.
-       Plus the full day of eating that had me down 6.2 kg by day 13.</p>
-    <input type="email" id="email" placeholder="your@email.com" autocomplete="email" required>
-    <label class="consent">
-      <input type="checkbox" id="ok" required>
-      <span>Email me the daily episode. Unsubscribe any time. <a href="privacy/" target="_blank">Privacy</a>.</span>
-    </label>
-    <button type="submit" class="sub" id="go">Send me the daily episode</button>
+    <h3 data-t="fh"></h3>
+    <p data-t="fp"></p>
+    <input type="email" id="email" data-tp="ph" autocomplete="email" required>
+    <label class="consent"><input type="checkbox" id="ok" required><span data-th="consent"></span></label>
+    <button type="submit" id="go" data-t="btn"></button>
     <div class="msg" id="msg" role="status"></div>
   </form>
 
@@ -122,50 +135,161 @@
     <a href="https://www.instagram.com/mrgurufit">Instagram</a> ·
     <a href="https://www.facebook.com/Mrgurufit">Facebook</a> ·
     <a href="https://www.tiktok.com/@mrgurufit">TikTok</a><br>
-    <a href="privacy/">Privacy</a> · Not medical advice.
+    <a href="privacy/" data-t="priv"></a> · <span data-t="foot"></span>
   </footer>
-</div>
 
+</div>
 <script>
+const TXT = {
+ "__title": {
+  "en": "100 Days on Camera — Mr Guru Fit",
+  "he": "100 ימים על המצלמה — Mr Guru Fit"
+ },
+ "h1": {
+  "en": "100 days. <span>Every single one</span> on camera.",
+  "he": "100 ימים. <span>כל אחד מהם</span> מצולם."
+ },
+ "lede": {
+  "en": "The morning weight whether it is good or ugly, every gram of food, and the training. New episode every day until day 100.",
+  "he": "המשקל של הבוקר בין אם הוא יפה ובין אם לא, כל גרם של אוכל, והאימון. פרק חדש כל יום עד יום 100."
+ },
+ "d1": {
+  "en": "day 1",
+  "he": "יום 1"
+ },
+ "goal": {
+  "en": "the goal",
+  "he": "היעד"
+ },
+ "latest": {
+  "en": "Latest episode",
+  "he": "הפרק האחרון"
+ },
+ "all": {
+  "en": "Every episode",
+  "he": "כל הפרקים"
+ },
+ "fh": {
+  "en": "Get tomorrow's episode by email 📩",
+  "he": "קבל את הפרק של מחר למייל 📩"
+ },
+ "fp": {
+  "en": "One short email a day: the video, the real numbers, and the one thing that day taught me. Plus the full day of eating that had me down 6.2 kg by day 13.",
+  "he": "מייל קצר אחד ביום: הסרטון, המספרים האמיתיים, והדבר האחד שהיום הזה לימד אותי. ובנוסף יום האכילה המלא שהוריד אותי 6.2 ק\"ג עד יום 13."
+ },
+ "ph": {
+  "en": "your@email.com",
+  "he": "your@email.com"
+ },
+ "consent": {
+  "en": "Email me the daily episode. Unsubscribe any time. <a href=\"privacy/\" target=\"_blank\">Privacy</a>.",
+  "he": "שלחו לי את הפרק היומי. אפשר להסיר בכל רגע. <a href=\"privacy/\" target=\"_blank\">פרטיות</a>."
+ },
+ "btn": {
+  "en": "Send me the daily episode",
+  "he": "שלחו לי את הפרק היומי"
+ },
+ "badmail": {
+  "en": "That email does not look right.",
+  "he": "כתובת המייל לא נראית תקינה."
+ },
+ "tick": {
+  "en": "Tick the box so I am allowed to email you.",
+  "he": "סמן את התיבה כדי שאוכל לשלוח לך מייל."
+ },
+ "sending": {
+  "en": "Sending…",
+  "he": "שולח…"
+ },
+ "done": {
+  "en": "Check your inbox and confirm. Tomorrow's episode lands there. 💪",
+  "he": "בדוק את תיבת המייל ואשר. הפרק של מחר יגיע לשם. 💪"
+ },
+ "failed": {
+  "en": "That did not go through. Try again, or email mr.guru.fit@gmail.com.",
+  "he": "זה לא עבר. נסה שוב, או שלח מייל ל-mr.guru.fit@gmail.com."
+ },
+ "foot": {
+  "en": "Not medical advice.",
+  "he": "לא ייעוץ רפואי."
+ },
+ "priv": {
+  "en": "Privacy",
+  "he": "פרטיות"
+ }
+};
+
+/* English is the default; the choice is remembered per visitor and flips the
+   page direction with it. Keys live on the elements so there is one source. */
+const LS = "mgf_lang";
+let L = localStorage.getItem(LS) || "en";
+
+function paint() {
+  document.documentElement.lang = L;
+  document.documentElement.dir = L === "he" ? "rtl" : "ltr";
+  document.querySelectorAll("[data-t]").forEach(el => {
+    const v = TXT[el.dataset.t];
+    if (v) el.textContent = v[L];
+  });
+  document.querySelectorAll("[data-th]").forEach(el => {
+    const v = TXT[el.dataset.th];
+    if (v) el.innerHTML = v[L];
+  });
+  document.querySelectorAll("[data-tp]").forEach(el => {
+    const v = TXT[el.dataset.tp];
+    if (v) el.placeholder = v[L];
+  });
+  const t = TXT.__title;
+  if (t) document.title = t[L];
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === L));
+}
+document.querySelectorAll(".lang button").forEach(b => {
+  b.addEventListener("click", () => {
+    L = b.dataset.l;
+    localStorage.setItem(LS, L);
+    paint();
+    if (typeof renderEpisodes === "function") renderEpisodes();
+  });
+});
+
 
 /* Episodes. One line per day; the nightly task appends the newest at the end. */
 const EPISODES = [
-  { d: 1, date: "2026-08-16", yt: "LhUtdpYMyo0", kg: 111.5, line: "Day one. 111.5 kg, and a camera pointed at all of it." },
-  { d: 2, date: "2026-08-17", yt: "olY7rEAQlMk", kg: null, line: "The routine, unedited." },
-  { d: 3, date: "2026-08-18", yt: "W6ZnToeD6h8", kg: null, line: "Training, and every gram weighed." },
-  { d: 4, date: "2026-08-19", yt: "OIvXY7OA68c", kg: null, line: "Same plan. This is what building a habit looks like." },
-  { d: 5, date: "2026-08-20", yt: "6ZrEZnc1o6w", kg: null, line: "The day the algorithm ignored me. Posted anyway." },
-  { d: 6, date: "2026-08-21", yt: "QGZ8HE61xos", kg: null, line: "Uploaded late. Still uploaded." },
-  { d: 7, date: "2026-08-22", yt: "D5B5iSaJL1U", kg: null, line: "One week in." },
-  { d: 8, date: "2026-08-23", yt: "S4yWKQ9sLYY", kg: 106.7, line: "Chest day, 50 kg dumbbells, and a scream you can hear." },
-  { d: 9, date: "2026-08-24", yt: "_Hadwj3cDck", kg: 107.1, line: "The scale went up. Here is why that is normal." },
-  { d: 10, date: "2026-08-25", yt: "CH5cXyjt3hM", kg: 107.3, line: "Double digits. 10% done." },
-  { d: 11, date: "2026-08-26", yt: "_8ZnnU5-lN8", kg: 106.4, line: "Three mornings up, then the drop. Patience paid." },
-  { d: 12, date: "2026-08-27", yt: "QL4fAePJKGo", kg: 106.2, line: "New low. The zigzag pays back." },
-  { d: 13, date: "2026-08-28", yt: "gjttLdvwBrE", kg: 105.3, line: "Second new low in a row. Abs day." }
+  { d: 1, yt: "LhUtdpYMyo0", kg: 111.5, en: "Day one. 111.5 kg, and a camera pointed at all of it.", he: "יום ראשון. 111.5 ק\"ג, ומצלמה על הכל." },
+  { d: 2, yt: "olY7rEAQlMk", kg: null, en: "The routine, unedited.", he: "השגרה, בלי עריכה." },
+  { d: 3, yt: "W6ZnToeD6h8", kg: null, en: "Training, and every gram weighed.", he: "אימון, וכל גרם על המשקל." },
+  { d: 4, yt: "OIvXY7OA68c", kg: null, en: "Same plan. This is what building a habit looks like.", he: "אותה תוכנית. ככה בונים הרגל." },
+  { d: 5, yt: "6ZrEZnc1o6w", kg: null, en: "The day the algorithm ignored me. Posted anyway.", he: "היום שהאלגוריתם התעלם ממני. העליתי בכל זאת." },
+  { d: 6, yt: "QGZ8HE61xos", kg: null, en: "Uploaded late. Still uploaded.", he: "עלה באיחור. אבל עלה." },
+  { d: 7, yt: "D5B5iSaJL1U", kg: null, en: "One week in.", he: "שבוע בפנים." },
+  { d: 8, yt: "S4yWKQ9sLYY", kg: 106.7, en: "Chest day, 50 kg dumbbells, and a scream you can hear.", he: "אימון חזה, משקולות 50 קילו, וצעקה ששומעים." },
+  { d: 9, yt: "_Hadwj3cDck", kg: 107.1, en: "The scale went up. Here is why that is normal.", he: "המשקל עלה. הנה למה זה נורמלי." },
+  { d: 10, yt: "CH5cXyjt3hM", kg: 107.3, en: "Double digits. 10% done.", he: "דו־ספרתי. 10 אחוז מאחורינו." },
+  { d: 11, yt: "_8ZnnU5-lN8", kg: 106.4, en: "Three mornings up, then the drop. Patience paid.", he: "שלושה בקרים למעלה, ואז הירידה. הסבלנות השתלמה." },
+  { d: 12, yt: "QL4fAePJKGo", kg: 106.2, en: "New low. The zigzag pays back.", he: "שפל חדש. הזיגזג מחזיר את שלו." },
+  { d: 13, yt: "gjttLdvwBrE", kg: 105.3, en: "Second new low in a row. Abs day.", he: "שפל שני ברצף. יום בטן." }
 ];
 
 function epCard(e, big) {
   const kg = e.kg ? '<span class="kg">' + e.kg + ' kg</span>' : "";
+  const dayWord = L === "he" ? "יום " : "DAY ";
   return '<article class="ep' + (big ? " big" : "") + '">' +
-    '<button class="thumb" data-yt="' + e.yt + '" aria-label="Play day ' + e.d + '">' +
-      '<img loading="lazy" src="https://i.ytimg.com/vi/' + e.yt + '/hqdefault.jpg" alt="Day ' + e.d + '">' +
+    '<button class="thumb" data-yt="' + e.yt + '" aria-label="' + dayWord + e.d + '">' +
+      '<img loading="lazy" src="https://i.ytimg.com/vi/' + e.yt + '/hqdefault.jpg" alt="' + dayWord + e.d + '">' +
       '<span class="play">&#9654;</span>' +
     '</button>' +
-    '<div class="meta"><div class="row1"><b>DAY ' + e.d + '</b>' + kg + '</div>' +
-    '<p>' + (e.line || "") + '</p></div></article>';
+    '<div class="meta"><div class="row1"><b>' + dayWord + e.d + '</b>' + kg + '</div>' +
+    '<p>' + (L === "he" ? (e.he || "") : (e.en || "")) + '</p></div></article>';
 }
 
 function renderEpisodes() {
   const sorted = EPISODES.slice().sort((a, b) => a.d - b.d);
   const latest = sorted[sorted.length - 1];
   document.getElementById("latest").innerHTML = epCard(latest, true);
-  document.getElementById("grid").innerHTML =
-    sorted.slice(0, -1).reverse().map(e => epCard(e, false)).join("");
+  document.getElementById("grid").innerHTML = sorted.slice(0, -1).reverse().map(e => epCard(e, false)).join("");
   const lastKg = sorted.slice().reverse().find(e => e.kg);
   document.getElementById("statNow").textContent = lastKg ? lastKg.kg : "—";
-  document.getElementById("statDay").textContent = "day " + latest.d;
-
+  document.getElementById("statDay").textContent = (L === "he" ? "יום " : "day ") + latest.d;
   document.querySelectorAll(".thumb").forEach(b => {
     b.addEventListener("click", () => {
       const f = document.createElement("iframe");
@@ -187,12 +311,12 @@ f.addEventListener("submit", async e => {
   e.preventDefault();
   const email = document.getElementById("email").value.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    msg.className = "msg err"; msg.textContent = "That email does not look right."; return;
+    msg.className = "msg err"; msg.textContent = TXT.badmail[L]; return;
   }
   if (!document.getElementById("ok").checked) {
-    msg.className = "msg err"; msg.textContent = "Tick the box so I am allowed to email you."; return;
+    msg.className = "msg err"; msg.textContent = TXT.tick[L]; return;
   }
-  go.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
+  go.disabled = true; msg.className = "msg"; msg.textContent = TXT.sending[L];
   const body = new FormData();
   body.append("fields[email]", email);
   body.append("ml-submit", "1");
@@ -202,13 +326,13 @@ f.addEventListener("submit", async e => {
     const d = await r.json().catch(() => ({}));
     if (!(d && (d.success || d.ok || r.ok))) throw new Error("rejected");
     f.querySelectorAll("input,button").forEach(el => el.disabled = true);
-    msg.className = "msg ok";
-    msg.textContent = "Check your inbox and confirm. Tomorrow's episode lands there. 💪";
+    msg.className = "msg ok"; msg.textContent = TXT.done[L];
   } catch {
-    go.disabled = false; msg.className = "msg err";
-    msg.textContent = "That did not go through. Try again, or email mr.guru.fit@gmail.com.";
+    go.disabled = false; msg.className = "msg err"; msg.textContent = TXT.failed[L];
   }
 });
+
+paint();
 </script>
 </body>
 </html>
