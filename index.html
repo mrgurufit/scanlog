@@ -393,6 +393,10 @@
         <input type="number" id="actIn" inputmode="numeric" placeholder="0">
       </div>
     </div>
+    <div id="hcRow" style="display:none;align-items:center;gap:8px;margin-top:8px">
+      <button id="hcBtn" type="button" style="background:#1d5c39;color:#d9ffe8;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🩺 חבר ל-Health Connect</button>
+      <span id="hcState" style="font-size:12px;color:#9aa3b2"></span>
+    </div>
     <div id="ebal"></div>
   </div>
 </div>
@@ -518,8 +522,10 @@ function saveDayData() {
   const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
   const w = parseFloat($("wIn").value);
   const a = parseFloat($("actIn").value);
-  if (isFinite(w) && w > 30 && w < 250) d.weight = w; else if (!$("wIn").value) delete d.weight;
-  if (isFinite(a) && a >= 0) d.activity = Math.round(a); else if (!$("actIn").value) delete d.activity;
+  if (isFinite(w) && w > 30 && w < 250) { d.weight = w; d.weightManual = true; }
+  else if (!$("wIn").value) { delete d.weight; delete d.weightManual; }
+  if (isFinite(a) && a >= 0) { d.activity = Math.round(a); d.activityManual = true; }
+  else if (!$("actIn").value) { delete d.activity; delete d.activityManual; }
   store.set(LS_DAY, DAYDATA);
   renderTotals();
 }
@@ -675,6 +681,112 @@ function save() {
 }
 function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
 
+/* ---------------- native bridge (Android APK only) ----------------
+   Inside the Scan & Log Android app a Capacitor plugin ("HealthBridge")
+   exposes Health Connect and the Google barcode scanner. In any browser
+   HB() is null and every path below is skipped - the web app is unchanged. */
+function HB() {
+  try { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthBridge) || null; }
+  catch { return null; }
+}
+
+let hcLastSync = 0;
+
+async function hcInit() {
+  const hb = HB(); if (!hb) return;
+  try {
+    const a = await hb.available();
+    if (!a || !a.healthConnect) return;
+    $("hcRow").style.display = "flex";
+    if (localStorage.getItem("fl_hc")) { $("hcBtn").style.display = "none"; hcSync(true); }
+  } catch { /* not fatal - the app works without it */ }
+}
+
+async function hcConnect() {
+  const hb = HB(); if (!hb) return;
+  $("hcState").textContent = "מבקש הרשאות…";
+  try {
+    const r = await hb.requestHealthPermissions();
+    if (r && r.granted) {
+      localStorage.setItem("fl_hc", "1");
+      $("hcBtn").style.display = "none";
+      hcSync(true);
+    } else {
+      $("hcState").textContent = "לא אושרו כל ההרשאות — לחץ שוב לנסות";
+    }
+  } catch { $("hcState").textContent = "Health Connect לא זמין במכשיר הזה"; }
+}
+
+/* pull weight / burned calories / steps / workouts into today's numbers */
+async function hcSync(force) {
+  const hb = HB(); if (!hb || !localStorage.getItem("fl_hc")) return;
+  if (!force && Date.now() - hcLastSync < 5 * 60 * 1000) return;
+  hcLastSync = Date.now();
+  try {
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const r = await hb.readDay({ startMs: dayStart.getTime(), endMs: Date.now() });
+    const today = todayKey();
+    const d = DAYDATA[today] || (DAYDATA[today] = {});
+    let changed = false;
+    if (r.weightKg && !d.weightManual) {
+      const w = Math.round(r.weightKg * 10) / 10;
+      if (d.weight !== w) { d.weight = w; changed = true; }
+    }
+    if (r.activeKcal != null && !d.activityManual) {
+      const a = Math.round(r.activeKcal);
+      if (a > 0 && d.activity !== a) { d.activity = a; changed = true; }
+    }
+    const bits = [];
+    if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
+    if (r.activeKcal != null) bits.push("שריפה " + Math.round(r.activeKcal));
+    if (r.steps != null) bits.push(Number(r.steps).toLocaleString("he-IL") + " צעדים");
+    if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
+    $("hcState").textContent = bits.length ? "מסונכרן ✓ " + bits.join(" · ") : "מסונכרן ✓";
+    if (changed) {
+      store.set(LS_DAY, DAYDATA);
+      scheduleAutoPush();
+      renderTotals();
+    }
+  } catch { /* sync is a bonus; the manual fields keep working */ }
+}
+
+/* every added item is also written to Health Connect as a nutrition record */
+function hcWriteEntry(e) {
+  const hb = HB(); if (!hb || !localStorage.getItem("fl_hc")) return;
+  try {
+    const c = computed(e);
+    hb.writeNutrition({
+      name: e.name,
+      kcal: Math.round(c.kcal),
+      protein: Math.round(c.pro * 10) / 10,
+      carb: Math.round(c.carb * 10) / 10,
+      fat: Math.round(c.fat * 10) / 10,
+      timeMs: Date.now(),
+    }).catch(() => {});
+  } catch { /* never block adding food */ }
+}
+
+/* in the APK the Google scan sheet replaces the in-page camera loop
+   (the Android WebView has no BarcodeDetector) */
+async function nativeScan() {
+  $("cam").classList.add("on");
+  document.body.style.overflow = "hidden";
+  $("video").classList.add("off");
+  $("camHint").textContent = "פותח את סורק הברקודים…";
+  try {
+    const r = await HB().scanBarcode();
+    stopScan();
+    if (r && r.value) onBarcode(r.value, "");
+  } catch (err) {
+    const m = String((err && err.message) || err);
+    if (/cancel/i.test(m)) {
+      $("camHint").textContent = "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.";
+    } else {
+      $("camHint").textContent = "סורק גוגל לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.";
+    }
+  }
+}
+
 /* ---------------- camera + barcode ---------------- */
 let stream = null, detector = null, scanning = false;
 
@@ -695,6 +807,7 @@ function camDiagnosis() {
 }
 
 async function startScan() {
+  if (HB()) { nativeScan(); return; }
   msg("scanMsg", "");
   $("diag").textContent = "";
   // the window opens regardless - if the camera fails, the name search and
@@ -1656,6 +1769,7 @@ function addEntry() {
   };
   LOG.push(e);
   save();
+  hcWriteEntry(e);
 
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
@@ -1710,6 +1824,8 @@ $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
+$("hcBtn").addEventListener("click", hcConnect);
+hcInit();
 function calScroll(dir) {
   const w = $("calWeek");
   const step = (w.firstElementChild ? w.firstElementChild.offsetWidth + 5 : 50) * 7;
