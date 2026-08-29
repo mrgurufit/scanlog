@@ -212,6 +212,32 @@
   }
   #stopBtn:active { background:#2a3242; }
   .campanel { position:relative; }
+  #setBtn {
+    flex:0 0 auto; width:41px; height:41px; padding:0; font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  }
+  #setBtn:active { background:#222a38; }
+  #setModal {
+    display:none; position:fixed; inset:0; z-index:70;
+    background:rgba(4,6,10,.72); backdrop-filter:blur(2px);
+    align-items:flex-start; justify-content:center; padding:34px 12px;
+    overflow-y:auto;
+  }
+  #setModal.on { display:flex; }
+  #setModal .setpanel {
+    width:100%; max-width:520px; background:var(--panel);
+    border:1px solid var(--line); border-radius:16px; padding:14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.6);
+  }
+  #setModal .sethead {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:15px; padding-bottom:9px; border-bottom:1px solid var(--line);
+  }
+  #setModal .sethead button {
+    width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
   #torchBtn { display:none; }
   #torchBtn.avail { display:block; }
   #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
@@ -301,6 +327,7 @@
       <h1>SCAN <span>//</span> LOG</h1>
       <div class="sub">סורק ברקוד, רושם כמה גרם, והשורה נשמרת עם השעה.</div>
     </div>
+    <button id="setBtn" title="הגדרות" aria-label="הגדרות">⚙️</button>
     <button id="streak" title="רצף ימי תיעוד">🔥<span id="streakN">0</span></button>
   </div>
   <div id="streakToast"></div>
@@ -323,7 +350,7 @@
       <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
       <div id="camBar">
         <button id="torchBtn">🔦 פנס</button>
-        <button id="shootBtn">📸 צלם ידנית</button>
+        <button id="shootBtn" style="display:none">📸 צלם ידנית</button>
       </div>
       <input type="text" id="searchIn" class="camsearch" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
       <div id="searchRes"></div>
@@ -415,8 +442,9 @@
       </div>
     </div>
     <div id="ebal"></div>
-      <details class="eprof" id="setBox">
-        <summary>⚙️ הגדרות</summary>
+      <div id="setModal">
+        <div class="setpanel">
+        <div class="sethead"><b>⚙️ הגדרות</b><button id="setClose" aria-label="סגור">✕</button></div>
         <div class="erow" style="margin-top:8px">
           <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
           <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
@@ -439,7 +467,8 @@
           <button id="impBtn">⬆️ שחזור מגיבוי</button>
         </div>
         <input type="file" id="impInput" accept=".json,application/json" hidden>
-      </details>
+        </div>
+      </div>
 
   </div>
 </div>
@@ -813,7 +842,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.24";
+const APP_BUILD = "2026.08.29.25";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2143,6 +2172,16 @@ $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
+$("setBtn").addEventListener("click", () => {
+  $("setModal").classList.add("on");
+  document.body.style.overflow = "hidden";
+});
+function closeSettings() {
+  $("setModal").classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("setClose").addEventListener("click", closeSettings);
+$("setModal").addEventListener("click", e => { if (e.target === $("setModal")) closeSettings(); });
 $("bankWrap").addEventListener("click", bankSetup);
 $("hcBtn").addEventListener("click", hcTap);
 $("skBtn").addEventListener("click", skOpen);
