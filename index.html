@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.12";
+const APP_BUILD = "2026.08.29.13";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -857,7 +857,12 @@ async function hcSync(force) {
       const bmr = dayEnergy(today, 0).bmr;
       fromTotal = Math.max(0, Math.round(r.totalKcal - bmr * dayFrac));
     }
-    const workout = Math.round(Math.max(fromTotal, r.workoutKcal || 0, r.activeKcal || 0)) || null;
+    // a real measurement (Samsung's activity calories / workout calories)
+    // always beats the total-minus-BMR derivation - our BMR differs slightly
+    // from Samsung's, so the derived number runs ~100 kcal hot midday. The
+    // derivation stays only as a fallback when no measurement arrives at all.
+    const measured = Math.round(Math.max(r.workoutKcal || 0, r.activeKcal || 0));
+    const workout = (measured > 0 ? measured : fromTotal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
     if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
