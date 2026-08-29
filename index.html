@@ -685,7 +685,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.7";
+const APP_BUILD = "2026.08.29.8";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
@@ -804,23 +804,27 @@ async function hcConnect() {
     ]).catch(() => null);
     if (r && r.granted) { hcDone(); return; }
     $("hcState").textContent = "אשר את ההרשאות בחלון שנפתח…";
+    // A real sheet covers the app within a moment. Still visible after 2s =
+    // Android blocked it (two-denial lockout) - open Health Connect itself
+    // immediately instead of making him hunt for it.
+    await new Promise(res => setTimeout(res, 2000));
+    g = await hb.grantedPermissions().catch(() => null);
+    if (g && g.granted) { hcDone(); return; }
+    if (!document.hidden) {
+      hcOfferSettings("פותח את Health Connect לאישור ידני…", (g && g.count) || 0);
+      try {
+        await HB().openHealthSettings();
+        $("hcState").innerHTML = 'בתוך Health Connect: <b>הרשאות אפליקציות ← Scan &amp; Log ← אשר הכל</b>, ואז חזור לכאן';
+      } catch { /* the manual link stays on screen */ }
+    }
     const t0 = Date.now();
-    while (Date.now() - t0 < 120000) {
+    while (Date.now() - t0 < 180000) {
       await new Promise(res => setTimeout(res, 2000));
       g = await hb.grantedPermissions().catch(() => null);
       if (g && g.granted) { hcDone(); return; }
       const n = (g && g.count) || 0;
-      if (!hcOffered && n === 0 && Date.now() - t0 > 12000) {
-        hcOfferSettings("פותח את Health Connect לאישור ידני…", 0);
-        try {
-          await HB().openHealthSettings();
-          $("hcState").textContent = "בתוך Health Connect: הרשאות אפליקציות ← Scan & Log ← אשר הכל, ואז חזור לכאן";
-        } catch { /* the manual link stays on screen */ }
-      } else if (!hcOffered && Date.now() - t0 > 20000) {
-        hcOfferSettings("נשאר לאשר את השאר ב-Health Connect.", n);
-      } else if (!hcOffered && n) {
-        $("hcState").textContent = "אושרו " + n + " מתוך 6 הרשאות…";
-      }
+      if (!hcOffered && n) $("hcState").textContent = "אושרו " + n + " מתוך 6 הרשאות…";
+      else if (!hcOffered && Date.now() - t0 > 20000) hcOfferSettings("עדיין ממתין לאישור.", n);
     }
     if (!hcOffered) hcOfferSettings((g && g.count > 0) ? "אושרו רק חלק מההרשאות." : "לא אושרו הרשאות.", (g && g.count) || 0);
   } catch { $("hcState").textContent = "Health Connect לא זמין במכשיר הזה"; }
@@ -833,7 +837,9 @@ async function hcSync(force) {
   hcLastSync = Date.now();
   try {
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const r = await hb.readDay({ startMs: dayStart.getTime(), endMs: Date.now(), weightDays: 14 });
+    // the +0.5 keeps the numbers Double over the bridge (a whole number lands
+    // as Long and older native builds reject it as missing)
+    const r = await hb.readDay({ startMs: dayStart.getTime() + 0.5, endMs: Date.now() + 0.5, weightDays: 14.5 });
     const today = todayKey();
     const d = DAYDATA[today] || (DAYDATA[today] = {});
     let changed = false;
@@ -878,11 +884,11 @@ function hcWriteEntry(e) {
     const c = computed(e);
     hb.writeNutrition({
       name: e.name,
-      kcal: Math.round(c.kcal),
-      protein: Math.round(c.pro * 10) / 10,
-      carb: Math.round(c.carb * 10) / 10,
-      fat: Math.round(c.fat * 10) / 10,
-      timeMs: Date.now(),
+      kcal: Math.round(c.kcal) + 0.0001,
+      protein: Math.round(c.pro * 10) / 10 + 0.0001,
+      carb: Math.round(c.carb * 10) / 10 + 0.0001,
+      fat: Math.round(c.fat * 10) / 10 + 0.0001,
+      timeMs: Date.now() + 0.5,
     }).catch(() => {});
   } catch { /* never block adding food */ }
 }
