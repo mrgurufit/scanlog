@@ -1399,7 +1399,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.32";
+const APP_BUILD = "2026.08.29.33";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -3022,8 +3022,12 @@ $("copyBtn").addEventListener("click", async () => {
   }
 });
 $("expBtn").addEventListener("click", () => {
-  const payload = { v: 1, exported: new Date().toISOString(),
-    log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE };
+  const payload = { v: 2, exported: new Date().toISOString(),
+    log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
+    bank: BANK, lang: LANG,
+    push: localStorage.getItem("fl_push") || "",
+    pushkey: localStorage.getItem("fl_pushkey") || "",
+    onboarded: localStorage.getItem(LS_OB) || "" };
   const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -3046,6 +3050,10 @@ $("impInput").addEventListener("change", e => {
       Object.assign(PRODUCTS, d.products || {});
       for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
       if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
+      if (d.bank && d.bank.total) { BANK = d.bank; store.set(LS_BANK, BANK); }
+      if (d.push) localStorage.setItem("fl_push", d.push);
+      if (d.pushkey) localStorage.setItem("fl_pushkey", d.pushkey);
+      if (d.onboarded) localStorage.setItem(LS_OB, d.onboarded);
       save(); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
       renderLog();
       msg("scanMsg", T("שוחזר: ") + added + " " + T("רישומים,") + " " + Object.keys(d.products || {}).length + " " + T("מוצרים בזיכרון."), "ok");
