@@ -367,6 +367,7 @@
     <div id="log"></div>
     <div class="foot" id="foot"></div>
     <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
+    <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
     <div class="row" style="margin-top:12px">
       <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
     </div>
@@ -689,10 +690,34 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.18";
+const APP_BUILD = "2026.08.29.19";
 let NATIVE_VER = "";
 function renderVer() {
-  $("verLine").textContent = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "");
+  $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
+    (NATIVE_VER ? ' · <u id="dbgLink" style="cursor:pointer">אבחון</u>' : "");
+  const l = document.getElementById("dbgLink");
+  if (l) l.onclick = showDbg;
+}
+
+/* on-screen device diagnostic: which settings screens actually exist here.
+   He screenshots it; that beats guessing intent names. */
+async function showDbg() {
+  const box = $("dbgBox");
+  box.style.display = "block";
+  box.textContent = "קורא…";
+  try {
+    const d = await HB().debugActivities();
+    const lines = [];
+    for (const k of Object.keys(d)) {
+      const v = d[k];
+      if (!Array.isArray(v) || !v.length) continue;
+      lines.push("== " + k.replace("com.google.android.", "").replace("com.android.", "") + " ==");
+      v.forEach(n => lines.push(String(n).replace(/^com\.(google\.)?android\./, "")));
+    }
+    box.textContent = lines.join("\n") || "לא נמצאו מסכים";
+  } catch (e) {
+    box.textContent = "אבחון לא זמין בגרסה הזו: " + ((e && e.message) || e);
+  }
 }
 
 /* ---------------- native bridge (Android APK only) ----------------
