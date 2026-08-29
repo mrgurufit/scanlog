@@ -670,6 +670,15 @@
           <button id="skBtn" type="button" style="background:#26304a;color:#cfe0ff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚡ פתיחה מהירה מהלחצן הצידי</button>
           <span id="skState" style="font-size:12px;color:#9aa3b2"></span>
         </div>
+        <div class="erow" style="margin-top:12px">
+          <div class="efield">
+            <label>Language / שפה</label>
+            <div class="obsex" style="margin:6px 0 0">
+              <button type="button" class="obsexb" id="langEn">English</button>
+              <button type="button" class="obsexb" id="langHe">עברית</button>
+            </div>
+          </div>
+        </div>
         <div class="row" style="margin-top:12px">
           <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
         </div>
@@ -691,6 +700,316 @@
    that — so a barcode is matched against products this phone has
    already seen. Typing a product's label values once teaches it
    forever.                                                        */
+const I18N = {
+  "🔥 נותרו": "🔥",
+  "קק\"ל בבנק": "kcal left in the bank",
+  "נשרפו": "burned",
+  "אפשר גם מאוחר יותר, בהגדרות": "You can do this later, in Settings",
+  "כוון את הברקוד למרכז — הזיהוי אוטומטי": "Point the barcode at the centre. It reads by itself",
+  "🔦 פנס": "🔦 Torch",
+  "📸 צלם ידנית": "📸 Shoot manually",
+  "🖼️ צלם תמונה": "🖼️ Take a photo",
+  "⌨️ הקלד ברקוד": "⌨️ Type a barcode",
+  "🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…": "🔎 Or search by name: cooked rice, tomato, egg…",
+  "פותח מצלמה…": "Opening the camera…",
+  "מבקש גישה למצלמה — אשר את הבקשה שתופיע…": "Asking for camera access. Allow the prompt that appears…",
+  "טוען מפענח ברקודים…": "Loading the barcode reader…",
+  "מזהה… החזק יציב": "Reading… hold steady",
+  "קורא את הברקוד מהתמונה…": "Reading the barcode from your photo…",
+  "פותח את סורק הברקודים…": "Opening the barcode scanner…",
+  "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.": "Scan cancelled. Tap + to scan again, or search by name below.",
+  "סורק גוגל לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.": "The Google scanner is unavailable right now. Photograph the barcode or search by name.",
+  "הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).": "This browser blocks the camera here (the connection is not secure).",
+  "המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.": "The camera is blocked for this site. Tap the 🔒 next to the address, then Permissions, Camera, Allow.",
+  "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.": "The request was denied, or this embedded page is not allowed to use the camera, so no prompt appeared.",
+  "לא נמצאה מצלמה במכשיר.": "No camera found on this device.",
+  "המצלמה תפוסה על ידי אפליקציה אחרת. סגור אותה ונסה שוב.": "Another app is using the camera. Close it and try again.",
+  "לא נמצאה מצלמה אחורית מתאימה.": "No suitable rear camera found.",
+  "הדפדפן חסם את המצלמה בדף הזה.": "The browser blocked the camera on this page.",
+  "שגיאה:": "Error:",
+  "הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו.": "This browser cannot read barcodes straight from video.",
+  "אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.": "You can take a photo, type the barcode, or search by name below.",
+  "מוצר חדש": "New product",
+  "החלף": "Change",
+  "בחר תמונה למוצר": "Choose a product photo",
+  "שם המוצר": "Product name",
+  "למשל: קוטג׳ 5%": "e.g. cottage cheese 5%",
+  "ערכים ל-100 גרם": "Values per 100 g",
+  "(מהמדבקה על האריזה — נשמר לפעם הבאה)": "(from the label, remembered next time)",
+  "📄 צלם את טבלת הערכים — היא תיקרא לבד": "📄 Photograph the nutrition table and it reads itself",
+  "מה נקרא מהתמונה": "What was read from the photo",
+  "כמה גרם אכלת?": "How many grams did you eat?",
+  "הזן גרמים כדי לחשב": "Enter grams to calculate",
+  "➕ הוסף לרשימה": "➕ Add to the log",
+  "ביטול": "Cancel",
+  "קק״ל": "kcal",
+  "קק\"ל": "kcal",
+  "חלבון": "Protein",
+  "פחמ׳": "Carbs",
+  "שומן": "Fat",
+  "גרם": "grams",
+  "שמור": "Save",
+  "פחמימה": "Carbs",
+  "ג׳": "g",
+  "נוסף:": "Added:",
+  "כמות לא תקינה": "Not a valid amount",
+  "חסר שם למוצר": "The product needs a name",
+  "חסר משקל בגרמים": "The weight in grams is missing",
+  "חסרות קלוריות ל-100 גרם": "Calories per 100 g are missing",
+  "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "Type the barcode number (or leave it empty for a product without one):",
+  "התמונה הוחלפה.": "Photo replaced.",
+  "לא הצלחתי לקרוא את התמונה הזאת.": "I could not read that image.",
+  "השתמש בתמונה שצילמתי": "Use the photo I took",
+  "בלי ברקוד": "no barcode",
+  "✓ התאמה: ": "✓ Match: ",
+  "מחפש במאגר העולמי…": "Searching the world database…",
+  "מחפש גם במאגר העולמי…": "Also searching the world database…",
+  "לא נמצא — אפשר להזין ידנית למטה": "Not found. You can enter it manually below.",
+  "לא במאגר · ": "Not in the database · ",
+  "✓ זוהה:": "✓ Identified:",
+  "זוהה חלקית:": "Partly identified:",
+  "— השלם מהמדבקה": "— fill in the rest from the label",
+  "🔎 מחפש התאמות לפי הברקוד והכיתוב שעל המוצר…": "🔎 Looking for matches from the barcode and the text on the package…",
+  "לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.": "No matches. Fill it in from the label once and it is remembered forever.",
+  "אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:": "Maybe one of these? Picking one fills the values and saves them under the scanned barcode:",
+  "קק״ל · ח": "kcal · P",
+  "קק״ל ·": "kcal ·",
+  "לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה.": "No barcode found in the photo. Get closer and straighter, or just fill it in manually below.",
+  "מהמאגר המובנה — ערכים מקובלים ל-100 ג׳": "From the built-in database, standard values per 100 g",
+  "— ייזכר תחת הברקוד שנסרק": "— will be remembered under the scanned barcode",
+  "טוען מנוע קריאה — בפעם הראשונה זו הורדה גדולה…": "Loading the reading engine. The first time is a big download…",
+  "קורא את הטבלה… ": "Reading the table… ",
+  "קורא את הטבלה…": "Reading the table…",
+  "אין חיבור או שההורדה נחסמה — מלא את הערכים ידנית.": "No connection, or the download was blocked. Enter the values manually.",
+  "לא הצלחתי לפתוח את התמונה.": "I could not open that image.",
+  "הקריאה נכשלה — צלם רק את הטבלה, קרוב, ישר ובאור טוב.": "Reading failed. Photograph only the table: close, straight and well lit.",
+  "לא זוהו ערכים — פתח את \\\"מה נקרא מהתמונה\\\" למטה כדי לראות מה המנוע ראה, וצלם שוב רק את הטבלה, קרוב וישר.": "No values found. Open \\\"What was read from the photo\\\" below to see what the engine saw, then reshoot just the table, close and straight.",
+  "נקרא מהטבלה: ": "Read from the table: ",
+  "— ודא שזו העמודה של 100 גרם ותקן אם צריך.": "— check this is the per-100 g column and fix it if not.",
+  "✓ מוכר — הערכים מולאו": "✓ Known product, values filled in",
+  "(לא זוהה טקסט)": "(no text detected)",
+  "קלוריות": "Calories",
+  "חלבון ג׳": "Protein g",
+  "פחמימה ג׳": "Carbs g",
+  "שומן ג׳": "Fat g",
+  "משקל הבוקר (ק\"ג)": "Morning weight (kg)",
+  "נשרף היום סה\"כ (צעדים + אימון)": "Burned today (steps + workout)",
+  "גירעון": "deficit",
+  "עודף": "surplus",
+  "יצא:": "Out:",
+  "נכנס:": "In:",
+  "פעילות": "activity",
+  "צעדים": "steps",
+  "היום": "Today",
+  "עדיין אין כלום ביום הזה.": "Nothing logged on this day yet.",
+  "לחץ על ה-+ הצהוב כדי להתחיל.": "Tap the yellow + to start.",
+  "ג׳ · ח": "g · P",
+  "פ": "C",
+  "ש": "F",
+  "מחק": "Delete",
+  "למחוק \\\"": "Delete \\\"",
+  "אין רישומים ל-": "No entries for ",
+  "מוצרים נשמרו בזיכרון ·": "products remembered ·",
+  "רישומים בסך הכל.": "entries in total.",
+  "הכל נשמר בטלפון הזה בלבד. \"העתק דוח\" מכין את היום לשליחה לקלוד.": "Everything is stored on this phone only. \"Copy report\" prepares the day to send.",
+  "הדוח היומי מסתנכרן לקלוד אוטומטית ✓": "The daily report syncs automatically ✓",
+  "אין מקום בזיכרון הדפדפן": "The browser storage is full",
+  "🏦 הגדר את בנק הקלוריות שלך": "🏦 Set up your calorie bank",
+  "לחץ כדי לבחור כמה ק\\\"ג שומן אתה מוריד": "Tap to choose how much fat you are losing",
+  "🏆 הבנק אופס!": "🏆 Bank cleared!",
+  "ק\\\"ג שומן": "kg of fat",
+  "🔥 נותרו <span style=\\\"font-variant-numeric:tabular-nums\\\">": "🔥 <span style=\\\"font-variant-numeric:tabular-nums\\\">",
+  "</span> קק\\\"ל בבנק": "</span> kcal left in the bank",
+  "% נשרפו": "% burned",
+  "מתוך": "of",
+  "היום ‎−": "today ‎−",
+  "היום ‎+": "today ‎+",
+  "בקצב הנוכחי (": "at your current pace (",
+  "/יום) עוד": "/day) ",
+  "ימים": "days to go",
+  "כמה ק\\\"ג שומן אתה מוריד? (שינוי מאפס את הבנק)": "How many kg of fat are you losing? (changing this resets the bank)",
+  "כמה ק\\\"ג שומן אתה רוצה להוריד?\\nכל ק\\\"ג = 10,000 קק\\\"ל בבנק.": "How many kg of fat do you want to lose?\\nEvery kg is 10,000 kcal in the bank.",
+  "הזן מספר ק\\\"ג בין 1 ל-100": "Enter a number of kg between 1 and 100",
+  "רצף ימי תיעוד": "Logging streak",
+  "עוד לא נרשם כלום היום — סרוק משהו ותדליק את האש 🔥": "Nothing logged today yet. Scan something and light the fire 🔥",
+  "יום ראשון של תיעוד — ככה מתחילים! 💪": "Day one of logging. That is how it starts 💪",
+  "שבוע שלם ברציפות! זו כבר לא מוטיבציה, זו משמעת 🔥🔥": "A full week in a row. That is not motivation any more, that is discipline 🔥🔥",
+  "שבועיים רצוף! מי שמודד — משתנה 🔥🔥": "Two weeks straight. What gets measured changes 🔥🔥",
+  "חודש שלם של תיעוד יומי. אלוף אמיתי 🏆": "A whole month of daily logging. Champion 🏆",
+  "מאה ימים. אתה כתבת את הסיפור הזה, יום אחרי יום 🏆🔥": "One hundred days. You wrote this story, one day at a time 🏆🔥",
+  "כל הכבוד! יום": "Nice work. Day",
+  "ברציפות 🔥": "in a row 🔥",
+  "ימים ברציפות — אתה מכונה 🔥": "days in a row. You are a machine 🔥",
+  "ברוך הבא ל-SCAN // LOG": "Welcome to SCAN // LOG",
+  "סורק ברקוד, כותב כמה גרם, וזהו. האפליקציה מחשבת קלוריות וחלבון, עוקבת אחרי המשקל, ומראה לך בכל רגע כמה נשאר לך לשרוף עד היעד.": "Scan a barcode, type the grams, done. The app works out calories and protein, tracks your weight, and shows you exactly how much is left to burn to hit your goal.",
+  "שתי דקות של הגדרה, ואתה בפנים.": "Two minutes of setup and you are in.",
+  "יאללה, מתחילים ←": "Let's go →",
+  "קצת פרטים עליך": "A little about you",
+  "מכאן מחושבת השריפה היומית במנוחה. הכל נשאר בטלפון שלך.": "This is what your resting burn is calculated from. It all stays on your phone.",
+  "👨 גבר": "👨 Male",
+  "👩 אישה": "👩 Female",
+  "גובה (ס\"מ)": "Height (cm)",
+  "גיל": "Age",
+  "משקל היום (ק\"ג)": "Weight today (kg)",
+  "המשך ←": "Continue →",
+  "כמה שומן אתה מוריד?": "How much fat are you losing?",
+  "כל קילו שומן =": "Every kilo of fat is",
+  "10,000 קלוריות": "10,000 calories",
+  "שצריך לשרוף. זה הבנק שלך, והוא יתרוקן עם כל יום של גירעון.": "to burn. That is your bank, and it drains with every day in deficit.",
+  "הבנק שלך:": "Your bank:",
+  "קלוריות לשרוף": "calories to burn",
+  "אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.": "You can change it any time by tapping the yellow bar on the main screen.",
+  "שני חיבורים שחוסכים זמן": "Two connections that save you time",
+  "פתיחה מהירה בלחיצה כפולה": "Quick launch with a double press",
+  "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "Double-press your phone's side key to open the app from anywhere.",
+  "לחץ על הכפתור למטה": "Press the key below",
+  "בחר \"לחיצה פעמיים\"": "Choose \"Double press\"",
+  "בחר SCAN // LOG": "Choose SCAN // LOG",
+  "⚡ פתח את ההגדרה": "⚡ Open that setting",
+  "חיבור ל-Health Connect": "Connect to Health Connect",
+  "מושך אוטומטית את הצעדים והאימונים מהשעון, ורושם בחזרה את מה שאכלת. אשר את כל ההרשאות במסך שייפתח.": "Pulls your steps and workouts from your watch, and writes your meals back. Allow every permission on the screen that opens.",
+  "סיימתי, קדימה לסריקה ←": "Done, take me to the scanner →",
+  "דלג": "Skip",
+  "זהו, אתה מוכן 🎉": "That is it, you are ready 🎉",
+  "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך": "Tap the yellow button to scan your first product",
+  "הזן גובה בסנטימטרים (100-230) ס\\\"מ": "Enter your height in centimetres (100-230)",
+  "הזן את הגיל שלך (10-100)": "Enter your age (10-100)",
+  "הזן את המשקל שלך היום": "Enter your weight today",
+  "⚙️ הגדרות": "⚙️ Settings",
+  "הגדרות": "Settings",
+  "סגור": "Close",
+  "שבוע אחורה": "Previous week",
+  "שבוע קדימה": "Next week",
+  "סריקה והוספת מזון": "Scan and add food",
+  "לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה": "Open straight into the scanner when the app starts",
+  "BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.": "BMR uses the Mifflin-St Jeor formula. Your weight carries over from the last day you entered until you update it.",
+  "⚡ פתיחה מהירה מהלחצן הצידי": "⚡ Quick launch from the side key",
+  "📋 העתק דוח": "📋 Copy report",
+  "⬇️ גיבוי נתונים": "⬇️ Back up data",
+  "⬆️ שחזור מגיבוי": "⬆️ Restore from backup",
+  "העתק דוח": "Copy report",
+  "הדוח הועתק — הדבק אותו לקלוד": "Report copied. Paste it wherever you need it.",
+  "הדוח הועתק": "Report copied",
+  "לא הצלחתי להעתיק — סמן ידנית": "Could not copy. Select it manually.",
+  "קובץ הגיבוי ירד. בכתובת החדשה לחץ \\\"שחזור מגיבוי\\\" ובחר אותו.": "The backup file downloaded. On the new address tap \\\"Restore from backup\\\" and pick it.",
+  "שוחזר: ": "Restored: ",
+  "רישומים,": "entries,",
+  "מוצרים בזיכרון.": "products remembered.",
+  "הקובץ לא נראה כמו גיבוי של האפליקציה.": "That file does not look like an app backup.",
+  "גרסת תוכן ": "Content version ",
+  "· אפליקציה ": "· app ",
+  "קורא…": "Reading…",
+  "לא נמצאו מסכים": "No screens found",
+  "אבחון לא זמין בגרסה הזו: ": "Diagnostics unavailable in this build: ",
+  "· <u id=\"dbgLink\" style=\"cursor:pointer\">אבחון</u>": "· <u id=\"dbgLink\" style=\"cursor:pointer\">Diagnostics</u>",
+  "🩺 חבר ל-Health Connect": "🩺 Connect Health Connect",
+  "🔄 רענן מ-Health Connect": "🔄 Refresh from Health Connect",
+  "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
+  "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
+  "מחובר · מרענן…": "Connected · refreshing…",
+  "בדיקת Health Connect נכשלה": "The Health Connect check failed",
+  "מבקש הרשאות…": "Requesting permissions…",
+  "אשר את ההרשאות בחלון שנפתח…": "Approve the permissions in the window that opened…",
+  "פותח את מסך ההרשאות…": "Opening the permissions screen…",
+  "אושרו ": "Granted ",
+  "מתוך 6 הרשאות…": "of 6 permissions…",
+  "עדיין ממתין לאישור.": "Still waiting for approval.",
+  "אושרו רק חלק מההרשאות.": "Only some permissions were granted.",
+  "לא אושרו הרשאות.": "No permissions were granted.",
+  "(אושרו ": "(granted ",
+  "ההרשאות הוסרו — חבר מחדש": "Permissions were revoked. Connect again.",
+  "הקריאה נכשלה: ": "Read failed: ",
+  "שגיאה לא ידועה": "unknown error",
+  "— לחץ רענן": "— tap refresh",
+  "מסונכרן ✓": "Synced ✓",
+  "מחובר ✓": "Connected ✓",
+  "מחובר ✓ אין עדיין נתונים היום — ודא שהשעון מסנכרן ל-Health Connect": "Connected ✓ no data yet today. Check that your watch syncs to Health Connect.",
+  "משקל": "weight",
+  "אימונים": "workouts",
+  "נשרף": "burned",
+  "(צעדים": "(steps",
+  "+ אימון": "+ workout",
+  "+ פעילות": "+ activity",
+  "במסך שנפתח: לחיצה פעמיים ← פתיחת אפליקציה ← Scan & Log": "On the screen that opens: Double press → Open app → Scan & Log",
+  "פתח ידנית: הגדרות ← תכונות מתקדמות ← לחצן צידי": "Open it manually: Settings → Advanced features → Side key",
+  "פתח ידנית: הגדרות הטלפון ← Health Connect ← הרשאות אפליקציות ← Scan & Log": "Open it manually: Settings → Health Connect → App permissions → Scan & Log",
+  "במסך שנפתח: <b>אפליקציות נוספות בתחום הבריאות ← Scan &amp; Log ← אשר הכל</b>": "On the screen that opens: <b>App permissions → Scan &amp; Log → Allow all</b>",
+  "<u id=\"hcOpenSet\" style=\"cursor:pointer;color:#8ab4f8\">פתח את מסך ההרשאות</u>": "<u id=\"hcOpenSet\" style=\"cursor:pointer;color:#8ab4f8\">Open the permissions screen</u>",
+  "הפתיחה המהירה זמינה באפליקציה המותקנת": "Quick launch works in the installed app",
+  "זמין באפליקציה המותקנת": "Available in the installed app",
+  "אפשר גם מאוחר יותר, בהגדרות": "You can do this later, in Settings",
+  "↓ משוך לרענון": "↓ Pull to refresh",
+  "שחרר לרענון": "Release to refresh",
+  "מרענן…": "Refreshing…",
+  "רוענן ✓": "Refreshed ✓",
+  "אין חיבור לאינטרנט. הרישום, המוצרים השמורים, המאגר המובנה והחישובים עובדים רגיל. מה שיחזור עם החיבור: חיפוש מוצר חדש במאגר העולמי וקריאת טבלת ערכים בצילום.": "No internet. Logging, saved products, the built-in database and every calculation keep working. What comes back online: looking up new products in the world database, and reading a nutrition table from a photo.",
+  "שלי": "Mine",
+  "מאגר": "Built in",
+  "לאומי": "National",
+  "עולמי": "World",
+  "א": "Su",
+  "ב": "Mo",
+  "ג": "Tu",
+  "ד": "We",
+  "ה": "Th",
+  "ו": "Fr",
+  "שני": "two",
+  "שלישי": "three",
+  "רביעי": "four",
+  "חמישי": "five",
+  "שישי": "six",
+  "שביעי": "seven",
+  "שמיני": "eight",
+  "תשיעי": "nine",
+  "עשירי": "ten",
+};
+
+/* ---------------- language ----------------
+   English is the default (Ido, 2026-08-29) with a switch to Hebrew in Settings.
+   Hebrew stays the source text in this file; T() maps it to English at runtime
+   and a one-off DOM sweep handles the static markup. Switching reloads the page,
+   which is how the direction flip stays clean instead of half-mirrored. */
+const LS_LANG = "fl_lang";
+let LANG = localStorage.getItem(LS_LANG) || "en";
+
+function T(s) {
+  if (LANG === "he") return s;
+  const v = I18N[s];
+  return v === undefined ? s : v;
+}
+
+function applyDir() {
+  const html = document.documentElement;
+  html.lang = LANG === "he" ? "he" : "en";
+  html.dir = LANG === "he" ? "rtl" : "ltr";
+}
+
+/* static markup: swap text nodes and translatable attributes once at boot */
+function sweepMarkup(root) {
+  if (LANG === "he") return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const hits = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    const raw = n.nodeValue;
+    const t = raw.trim();
+    if (!t || !I18N[t]) continue;
+    hits.push([n, raw.replace(t, I18N[t])]);
+  }
+  hits.forEach(([node, val]) => { node.nodeValue = val; });
+  root.querySelectorAll("[placeholder],[title],[aria-label]").forEach(el => {
+    ["placeholder", "title", "aria-label"].forEach(a => {
+      const v = el.getAttribute(a);
+      if (v && I18N[v.trim()]) el.setAttribute(a, I18N[v.trim()]);
+    });
+  });
+}
+
+function setLang(l) {
+  localStorage.setItem(LS_LANG, l);
+  location.reload();
+}
+
 const LS_LOG = "fl_log", LS_PROD = "fl_products", LS_PROF = "fl_profile", LS_DAY = "fl_daydata";
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
@@ -718,7 +1037,8 @@ let PROFILE = store.get(LS_PROF, { height: 182, age: 36 });
 let DAYDATA = store.get(LS_DAY, {});   // per day: {weight, activity}
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
-const todayKey = () => new Date().toLocaleDateString("sv-SE");   // YYYY-MM-DD, local
+const todayKey = () => new Date().toLocaleDateString("sv-SE");
+const LOC = () => (LANG === "he" ? "he-IL" : "en-GB");   // YYYY-MM-DD, local
 let viewDay = todayKey();
 let pending = null;   // {barcode, photo}
 
@@ -732,7 +1052,7 @@ let editId = null;
 function saveEditedGrams() {
   const it = LOG.find(x => x.id === editId);
   const g = parseFloat($("editG") && $("editG").value);
-  if (!it || !isFinite(g) || g <= 0 || g > 5000) { msg("entryMsg", "כמות לא תקינה", "err"); return; }
+  if (!it || !isFinite(g) || g <= 0 || g > 5000) { msg("entryMsg", T("כמות לא תקינה"), "err"); return; }
   it.grams = Math.round(g * 10) / 10;
   editId = null;
   save();
@@ -792,13 +1112,13 @@ function renderEnergy(kcalIn) {
   $("autoScanChk").checked = PROFILE.autoScan !== false;
   const e = dayEnergy(viewDay, kcalIn);
   const balTxt = e.bal <= 0
-    ? `<b class="def">גירעון ${Math.abs(e.bal).toLocaleString("he-IL")}</b>`
-    : `<b class="sur">עודף ${e.bal.toLocaleString("he-IL")}</b>`;
+    ? `<b class="def">${T("גירעון")} ${Math.abs(e.bal).toLocaleString("he-IL")}</b>`
+    : `<b class="sur">${T("עודף")} ${e.bal.toLocaleString("he-IL")}</b>`;
   $("ebal").innerHTML =
-    `<span class="dim">יצא:</span> BMR ${e.bmr.toLocaleString("he-IL")}` +
-    (e.act ? ` + פעילות ${e.act.toLocaleString("he-IL")}` : "") +
+    `<span class="dim">${T("יצא:")}</span> BMR ${e.bmr.toLocaleString("he-IL")}` +
+    (e.act ? ` + ${T("פעילות")} ${e.act.toLocaleString("he-IL")}` : "") +
     ` = <b>${e.out.toLocaleString("he-IL")}</b>` +
-    ` &nbsp;·&nbsp; <span class="dim">נכנס:</span> <b>${e.in.toLocaleString("he-IL")}</b>` +
+    ` &nbsp;·&nbsp; <span class="dim">${T("נכנס:")}</span> <b>${e.in.toLocaleString("he-IL")}</b>` +
     ` &nbsp;·&nbsp; ${balTxt}`;
 }
 
@@ -863,8 +1183,8 @@ function renderBank() {
   const wrap = $("bankWrap");
   if (!BANK || !BANK.total) {
     $("bankFill").style.width = "100%";
-    $("bankTxt").textContent = "🏦 הגדר את בנק הקלוריות שלך";
-    $("bankSub").textContent = "לחץ כדי לבחור כמה ק\"ג שומן אתה מוריד";
+    $("bankTxt").textContent = T("🏦 הגדר את בנק הקלוריות שלך");
+    $("bankSub").textContent = T("לחץ כדי לבחור כמה ק\"ג שומן אתה מוריד");
     wrap.classList.remove("done");
     return;
   }
@@ -872,10 +1192,11 @@ function renderBank() {
   $("bankFill").style.width = s.pct + "%";
   wrap.classList.toggle("done", s.left === 0);
   $("bankTxt").innerHTML = s.left === 0
-    ? "🏆 הבנק אופס! " + BANK.kg + " ק\"ג שומן"
-    : "🔥 נותרו <span style=\"font-variant-numeric:tabular-nums\">" + s.left.toLocaleString("he-IL") + "</span> קק\"ל בבנק";
+    ? T("🏆 הבנק אופס!") + " " + BANK.kg + " " + T("ק\"ג שומן")
+    : T("🔥 נותרו") + ' <span style="font-variant-numeric:tabular-nums">' + s.left.toLocaleString(LOC()) + "</span> " + T("קק\"ל בבנק");
   const burned = BANK.total - s.left;
-  const bits = [Math.round(burned / BANK.total * 100) + "% נשרפו", "מתוך " + BANK.total.toLocaleString("he-IL")];
+  const bits = [Math.round(burned / BANK.total * 100) + "% " + T("נשרפו"),
+                T("מתוך") + " " + BANK.total.toLocaleString(LOC())];
   const tKcal = entriesFor(viewDay).reduce((a, e) => a + computed(e).kcal, 0);
   const tBal = dayEnergy(viewDay, tKcal).bal;
   if (tKcal || (DAYDATA[viewDay] && DAYDATA[viewDay].activity)) {
@@ -897,7 +1218,7 @@ function bankSetup() {
   const v = prompt(msg, cur);
   if (v === null) return;
   const kg = parseFloat(String(v).replace(",", "."));
-  if (!isFinite(kg) || kg <= 0 || kg > 100) { alert("הזן מספר ק\"ג בין 1 ל-100"); return; }
+  if (!isFinite(kg) || kg <= 0 || kg > 100) { alert(T("הזן מספר ק\"ג בין 1 ל-100")); return; }
   const days = [...new Set(LOG.map(e => e.day))].sort();
   BANK = {
     kg: Math.round(kg * 10) / 10,
@@ -930,8 +1251,12 @@ function streakMsg(n) {
   if (n === 14) return "שבועיים רצוף! מי שמודד — משתנה 🔥🔥";
   if (n === 30) return "חודש שלם של תיעוד יומי. אלוף אמיתי 🏆";
   if (n === 100) return "מאה ימים. אתה כתבת את הסיפור הזה, יום אחרי יום 🏆🔥";
-  if (n <= 10) return "כל הכבוד! יום " + HEB_ORDINALS[n] + " ברציפות 🔥";
-  return n + " ימים ברציפות — אתה מכונה 🔥";
+  if (n <= 10) return LANG === "he"
+    ? "כל הכבוד! יום " + HEB_ORDINALS[n] + " ברציפות 🔥"
+    : "Nice work. Day " + n + " in a row 🔥";
+  return LANG === "he"
+    ? n + " ימים ברציפות — אתה מכונה 🔥"
+    : n + " days in a row. You are a machine 🔥";
 }
 
 let toastTimer = null;
@@ -952,8 +1277,10 @@ function renderStreak() { $("streakN").textContent = streakCount(); }
 function renderCal() {
   const now = new Date();
   const todayK = todayKey();
-  $("calToday").textContent = now.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
-  const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  $("calToday").textContent = now.toLocaleDateString(LOC(), { weekday: "long", day: "numeric", month: "long" });
+  const letters = LANG === "he"
+    ? ["א", "ב", "ג", "ד", "ה", "ו", "ש"]
+    : ["S", "M", "T", "W", "T", "F", "S"];
   const firstLogged = LOG.length ? LOG.map(e => e.day).sort()[0] : null;
   let start = new Date("2026-08-09T12:00:00");
   if (firstLogged && firstLogged < "2026-08-09") start = new Date(firstLogged + "T12:00:00");
@@ -975,9 +1302,9 @@ function renderCal() {
 
 function renderLog() {
   const items = entriesFor(viewDay).slice().sort((a, b) => a.t.localeCompare(b.t));
-  $("logTitle").textContent = viewDay === todayKey() ? "היום" : viewDay;
+  $("logTitle").textContent = viewDay === todayKey() ? T("היום") : viewDay;
   if (!items.length) {
-    $("log").innerHTML = `<div class="empty">עדיין אין כלום ביום הזה.<br>לחץ על ה-+ הצהוב כדי להתחיל.</div>`;
+    $("log").innerHTML = `<div class="empty">${T("עדיין אין כלום ביום הזה.")}<br>${T("לחץ על ה-+ הצהוב כדי להתחיל.")}</div>`;
   } else {
     $("log").innerHTML = items.map(e => {
       const c = computed(e);
@@ -988,21 +1315,21 @@ function renderLog() {
             <div class="nm">${esc(e.name)}</div>
             <div class="editrow">
               <input type="number" step="any" min="1" inputmode="decimal" id="editG" value="${e.grams}">
-              <span class="gl">גרם</span>
-              <button class="esave" data-esave="1">שמור</button>
-              <button class="ecancel" data-ecancel="1">ביטול</button>
+              <span class="gl">${T("גרם")}</span>
+              <button class="esave" data-esave="1">${T("שמור")}</button>
+              <button class="ecancel" data-ecancel="1">${T("ביטול")}</button>
             </div>
           </div>
-          <div class="kc"><b>${Math.round(c.kcal)}</b><small>קק״ל</small></div>
+          <div class="kc"><b>${Math.round(c.kcal)}</b><small>${T("קק״ל")}</small></div>
         </div>`;
       }
       return `<div class="item" data-id="${e.id}">
         <img${e.photo ? ` src="${e.photo}"` : ' class="blank"'} data-pic="${e.id}" alt="">
         <div class="mid">
           <div class="nm">${esc(e.name)}</div>
-          <div class="meta">${e.t} · ${e.grams} ג׳ · ח ${c.pro.toFixed(1)} · פ ${c.carb.toFixed(1)} · ש ${c.fat.toFixed(1)} · ✎</div>
+          <div class="meta">${e.t} · ${e.grams} ${T("ג׳ · ח")} ${c.pro.toFixed(1)} · ${T("פ")} ${c.carb.toFixed(1)} · ${T("ש")} ${c.fat.toFixed(1)} · ✎</div>
         </div>
-        <div class="kc"><b>${Math.round(c.kcal)}</b><small>קק״ל</small></div>
+        <div class="kc"><b>${Math.round(c.kcal)}</b><small>${T("קק״ל")}</small></div>
         <button class="x" data-del="${e.id}" aria-label="מחק">✕</button>
       </div>`;
     }).join("");
@@ -1013,8 +1340,8 @@ function renderLog() {
     g.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveEditedGrams(); } });
   }
   const pushOn = localStorage.getItem("fl_push") && localStorage.getItem("fl_pushkey");
-  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> מוצרים נשמרו בזיכרון · <b>${LOG.length}</b> רישומים בסך הכל.
-    ${pushOn ? "הדוח היומי מסתנכרן לקלוד אוטומטית ✓" : 'הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.'}`;
+  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> ${T("מוצרים נשמרו בזיכרון ·")} <b>${LOG.length}</b> ${T("רישומים בסך הכל.")}
+    ${pushOn ? T("הדוח היומי מסתנכרן לקלוד אוטומטית ✓") : T('הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.')}`;
   renderTotals(); renderCal(); renderStreak(); renderBank();
 }
 
@@ -1046,7 +1373,7 @@ function scheduleAutoPush() {
 }
 
 function save() {
-  if (!store.set(LS_LOG, LOG)) msg("entryMsg", "אין מקום בזיכרון הדפדפן", "err");
+  if (!store.set(LS_LOG, LOG)) msg("entryMsg", T("אין מקום בזיכרון הדפדפן"), "err");
   scheduleAutoPush();
 }
 function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
@@ -1054,10 +1381,10 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.28";
+const APP_BUILD = "2026.08.29.30";
 let NATIVE_VER = "";
 function renderVer() {
-  $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
+  $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
     (NATIVE_VER ? ' · <u id="dbgLink" style="cursor:pointer">אבחון</u>' : "");
   const l = document.getElementById("dbgLink");
   if (l) l.onclick = showDbg;
@@ -1068,7 +1395,7 @@ function renderVer() {
 async function showDbg() {
   const box = $("dbgBox");
   box.style.display = "block";
-  box.textContent = "קורא…";
+  box.textContent = T("קורא…");
   try {
     const d = await HB().debugActivities();
     const lines = [];
@@ -1080,7 +1407,7 @@ async function showDbg() {
     }
     box.textContent = lines.join("\n") || "לא נמצאו מסכים";
   } catch (e) {
-    box.textContent = "אבחון לא זמין בגרסה הזו: " + ((e && e.message) || e);
+    box.textContent = T("אבחון לא זמין בגרסה הזו: ") + ((e && e.message) || e);
   }
 }
 
@@ -1129,7 +1456,7 @@ async function ensureDetector() {
 let hcLastSync = 0;
 
 function hcConnectedUI() {
-  $("hcBtn").textContent = "🔄 רענן מ-Health Connect";
+  $("hcBtn").textContent = T("🔄 רענן מ-Health Connect");
 }
 
 async function hcInit() {
@@ -1141,15 +1468,15 @@ async function hcInit() {
     const a = await hb.available();
     if (a && a.appVersion) { NATIVE_VER = a.appVersion; renderVer(); }
     if (!a || !a.healthConnect) {
-      $("hcState").textContent = "Health Connect לא מותקן במכשיר הזה";
+      $("hcState").textContent = T("Health Connect לא מותקן במכשיר הזה");
       return;
     }
     if (localStorage.getItem("fl_hc")) {
       hcConnectedUI();
-      $("hcState").textContent = "מחובר · מרענן…";
+      $("hcState").textContent = T("מחובר · מרענן…");
       hcSync(true);
     }
-  } catch { $("hcState").textContent = "בדיקת Health Connect נכשלה"; }
+  } catch { $("hcState").textContent = T("בדיקת Health Connect נכשלה"); }
 }
 
 /* one-time: ship the device's real screen list to Claude over the existing
@@ -1168,15 +1495,15 @@ async function debugDumpOnce() {
 }
 
 async function skOpen() {
-  $("skState").textContent = "במסך שנפתח: לחיצה פעמיים ← פתיחת אפליקציה ← Scan & Log";
+  $("skState").textContent = T("במסך שנפתח: לחיצה פעמיים ← פתיחת אפליקציה ← Scan & Log");
   try { await HB().openSideKeySettings(); }
-  catch { $("skState").textContent = "פתח ידנית: הגדרות ← תכונות מתקדמות ← לחצן צידי"; }
+  catch { $("skState").textContent = T("פתח ידנית: הגדרות ← תכונות מתקדמות ← לחצן צידי"); }
 }
 
 function hcDone() {
   localStorage.setItem("fl_hc", "1");
   hcConnectedUI();
-  $("hcState").textContent = "מחובר · מרענן…";
+  $("hcState").textContent = T("מחובר · מרענן…");
   hcSync(true);
 }
 
@@ -1205,9 +1532,9 @@ function hcOfferSettings(prefix, n) {
   const u = document.getElementById("hcOpenSet");
   if (u) u.onclick = async () => {
     if (await hcOpenPerms()) {
-      $("hcState").innerHTML = 'במסך שנפתח: <b>אפליקציות נוספות בתחום הבריאות ← Scan &amp; Log ← אשר הכל</b>';
+      $("hcState").innerHTML = T('במסך שנפתח: <b>אפליקציות נוספות בתחום הבריאות ← Scan &amp; Log ← אשר הכל</b>');
     } else {
-      $("hcState").textContent = "פתח ידנית: הגדרות הטלפון ← Health Connect ← הרשאות אפליקציות ← Scan & Log";
+      $("hcState").textContent = T("פתח ידנית: הגדרות הטלפון ← Health Connect ← הרשאות אפליקציות ← Scan & Log");
     }
   };
 }
@@ -1215,7 +1542,7 @@ function hcOfferSettings(prefix, n) {
 async function hcConnect() {
   const hb = HB(); if (!hb) return;
   hcOffered = false;
-  $("hcState").textContent = "מבקש הרשאות…";
+  $("hcState").textContent = T("מבקש הרשאות…");
   try {
     // the grants persist in the system the moment he approves, so the truth
     // is grantedPermissions() - never the permission window's return value
@@ -1226,7 +1553,7 @@ async function hcConnect() {
       new Promise(res => setTimeout(() => res(null), 8000)),
     ]).catch(() => null);
     if (r && r.granted) { hcDone(); return; }
-    $("hcState").textContent = "אשר את ההרשאות בחלון שנפתח…";
+    $("hcState").textContent = T("אשר את ההרשאות בחלון שנפתח…");
     // A real sheet covers the app within a moment. Still visible after 2s =
     // Android blocked it (two-denial lockout) - open Health Connect itself
     // immediately instead of making him hunt for it.
@@ -1236,7 +1563,7 @@ async function hcConnect() {
     if (!document.hidden) {
       hcOfferSettings("פותח את מסך ההרשאות…", (g && g.count) || 0);
       if (await hcOpenPerms()) {
-        $("hcState").innerHTML = 'במסך שנפתח: <b>אפליקציות נוספות בתחום הבריאות ← Scan &amp; Log ← אשר הכל</b>';
+        $("hcState").innerHTML = T('במסך שנפתח: <b>אפליקציות נוספות בתחום הבריאות ← Scan &amp; Log ← אשר הכל</b>');
       }
     }
     const t0 = Date.now();
@@ -1245,11 +1572,11 @@ async function hcConnect() {
       g = await hb.grantedPermissions().catch(() => null);
       if (g && g.granted) { hcDone(); return; }
       const n = (g && g.count) || 0;
-      if (!hcOffered && n) $("hcState").textContent = "אושרו " + n + " מתוך 6 הרשאות…";
+      if (!hcOffered && n) $("hcState").textContent = T("אושרו ") + n + " מתוך 6 הרשאות…";
       else if (!hcOffered && Date.now() - t0 > 20000) hcOfferSettings("עדיין ממתין לאישור.", n);
     }
     if (!hcOffered) hcOfferSettings((g && g.count > 0) ? "אושרו רק חלק מההרשאות." : "לא אושרו הרשאות.", (g && g.count) || 0);
-  } catch { $("hcState").textContent = "Health Connect לא זמין במכשיר הזה"; }
+  } catch { $("hcState").textContent = T("Health Connect לא זמין במכשיר הזה"); }
 }
 
 /* pull weight / burned calories / steps / workouts into today's numbers */
@@ -1284,12 +1611,13 @@ async function hcSync(force) {
     const workout = (stepsKcal + workoutKcal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
     const bits = [];
-    if (r.weightKg) bits.push("משקל " + (Math.round(r.weightKg * 10) / 10));
-    if (workout) bits.push('נשרף ' + workout + ' קק"ל' + (workoutKcal ? ' (צעדים ' + stepsKcal + ' + אימון ' + workoutKcal + ')' : ''));
-    if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " אימונים");
+    if (r.weightKg) bits.push(T("משקל") + " " + (Math.round(r.weightKg * 10) / 10));
+    if (workout) bits.push(T("נשרף") + " " + workout + " " + T("קק\"ל")
+      + (workoutKcal ? " (" + T("צעדים") + " " + stepsKcal + " " + T("+ אימון") + " " + workoutKcal + ")" : ""));
+    if (r.sessions && r.sessions.length) bits.push(r.sessions.length + " " + T("אימונים"));
     $("hcState").textContent = bits.length
-      ? "מסונכרן ✓ " + bits.join(" · ")
-      : "מחובר ✓ אין עדיין נתונים היום — ודא שהשעון מסנכרן ל-Health Connect";
+      ? T("מסונכרן ✓") + " " + bits.join(" · ")
+      : T("מחובר ✓ אין עדיין נתונים היום — ודא שהשעון מסנכרן ל-Health Connect");
     if (changed) {
       store.set(LS_DAY, DAYDATA);
       scheduleAutoPush();
@@ -1299,11 +1627,11 @@ async function hcSync(force) {
     const g = await HB().grantedPermissions().catch(() => null);
     if (g && !g.granted) {
       localStorage.removeItem("fl_hc");
-      $("hcBtn").textContent = "🩺 חבר ל-Health Connect";
-      $("hcState").textContent = "ההרשאות הוסרו — חבר מחדש";
+      $("hcBtn").textContent = T("🩺 חבר ל-Health Connect");
+      $("hcState").textContent = T("ההרשאות הוסרו — חבר מחדש");
     } else {
       const why = String((err && err.message) || err || "").slice(0, 160);
-      $("hcState").textContent = "הקריאה נכשלה: " + (why || "שגיאה לא ידועה") + " — לחץ רענן";
+      $("hcState").textContent = T("הקריאה נכשלה: ") + (why || T("שגיאה לא ידועה")) + " " + T("— לחץ רענן");
     }
   }
 }
@@ -1330,7 +1658,7 @@ async function nativeScan() {
   $("cam").classList.add("on");
   document.body.style.overflow = "hidden";
   $("video").classList.add("off");
-  $("camHint").textContent = "פותח את סורק הברקודים…";
+  $("camHint").textContent = T("פותח את סורק הברקודים…");
   try {
     const r = await HB().scanBarcode();
     stopScan();
@@ -1338,9 +1666,9 @@ async function nativeScan() {
   } catch (err) {
     const m = String((err && err.message) || err);
     if (/cancel/i.test(m)) {
-      $("camHint").textContent = "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.";
+      $("camHint").textContent = T("הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.");
     } else {
-      $("camHint").textContent = "סורק גוגל לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.";
+      $("camHint").textContent = T("סורק גוגל לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.");
     }
   }
 }
@@ -1372,10 +1700,10 @@ async function startScan() {
   $("cam").classList.add("on");
   document.body.style.overflow = "hidden";
   $("video").classList.add("off");
-  $("camHint").textContent = "פותח מצלמה…";
+  $("camHint").textContent = T("פותח מצלמה…");
 
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return camFallback("הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).");
+    return camFallback(T("הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח)."));
   }
 
   // Ask the permission layer first — on a blocked frame this is what tells us
@@ -1384,32 +1712,32 @@ async function startScan() {
     if (navigator.permissions && navigator.permissions.query) {
       const st = await navigator.permissions.query({ name: "camera" });
       if (st.state === "denied") {
-        return camFallback("המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.");
+        return camFallback(T("המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר."));
       }
     }
   } catch { /* Firefox and older Safari have no camera permission name */ }
 
-  $("camHint").textContent = "מבקש גישה למצלמה — אשר את הבקשה שתופיע…";
+  $("camHint").textContent = T("מבקש גישה למצלמה — אשר את הבקשה שתופיע…");
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false
     });
   } catch (err) {
     const why = {
-      NotAllowedError: "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.",
-      NotFoundError: "לא נמצאה מצלמה במכשיר.",
-      NotReadableError: "המצלמה תפוסה על ידי אפליקציה אחרת. סגור אותה ונסה שוב.",
-      OverconstrainedError: "לא נמצאה מצלמה אחורית מתאימה.",
-      SecurityError: "הדפדפן חסם את המצלמה בדף הזה.",
-    }[err.name] || ("שגיאה: " + err.name);
+      NotAllowedError: T("הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה."),
+      NotFoundError: T("לא נמצאה מצלמה במכשיר."),
+      NotReadableError: T("המצלמה תפוסה על ידי אפליקציה אחרת. סגור אותה ונסה שוב."),
+      OverconstrainedError: T("לא נמצאה מצלמה אחורית מתאימה."),
+      SecurityError: T("הדפדפן חסם את המצלמה בדף הזה."),
+    }[err.name] || (T("שגיאה:") + " " + err.name);
     return camFallback(why);
   }
 
-  $("camHint").textContent = "טוען מפענח ברקודים…";
+  $("camHint").textContent = T("טוען מפענח ברקודים…");
   if (!(await ensureDetector())) {
     stream.getTracks().forEach(t => t.stop()); stream = null;
     if (HB()) { stopScan(); nativeScan(); return; }
-    return camFallback("הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו.");
+    return camFallback(T("הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו."));
   }
 
   detector = detector || new BarcodeDetector({
@@ -1417,7 +1745,7 @@ async function startScan() {
   });
   $("video").srcObject = stream;
   $("video").classList.remove("off");
-  $("camHint").textContent = "כוון את הברקוד למרכז — הזיהוי אוטומטי";
+  $("camHint").textContent = T("כוון את הברקוד למרכז — הזיהוי אוטומטי");
   lockCode = null; lockHits = 0;
   scanning = true;
   // a torch helps barcodes in bad light - offer it only where the camera has one
@@ -1448,7 +1776,7 @@ async function toggleTorch() {
 function camFallback(why) {
   document.querySelector(".camfb").style.display = "flex";
   $("video").classList.add("off");
-  $("camHint").textContent = why + ' אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.';
+  $("camHint").textContent = why + " " + T("אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.");
   $("diag").textContent = camDiagnosis();
 }
 
@@ -1465,11 +1793,11 @@ async function loop() {
         const now = performance.now();
         if (c !== lockCode) {
           lockCode = c; lockSince = now; lockHits = 1;
-          $("camHint").textContent = "מזהה… החזק יציב";
+          $("camHint").textContent = T("מזהה… החזק יציב");
         } else {
           lockHits++;
           const held = now - lockSince;
-          $("camHint").textContent = held >= 650 ? "עוד רגע…" : "מזהה… החזק יציב";
+          $("camHint").textContent = held >= 650 ? T("עוד רגע…") : T("מזהה… החזק יציב");
           if (held >= 1000 && lockHits >= 3) {
             lockCode = null; lockHits = 0;
             onBarcode(c, grabFrame(v));
@@ -1478,7 +1806,7 @@ async function loop() {
         }
       } else if (lockCode && performance.now() - lockSince > 1800) {
         lockCode = null; lockHits = 0;
-        $("camHint").textContent = "כוון את הברקוד למרכז — הזיהוי אוטומטי";
+        $("camHint").textContent = T("כוון את הברקוד למרכז — הזיהוי אוטומטי");
       }
     } catch { /* frame not ready */ }
   }
@@ -1506,7 +1834,7 @@ function stopScan() {
 
 /* photo -> barcode, for browsers with no live camera access */
 async function fromPhoto(file) {
-  msg("scanMsg", "קורא את הברקוד מהתמונה…", "pend");
+  msg("scanMsg", T("קורא את הברקוד מהתמונה…"), "pend");
   $("diag").textContent = "";
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -1727,7 +2055,7 @@ async function frontLabelWords(dataUrl) {
 async function missSearch(code, photo) {
   const box = $("missRes");
   box.className = "on";
-  box.innerHTML = `<div class="misshead">🔎 מחפש התאמות לפי הברקוד והכיתוב שעל המוצר…</div>`;
+  box.innerHTML = `<div class="misshead">🔎 ${T("מחפש התאמות לפי הברקוד והכיתוב שעל המוצר…")}</div>`;
   let words = [];
   if (photo && photo.length > 5000) {
     try { words = await frontLabelWords(photo); } catch { words = []; }
@@ -1754,15 +2082,15 @@ async function missSearch(code, photo) {
   merged.sort((a, b) => score(b) - score(a));
   missResults = merged.slice(0, 5);
   if (!missResults.length) {
-    box.innerHTML = `<div class="misshead">לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.</div>`;
+    box.innerHTML = `<div class="misshead">${T("לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.")}</div>`;
     return;
   }
-  box.innerHTML = `<div class="misshead">🔎 אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:</div>` +
+  box.innerHTML = `<div class="misshead">🔎 ${T("אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:")}</div>` +
     missResults.map((r, i) =>
       `<button class="sr" data-mi="${i}">
-         <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${r.src}</span>
+         <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${T(r.src)}</span>
          <span class="srn">${esc(r.name)}</span>
-         <span class="srv">${Math.round(r.k)} קק״ל · ח ${r.p === "" ? "?" : r.p}</span>
+         <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
        </button>`).join("");
 }
 
@@ -1773,7 +2101,7 @@ function applyMissPick(r) {
   $("p100carb").value = r.c;
   $("p100fat").value = r.f;
   if (!shotSrc() && r.photo) setShot(r.photo);
-  $("foundTag").textContent = "✓ התאמה: " + r.name + " — ייזכר תחת הברקוד שנסרק";
+  $("foundTag").textContent = T("✓ התאמה: ") + r.name + " " + T("— ייזכר תחת הברקוד שנסרק");
   $("foundTag").className = "foundtag known";
   $("missRes").className = ""; $("missRes").innerHTML = "";
   preview();
@@ -1790,17 +2118,17 @@ function renderSearch(res, token, stillLoading) {
     `<button class="sr" data-i="${i}">
        <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${r.src}</span>
        <span class="srn">${esc(r.name)}</span>
-       <span class="srv">${Math.round(r.k)} קק״ל · ח ${r.p === "" ? "?" : r.p}</span>
+       <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
      </button>`).join("") +
-    (stillLoading ? `<div class="sr dim">מחפש גם במאגר העולמי…</div>`
-      : (lastResults.length ? "" : `<div class="sr dim">לא נמצא — אפשר להזין ידנית למטה</div>`));
+    (stillLoading ? `<div class="sr dim">${T("מחפש גם במאגר העולמי…")}</div>`
+      : (lastResults.length ? "" : `<div class="sr dim">${T("לא נמצא — אפשר להזין ידנית למטה")}</div>`));
 }
 
 function openProduct(r) {
   stopScan();
   $("missRes").className = ""; $("missRes").innerHTML = "";
   pending = { barcode: r.barcode || "", photo: "" };
-  $("foundTag").textContent = r.src === "מאגר" ? "מהמאגר המובנה — ערכים מקובלים ל-100 ג׳" : "✓ " + r.name;
+  $("foundTag").textContent = r.src === "מאגר" ? T("מהמאגר המובנה — ערכים מקובלים ל-100 ג׳") : "✓ " + r.name;
   $("foundTag").className = "foundtag known";
   $("pName").value = r.name;
   $("p100kcal").value = r.k;
@@ -1809,7 +2137,7 @@ function openProduct(r) {
   $("p100fat").value = r.f;
   setShot(r.photo || "");
   $("grams").value = "";
-  $("calcPreview").textContent = "הזן גרמים כדי לחשב";
+  $("calcPreview").textContent = T("הזן גרמים כדי לחשב");
   $("entry").classList.add("on");
   msg("scanMsg", ""); msg("entryMsg", "");
   $("searchRes").className = ""; $("searchRes").innerHTML = ""; $("searchIn").value = "";
@@ -2212,34 +2540,34 @@ function preprocess(img) {
 }
 
 async function readLabel(file) {
-  msg("entryMsg", "טוען מנוע קריאה — בפעם הראשונה זו הורדה גדולה…", "pend");
+  msg("entryMsg", T("טוען מנוע קריאה — בפעם הראשונה זו הורדה גדולה…"), "pend");
   let worker;
-  try { worker = await getWorker(p => msg("entryMsg", "קורא את הטבלה… " + p + "%", "pend")); }
-  catch { msg("entryMsg", "אין חיבור או שההורדה נחסמה — מלא את הערכים ידנית.", "err"); return; }
+  try { worker = await getWorker(p => msg("entryMsg", T("קורא את הטבלה… ") + p + "%", "pend")); }
+  catch { msg("entryMsg", T("אין חיבור או שההורדה נחסמה — מלא את הערכים ידנית."), "err"); return; }
   const img = new Image();
   const url = URL.createObjectURL(file);
   try { await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; }); }
-  catch { msg("entryMsg", "לא הצלחתי לפתוח את התמונה.", "err"); return; }
+  catch { msg("entryMsg", T("לא הצלחתי לפתוח את התמונה."), "err"); return; }
   const c = preprocess(img);
   URL.revokeObjectURL(url);
-  msg("entryMsg", "קורא את הטבלה…", "pend");
+  msg("entryMsg", T("קורא את הטבלה…"), "pend");
   let text = "";
   try { text = (await worker.recognize(c)).data.text || ""; }
   catch {
-    msg("entryMsg", "הקריאה נכשלה — צלם רק את הטבלה, קרוב, ישר ובאור טוב.", "err");
+    msg("entryMsg", T("הקריאה נכשלה — צלם רק את הטבלה, קרוב, ישר ובאור טוב."), "err");
     return;
   }
-  $("ocrRaw").textContent = text.trim() || "(לא זוהה טקסט)";
+  $("ocrRaw").textContent = text.trim() || T("(לא זוהה טקסט)");
   $("ocrDetails").style.display = "block";
   const p = parseLabel(text);
   const got = [];
-  if (p.kcal != null) { $("p100kcal").value = p.kcal; got.push("קק״ל " + p.kcal); }
-  if (p.pro  != null) { $("p100pro").value  = p.pro;  got.push("חלבון " + p.pro); }
-  if (p.carb != null) { $("p100carb").value = p.carb; got.push("פחמ׳ " + p.carb); }
-  if (p.fat  != null) { $("p100fat").value  = p.fat;  got.push("שומן " + p.fat); }
+  if (p.kcal != null) { $("p100kcal").value = p.kcal; got.push(T("קק״ל") + " " + p.kcal); }
+  if (p.pro  != null) { $("p100pro").value  = p.pro;  got.push(T("חלבון") + " " + p.pro); }
+  if (p.carb != null) { $("p100carb").value = p.carb; got.push(T("פחמ׳") + " " + p.carb); }
+  if (p.fat  != null) { $("p100fat").value  = p.fat;  got.push(T("שומן") + " " + p.fat); }
   preview();
-  if (!got.length) msg("entryMsg", "לא זוהו ערכים — פתח את \"מה נקרא מהתמונה\" למטה כדי לראות מה המנוע ראה, וצלם שוב רק את הטבלה, קרוב וישר.", "err");
-  else msg("entryMsg", "נקרא מהטבלה: " + got.join(" · ") + " — ודא שזו העמודה של 100 גרם ותקן אם צריך.", "ok");
+  if (!got.length) msg("entryMsg", T("לא זוהו ערכים — פתח את \"מה נקרא מהתמונה\" למטה כדי לראות מה המנוע ראה, וצלם שוב רק את הטבלה, קרוב וישר."), "err");
+  else msg("entryMsg", T("נקרא מהטבלה: ") + got.join(" · ") + " " + T("— ודא שזו העמודה של 100 גרם ותקן אם צריך."), "ok");
   $("grams").focus();
 }
 
@@ -2250,7 +2578,7 @@ async function onBarcode(code, photo) {
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch {} }
   pending = { barcode: code || "", photo: photo || "" };
   const known = code && PRODUCTS[code];
-  $("foundTag").textContent = known ? "✓ מוכר — הערכים מולאו" : (code ? "מוצר חדש · " + code : "בלי ברקוד");
+  $("foundTag").textContent = known ? T("✓ מוכר — הערכים מולאו") : (code ? T("מוצר חדש · ") + code : T("בלי ברקוד"));
   $("foundTag").className = "foundtag " + (known ? "known" : "newp");
   $("pName").value = known ? known.name : "";
   $("p100kcal").value = known ? known.kcal : "";
@@ -2262,9 +2590,9 @@ async function onBarcode(code, photo) {
   // is never the automatic thumbnail any more.
   setShot((known && known.photo) || "");
   $("grams").value = "";
-  $("calcPreview").textContent = "הזן גרמים כדי לחשב";
+  $("calcPreview").textContent = T("הזן גרמים כדי לחשב");
   $("entry").classList.add("on");
-  msg("scanMsg", code ? "" : "לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה.", code ? "" : "err");
+  msg("scanMsg", code ? "" : T("לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה."), code ? "" : "err");
   msg("entryMsg", "");
   (known ? $("grams") : $("pName")).focus();
   $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2272,7 +2600,7 @@ async function onBarcode(code, photo) {
   // unknown barcode -> ask the world database, and fill only if he hasn't
   // moved on to a different scan meanwhile
   if (!known && code) {
-    $("foundTag").textContent = "מחפש במאגר העולמי…";
+    $("foundTag").textContent = T("מחפש במאגר העולמי…");
     const off = await lookupOFF(code);
     if (!pending || pending.barcode !== code) return;
     if (off) {
@@ -2284,14 +2612,14 @@ async function onBarcode(code, photo) {
       if (!shotSrc() && off.photo) setShot(off.photo);
       const complete = off.name && off.kcal !== "";
       $("foundTag").textContent = complete
-        ? "✓ זוהה: " + off.name
-        : "זוהה חלקית: " + (off.name || code) + " — השלם מהמדבקה";
+        ? T("✓ זוהה:") + " " + off.name
+        : T("זוהה חלקית:") + " " + (off.name || code) + " " + T("— השלם מהמדבקה");
       $("foundTag").className = "foundtag " + (complete ? "known" : "newp");
       preview();
       $("grams").focus();
       if (off.name) autoImage(off.name);
     } else {
-      $("foundTag").textContent = "לא במאגר · " + code;
+      $("foundTag").textContent = T("לא במאגר · ") + code;
       $("foundTag").className = "foundtag newp";
       missSearch(code, photo);
     }
@@ -2300,22 +2628,22 @@ async function onBarcode(code, photo) {
 
 function preview() {
   const g = num($("grams").value);
-  if (!g) { $("calcPreview").textContent = "הזן גרמים כדי לחשב"; return; }
+  if (!g) { $("calcPreview").textContent = T("הזן גרמים כדי לחשב"); return; }
   const f = g / 100;
   $("calcPreview").innerHTML =
-    `<b>${Math.round(num($("p100kcal").value) * f)}</b> קק״ל · ` +
-    `חלבון ${(num($("p100pro").value) * f).toFixed(1)} · ` +
-    `פחמימה ${(num($("p100carb").value) * f).toFixed(1)} · ` +
-    `שומן ${(num($("p100fat").value) * f).toFixed(1)}`;
+    `<b>${Math.round(num($("p100kcal").value) * f)}</b> ${T("קק״ל ·")} ` +
+    `${T("חלבון")} ${(num($("p100pro").value) * f).toFixed(1)} · ` +
+    `${T("פחמימה")} ${(num($("p100carb").value) * f).toFixed(1)} · ` +
+    `${T("שומן")} ${(num($("p100fat").value) * f).toFixed(1)}`;
 }
 
 function addEntry() {
   const name = $("pName").value.trim();
   const grams = num($("grams").value);
   const k100 = num($("p100kcal").value);
-  if (!name) { msg("entryMsg", "חסר שם למוצר", "err"); $("pName").focus(); return; }
-  if (!grams) { msg("entryMsg", "חסר משקל בגרמים", "err"); $("grams").focus(); return; }
-  if (!k100) { msg("entryMsg", "חסרות קלוריות ל-100 גרם", "err"); $("p100kcal").focus(); return; }
+  if (!name) { msg("entryMsg", T("חסר שם למוצר"), "err"); $("pName").focus(); return; }
+  if (!grams) { msg("entryMsg", T("חסר משקל בגרמים"), "err"); $("grams").focus(); return; }
+  if (!k100) { msg("entryMsg", T("חסרות קלוריות ל-100 גרם"), "err"); $("p100kcal").focus(); return; }
 
   const now = new Date();
   const e = {
@@ -2339,12 +2667,12 @@ function addEntry() {
   $("entry").classList.remove("on");
   pending = null;
   renderLog();
-  msg("scanMsg", `נוסף: ${name} · ${grams} ג׳`, "ok");
+  msg("scanMsg", `${T("נוסף:")} ${name} · ${grams} ${T("ג׳")}`, "ok");
 }
 
 function report(day) {
   const items = entriesFor(day).slice().sort((a, b) => a.t.localeCompare(b.t));
-  if (!items.length) return `אין רישומים ל-${day}`;
+  if (!items.length) return `${T("אין רישומים ל-")}${day}`;
   const t = items.reduce((a, e) => {
     const c = computed(e);
     a.kcal += c.kcal; a.pro += c.pro; a.carb += c.carb; a.fat += c.fat; return a;
@@ -2374,7 +2702,7 @@ $("shootBtn").addEventListener("click", () => {
 $("photoBtn").addEventListener("click", () => $("photoInput").click());
 $("photoInput").addEventListener("change", e => { if (e.target.files[0]) fromPhoto(e.target.files[0]); e.target.value = ""; });
 $("manualBtn").addEventListener("click", () => {
-  const code = prompt("הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):");
+  const code = prompt(T("הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):"));
   if (code === null) return;
   onBarcode(code.trim(), "");
 });
@@ -2412,7 +2740,7 @@ document.addEventListener("visibilitychange", async () => {
 /* pull down from the top to refresh, like a web page */
 async function doRefresh() {
   const ind = $("ptr");
-  ind.textContent = "מרענן…";
+  ind.textContent = T("מרענן…");
   ind.style.opacity = "1";
   ind.style.transform = "translate(-50%, 12px)";
   try { await hcSync(true); } catch { /* offline */ }
@@ -2420,11 +2748,11 @@ async function doRefresh() {
   PRODUCTS = store.get(LS_PROD, PRODUCTS);
   DAYDATA = store.get(LS_DAY, DAYDATA);
   renderLog();
-  ind.textContent = "רוענן ✓";
+  ind.textContent = T("רוענן ✓");
   setTimeout(() => {
     ind.style.opacity = "";
     ind.style.transform = "";
-    ind.textContent = "↓ משוך לרענון";
+    ind.textContent = T("↓ משוך לרענון");
   }, 700);
 }
 
@@ -2444,7 +2772,7 @@ document.addEventListener("touchmove", e => {
   ind.style.transform = "translate(-50%, " + (d - 40) + "px)";
   ptOn = d >= 55;
   ind.classList.toggle("ready", ptOn);
-  if (ptOn) ind.textContent = "שחרר לרענון";
+  if (ptOn) ind.textContent = T("שחרר לרענון");
 }, { passive: true });
 document.addEventListener("touchend", () => {
   if (ptY === null) return;
@@ -2456,7 +2784,7 @@ document.addEventListener("touchend", () => {
   else {
     ind.style.opacity = "";
     ind.style.transform = "";
-    ind.textContent = "↓ משוך לרענון";
+    ind.textContent = T("↓ משוך לרענון");
   }
 });
 renderVer();
@@ -2483,9 +2811,9 @@ function obSaveBasics() {
   const h = parseFloat($("obH").value);
   const a = parseFloat($("obA").value);
   const w = parseFloat($("obW").value);
-  if (!(h > 100 && h < 230)) { $("obErr1").textContent = "הזן גובה בסנטימטרים (100-230) ס\"מ"; return false; }
-  if (!(a > 10 && a < 100)) { $("obErr1").textContent = "הזן את הגיל שלך (10-100)"; return false; }
-  if (!(w > 30 && w < 300)) { $("obErr1").textContent = "הזן את המשקל שלך היום"; return false; }
+  if (!(h > 100 && h < 230)) { $("obErr1").textContent = T("הזן גובה בסנטימטרים (100-230) ס\"מ"); return false; }
+  if (!(a > 10 && a < 100)) { $("obErr1").textContent = T("הזן את הגיל שלך (10-100)"); return false; }
+  if (!(w > 30 && w < 300)) { $("obErr1").textContent = T("הזן את המשקל שלך היום"); return false; }
   PROFILE.height = h; PROFILE.age = a;
   store.set(LS_PROF, PROFILE);
   const d = DAYDATA[todayKey()] || (DAYDATA[todayKey()] = {});
@@ -2550,16 +2878,23 @@ document.querySelectorAll(".obkgb").forEach(b => {
   });
 });
 $("obSk").addEventListener("click", () => {
-  if (HB()) skOpen(); else alert("הפתיחה המהירה זמינה באפליקציה המותקנת");
+  if (HB()) skOpen(); else alert(T("הפתיחה המהירה זמינה באפליקציה המותקנת"));
 });
 $("obHc").addEventListener("click", async () => {
-  if (!HB()) { $("obHcState").textContent = "זמין באפליקציה המותקנת"; return; }
-  $("obHcState").textContent = "פותח את מסך ההרשאות…";
+  if (!HB()) { $("obHcState").textContent = T("זמין באפליקציה המותקנת"); return; }
+  $("obHcState").textContent = T("פותח את מסך ההרשאות…");
   await hcConnect();
-  $("obHcState").textContent = localStorage.getItem("fl_hc") ? "מחובר ✓" : "אפשר גם מאוחר יותר, בהגדרות";
+  $("obHcState").textContent = localStorage.getItem("fl_hc") ? T("מחובר ✓") : T("אפשר גם מאוחר יותר, בהגדרות");
 });
 $("coach").addEventListener("click", obEndCoach);
 $("fab").addEventListener("click", obEndCoach);
+
+
+applyDir();
+sweepMarkup(document.body);
+document.getElementById("lang" + (LANG === "he" ? "He" : "En")).classList.add("on");
+$("langEn").addEventListener("click", () => { if (LANG !== "en") setLang("en"); });
+$("langHe").addEventListener("click", () => { if (LANG !== "he") setLang("he"); });
 
 if (!localStorage.getItem(LS_OB)) obStart();
 
@@ -2604,7 +2939,7 @@ $("log").addEventListener("click", e => {
   const id = e.target.dataset && e.target.dataset.del;
   if (id) {
     const it = LOG.find(x => x.id === id);
-    if (it && confirm(`למחוק "${it.name}"?`)) {
+    if (it && confirm(`${T("למחוק \"")}${it.name}"?`)) {
       if (editId === id) editId = null;
       LOG = LOG.filter(x => x.id !== id); save(); renderLog();
     }
@@ -2626,13 +2961,13 @@ $("missRes").addEventListener("click", e => {
 });
 $("copyBtn").addEventListener("click", async () => {
   const text = report(viewDay);
-  try { await navigator.clipboard.writeText(text); msg("scanMsg", "הדוח הועתק — הדבק אותו לקלוד", "ok"); }
+  try { await navigator.clipboard.writeText(text); msg("scanMsg", T("הדוח הועתק — הדבק אותו לקלוד"), "ok"); }
   catch {
     const ta = document.createElement("textarea");
     ta.value = text; ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
     document.body.appendChild(ta); ta.select();
-    try { document.execCommand("copy"); msg("scanMsg", "הדוח הועתק", "ok"); }
-    catch { msg("scanMsg", "לא הצלחתי להעתיק — סמן ידנית", "err"); }
+    try { document.execCommand("copy"); msg("scanMsg", T("הדוח הועתק"), "ok"); }
+    catch { msg("scanMsg", T("לא הצלחתי להעתיק — סמן ידנית"), "err"); }
     ta.remove();
   }
 });
@@ -2644,7 +2979,7 @@ $("expBtn").addEventListener("click", () => {
   a.href = URL.createObjectURL(blob);
   a.download = "scanlog-backup-" + todayKey() + ".json";
   document.body.appendChild(a); a.click(); a.remove();
-  msg("scanMsg", "קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו.", "ok");
+  msg("scanMsg", T("קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו."), "ok");
 });
 $("impBtn").addEventListener("click", () => $("impInput").click());
 $("impInput").addEventListener("change", e => {
@@ -2663,8 +2998,8 @@ $("impInput").addEventListener("change", e => {
       if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
       save(); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
       renderLog();
-      msg("scanMsg", "שוחזר: " + added + " רישומים, " + Object.keys(d.products || {}).length + " מוצרים בזיכרון.", "ok");
-    } catch { msg("scanMsg", "הקובץ לא נראה כמו גיבוי של האפליקציה.", "err"); }
+      msg("scanMsg", T("שוחזר: ") + added + " " + T("רישומים,") + " " + Object.keys(d.products || {}).length + " " + T("מוצרים בזיכרון."), "ok");
+    } catch { msg("scanMsg", T("הקובץ לא נראה כמו גיבוי של האפליקציה."), "err"); }
   };
   rd.readAsText(f);
 });
@@ -2741,7 +3076,7 @@ function toThumb(file, px = 256, q = 0.82) {
 async function pickedPicture(file) {
   let data;
   try { data = await toThumb(file); }
-  catch { msg(picTarget ? "scanMsg" : "entryMsg", "לא הצלחתי לקרוא את התמונה הזאת.", "err"); return; }
+  catch { msg(picTarget ? "scanMsg" : "entryMsg", T("לא הצלחתי לקרוא את התמונה הזאת."), "err"); return; }
   if (picTarget == null) { setShot(data); return; }
   const e = LOG.find(x => x.id === picTarget);
   if (!e) return;
@@ -2750,7 +3085,7 @@ async function pickedPicture(file) {
   if (e.barcode && PRODUCTS[e.barcode]) { PRODUCTS[e.barcode].photo = data; store.set(LS_PROD, PRODUCTS); }
   store.set(LS_LOG, LOG);
   renderLog();
-  msg("scanMsg", "התמונה הוחלפה.", "ok");
+  msg("scanMsg", T("התמונה הוחלפה."), "ok");
 }
 
 $("picBtn").addEventListener("click", () => { picTarget = null; $("picInput").click(); });
