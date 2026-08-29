@@ -90,6 +90,13 @@
     scrollbar-width:none; overscroll-behavior-x:contain;
   }
   .calweek::-webkit-scrollbar { display:none; }
+  #ptr {
+    position: fixed; top: 0; left: 50%; transform: translate(-50%, -46px);
+    z-index: 60; background: #1b2130; color: #c9d3e2; border: 1px solid #2a3244;
+    border-radius: 999px; padding: 6px 15px; font-size: 12px; font-weight: 700;
+    opacity: 0; pointer-events: none; transition: opacity .15s;
+  }
+  #ptr.ready { background: #b98b09; color: #1a1205; border-color: #b98b09; }
   #bankWrap { margin-top: 9px; cursor: pointer; }
   #bankBar {
     position: relative; height: 30px; border-radius: 9px; overflow: hidden;
@@ -314,19 +321,11 @@
         <button id="photoBtn">🖼️ צלם תמונה</button>
         <button id="manualBtn">⌨️ הקלד ברקוד</button>
       </div>
-      <details class="eprof">
-        <summary>⚙️ הגדרות</summary>
-        <div class="erow" style="margin-top:8px">
-          <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
-          <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
-        </div>
-        <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
-        <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
-      </details>
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
   <input type="file" id="picInput" accept="image/*" hidden>
+  <div id="ptr">↓ משוך לרענון</div>
   <button id="fab" aria-label="סריקה והוספת מזון">+</button>
   <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
@@ -386,14 +385,6 @@
     <div class="foot" id="foot"></div>
     <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
     <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
-    <div class="row" style="margin-top:12px">
-      <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <button id="expBtn">⬇️ גיבוי נתונים</button>
-      <button id="impBtn">⬆️ שחזור מגיבוי</button>
-    </div>
-    <input type="file" id="impInput" accept=".json,application/json" hidden>
   </div>
 
   <div class="card" id="ecard">
@@ -413,15 +404,33 @@
         <input type="number" id="actIn" inputmode="numeric" placeholder="0">
       </div>
     </div>
-    <div id="hcRow" style="display:none;align-items:center;gap:8px;margin-top:8px">
-      <button id="hcBtn" type="button" style="background:#1d5c39;color:#d9ffe8;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🩺 חבר ל-Health Connect</button>
-      <span id="hcState" style="font-size:12px;color:#9aa3b2"></span>
-    </div>
-    <div id="skRow" style="display:none;align-items:center;gap:8px;margin-top:8px">
-      <button id="skBtn" type="button" style="background:#26304a;color:#cfe0ff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚡ פתיחה מהירה מהלחצן הצידי</button>
-      <span id="skState" style="font-size:12px;color:#9aa3b2"></span>
-    </div>
     <div id="ebal"></div>
+      <details class="eprof" id="setBox">
+        <summary>⚙️ הגדרות</summary>
+        <div class="erow" style="margin-top:8px">
+          <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
+          <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
+        </div>
+        <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
+        <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
+        <div id="hcRow" style="display:none;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button id="hcBtn" type="button" style="background:#1d5c39;color:#d9ffe8;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🩺 חבר ל-Health Connect</button>
+          <span id="hcState" style="font-size:12px;color:#9aa3b2"></span>
+        </div>
+        <div id="skRow" style="display:none;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button id="skBtn" type="button" style="background:#26304a;color:#cfe0ff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚡ פתיחה מהירה מהלחצן הצידי</button>
+          <span id="skState" style="font-size:12px;color:#9aa3b2"></span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="expBtn">⬇️ גיבוי נתונים</button>
+          <button id="impBtn">⬆️ שחזור מגיבוי</button>
+        </div>
+        <input type="file" id="impInput" accept=".json,application/json" hidden>
+      </details>
+
   </div>
 </div>
 
@@ -794,7 +803,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.22";
+const APP_BUILD = "2026.08.29.23";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = "גרסת תוכן " + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2126,7 +2135,68 @@ $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())))
 $("bankWrap").addEventListener("click", bankSetup);
 $("hcBtn").addEventListener("click", hcTap);
 $("skBtn").addEventListener("click", skOpen);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) hcSync(); });
+/* coming back from the Health Connect permission screen: pick up whatever he
+   just granted without making him press anything */
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden) return;
+  const hb = HB(); if (!hb) return;
+  if (!localStorage.getItem("fl_hc")) {
+    const g = await hb.grantedPermissions().catch(() => null);
+    if (g && g.granted) { hcDone(); return; }
+  }
+  hcSync(true);
+});
+
+/* pull down from the top to refresh, like a web page */
+async function doRefresh() {
+  const ind = $("ptr");
+  ind.textContent = "מרענן…";
+  ind.style.opacity = "1";
+  ind.style.transform = "translate(-50%, 12px)";
+  try { await hcSync(true); } catch { /* offline */ }
+  LOG = store.get(LS_LOG, LOG);
+  PRODUCTS = store.get(LS_PROD, PRODUCTS);
+  DAYDATA = store.get(LS_DAY, DAYDATA);
+  renderLog();
+  ind.textContent = "רוענן ✓";
+  setTimeout(() => {
+    ind.style.opacity = "";
+    ind.style.transform = "";
+    ind.textContent = "↓ משוך לרענון";
+  }, 700);
+}
+
+let ptY = null, ptOn = false;
+document.addEventListener("touchstart", e => {
+  ptY = (window.scrollY <= 0 && !$("cam").classList.contains("on") && e.touches.length === 1)
+    ? e.touches[0].clientY : null;
+  ptOn = false;
+}, { passive: true });
+document.addEventListener("touchmove", e => {
+  if (ptY === null || window.scrollY > 0) return;
+  const dy = e.touches[0].clientY - ptY;
+  if (dy <= 0) return;
+  const d = Math.min(70, dy * 0.45);
+  const ind = $("ptr");
+  ind.style.opacity = String(Math.min(1, d / 45));
+  ind.style.transform = "translate(-50%, " + (d - 40) + "px)";
+  ptOn = d >= 55;
+  ind.classList.toggle("ready", ptOn);
+  if (ptOn) ind.textContent = "שחרר לרענון";
+}, { passive: true });
+document.addEventListener("touchend", () => {
+  if (ptY === null) return;
+  const go = ptOn;
+  ptY = null; ptOn = false;
+  const ind = $("ptr");
+  ind.classList.remove("ready");
+  if (go) { doRefresh(); }
+  else {
+    ind.style.opacity = "";
+    ind.style.transform = "";
+    ind.textContent = "↓ משוך לרענון";
+  }
+});
 renderVer();
 hcInit();
 function calScroll(dir) {
