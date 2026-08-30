@@ -32,6 +32,13 @@
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
 
   /* search results */
+  .camweb {
+    display: block; width: 100%; margin-top: 8px; padding: 11px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .camweb:disabled { opacity: .6; }
   #searchRes { display:none; margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   #missRes { display:none; margin:0 0 10px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   #missRes.on { display:block; }
@@ -445,6 +452,7 @@
       </div>
       <input type="text" id="searchIn" class="camsearch" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
       <div id="searchRes"></div>
+      <button id="webSearchBtn" class="camweb" style="display:none">🌐 חפש באינטרנט</button>
       <div class="camfb" style="display:none">
         <button id="photoBtn">🖼️ צלם תמונה</button>
         <button id="manualBtn">⌨️ הקלד ברקוד</button>
@@ -1399,7 +1407,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.29.35";
+const APP_BUILD = "2026.08.31.36";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2067,23 +2075,45 @@ async function offSearch(q) {
   } catch { noteNet(false); return []; }
 }
 
+/* Typing searches only what is already on the phone - about 12,000 foods,
+   instant and free. Asking the world database costs a Make operation per
+   search, so it waits behind a button instead of firing on every keystroke,
+   which is what made it the most expensive thing the app did. */
 function doSearch(q) {
   q = q.trim();
   const box = $("searchRes");
-  if (q.length < 2) { box.className = ""; box.innerHTML = ""; return; }
+  const btn = $("webSearchBtn");
+  if (q.length < 2) {
+    box.className = ""; box.innerHTML = "";
+    btn.style.display = "none";
+    return;
+  }
   const token = ++searchToken;
+  renderSearch(localMatches(q), token, false);
+  btn.style.display = "block";
+  btn.disabled = false;
+  btn.textContent = T("🌐 חפש באינטרנט");
+}
+
+async function webSearch() {
+  const q = $("searchIn").value.trim();
+  if (q.length < 2) return;
+  const btn = $("webSearchBtn");
+  btn.disabled = true;
+  btn.textContent = T("מחפש במאגר העולמי…");
+  const token = searchToken;
+  const hits = await offSearch(q);
+  if (token !== searchToken) return;          /* he kept typing */
   const res = localMatches(q);
-  renderSearch(res, token, true);
-  offSearch(q).then(hits => {
-    if (token !== searchToken) return;
-    const seen = new Set(res.map(r => r.name));
-    for (const h of hits) {
-      if (seen.has(h.name)) continue;
-      seen.add(h.name);
-      res.push(h);
-    }
-    renderSearch(res, token, false);
-  });
+  const seen = new Set(res.map(r => r.name));
+  for (const h of hits) {
+    if (seen.has(h.name)) continue;
+    seen.add(h.name);
+    res.push(h);
+  }
+  renderSearch(res, token, false);
+  btn.disabled = false;
+  btn.textContent = hits.length ? T("🌐 חפש שוב באינטרנט") : T("לא נמצא גם באינטרנט");
 }
 
 /* ---------------- unknown-barcode rescue ----------------
@@ -2203,7 +2233,19 @@ function openProduct(r) {
   $("calcPreview").textContent = T("הזן גרמים כדי לחשב");
   $("entry").classList.add("on");
   msg("scanMsg", ""); msg("entryMsg", "");
-  $("searchRes").className = ""; $("searchRes").innerHTML = ""; $("searchIn").value = "";
+  /* A world-database hit was paid for with a Make operation. Keep it here so
+     the same food is found locally next time and never costs a second one.
+     Products without a barcode get a name key - always non-numeric, so it can
+     never collide with a real scan. */
+  if (r.src === "עולמי") {
+    const key = r.barcode || ("name:" + r.name);
+    PRODUCTS[key] = { name: r.name, kcal: r.k, pro: r.p, carb: r.c, fat: r.f, photo: r.photo || "" };
+    store.set(LS_PROD, PRODUCTS);
+    pending.barcode = r.barcode || "";
+  }
+  $("searchRes").className = ""; $("searchRes").innerHTML = "";
+  $("searchIn").value = "";
+  $("webSearchBtn").style.display = "none";
   $("grams").focus();
   $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
   if (!r.photo) autoImage(r.name);
@@ -2752,7 +2794,9 @@ function addEntry() {
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
     store.set(LS_PROD, PRODUCTS);
-    sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    /* only real scanned codes belong in the shared barcode store - a name key
+       is this phone's own shorthand and would be noise to everyone else */
+    if (/^\d{6,}$/.test(e.barcode)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
@@ -3042,6 +3086,7 @@ $("calWeek").addEventListener("click", e => {
   if (b && !b.disabled) { viewDay = b.dataset.day; renderLog(); }
 });
 let searchTimer = null;
+$("webSearchBtn").addEventListener("click", webSearch);
 $("searchIn").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => doSearch(e.target.value), 250);
