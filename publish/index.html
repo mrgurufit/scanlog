@@ -390,7 +390,9 @@
     }
     .ptable td[data-l]::before {
       content: attr(data-l); color: var(--muted); font-size: 11.5px;
-      font-weight: 600; flex: 0 0 auto;
+      /* push everything after the label to the far edge, so a number and its
+         change chip stay together instead of drifting apart */
+      font-weight: 600; flex: 0 0 auto; margin-inline-end: auto;
     }
     .ptable td.pf {
       font-size: 15px; padding-bottom: 7px; margin-bottom: 3px;
@@ -458,7 +460,9 @@
     }
   html.compact .ptable td[data-l]::before {
       content: attr(data-l); color: var(--muted); font-size: 11.5px;
-      font-weight: 600; flex: 0 0 auto;
+      /* push everything after the label to the far edge, so a number and its
+         change chip stay together instead of drifting apart */
+      font-weight: 600; flex: 0 0 auto; margin-inline-end: auto;
     }
   html.compact .ptable td.pf {
       font-size: 15px; padding-bottom: 7px; margin-bottom: 3px;
