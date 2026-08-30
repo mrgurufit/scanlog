@@ -321,7 +321,7 @@
   #publishAllBtn { background: var(--accent); color: #000; font-size: 15px; padding: 11px 22px; }
   #log { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.7; max-height: 120px; overflow-y: auto; direction: ltr; text-align: left; }
   /* ---- mobile: this page is installed as a phone app ---- */
-  @media (max-width: 640px) {
+  @media (max-width: 820px) {
     body { padding: 12px 10px; }
     header { gap: 10px; margin-bottom: 14px; }
     header h1 { font-size: 17px; }
@@ -389,6 +389,74 @@
     .ptable td:last-child { justify-content: flex-start; padding-top: 6px; }
     .dayblock > div[style*="overflow-x"] { overflow-x: visible !important; }
   }
+  /* ---- the same phone layout, switched on by class ----
+     A browser in "Desktop site" mode reports a desktop-width viewport, so
+     the media query above never fires no matter how small the screen is.
+     JS sets .compact in that case and these rules take over. */
+  html.compact body { padding: 12px 10px; }
+  html.compact header { gap: 10px; margin-bottom: 14px; }
+  html.compact header h1 { font-size: 17px; }
+  html.compact .card { padding: 14px 12px; border-radius: 12px; margin-bottom: 14px; }
+  html.compact #tabs { gap: 4px; }
+  html.compact .tab { flex: 1; padding: 10px 5px; font-size: 13px; text-align: center; }
+  html.compact .viewtitle { font-size: 18px; }
+  html.compact #brief .focus { padding: 10px 12px; font-size: 14px; }
+  html.compact .brow { grid-template-columns: 82px 1fr; gap: 8px; }
+  html.compact #calbar { padding: 12px 10px; }
+  html.compact .calweek { gap: 4px; }
+  html.compact .cd { padding: 6px 2px; border-radius: 8px; }
+  html.compact .cd .cn { font-size: 13px; }
+  html.compact .tot { min-width: 0; flex: 1 1 calc(50% - 5px); padding: 9px 11px; }
+  html.compact .tot .tv { font-size: 19px; }
+  html.compact #drop { padding: 26px 14px; }
+  html.compact #drop .big { font-size: 17px; }
+  html.compact #videoRow { flex-direction: column; }
+  html.compact #videoRow video { width: 100%; max-width: 240px; align-self: center; }
+  html.compact .grid { grid-template-columns: 1fr; }
+  html.compact .pcard textarea { min-height: 110px; }
+  html.compact .setrow { flex-direction: column; align-items: stretch; gap: 4px; margin-bottom: 12px; }
+  html.compact .setrow label { min-width: 0; }
+  html.compact .setrow input { min-width: 0; width: 100%; }
+  html.compact #bulk { flex-wrap: wrap; gap: 8px; padding: 10px 12px; bottom: 8px; }
+  html.compact #bulk .selinfo { flex-basis: 100%; text-align: center; font-size: 13px; }
+  html.compact #publishAllBtn { flex: 1; }
+  html.compact button { padding: 10px 14px; }
+  /* the title was running off the left edge at 375px */
+  html.compact header h1 { font-size: 15px; letter-spacing: .3px; }
+  /* five boxes read as two rows of two plus one, not five slivers */
+  html.compact .sitegrid { gap: 6px; }
+  html.compact .sitebox { flex: 1 1 calc(50% - 3px); padding: 9px 8px; }
+  html.compact .sitebox b { font-size: 18px; }
+  html.compact .sitedays { height: 62px; gap: 3px; }
+  html.compact .siteday { max-width: 26px; }
+  html.compact .siteday span { font-size: 8.5px; }
+  /* eight columns cannot fit a phone, and a sideways scroller per day means
+       dragging fifteen tables to read one week. Each row becomes a small card
+       with its label beside the number instead. */
+  html.compact .ptable, html.compact .ptable tbody, html.compact .ptable tr, html.compact .ptable td { display: block; width: 100%; }
+  html.compact .ptable thead { display: none; }
+  html.compact .ptable tr {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 11px;
+      padding: 9px 11px; margin-bottom: 8px;
+    }
+  html.compact .ptable td {
+      border: 0; padding: 4px 0; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px; text-align: right;
+    }
+  html.compact .ptable td[data-l]::before {
+      content: attr(data-l); color: var(--muted); font-size: 11.5px;
+      font-weight: 600; flex: 0 0 auto;
+    }
+  html.compact .ptable td.pf {
+      font-size: 15px; padding-bottom: 7px; margin-bottom: 3px;
+      border-bottom: 1px solid var(--border); justify-content: flex-start; gap: 8px;
+    }
+  html.compact .ptable .n { text-align: left; white-space: normal; }
+  html.compact .ptable .big { font-size: 17px; }
+  html.compact .ptable .bar { flex: 1 1 auto; min-width: 40px; }
+  html.compact .ptable td:last-child { justify-content: flex-start; padding-top: 6px; }
+  html.compact .dayblock > div[style*="overflow-x"] { overflow-x: visible !important; }
+
 
   @media (max-width: 380px) {
     header h1 { font-size: 13.5px; letter-spacing: 0; }
@@ -2526,6 +2594,33 @@ async function loadSite() {
 }
 $("siteBtn").addEventListener("click", loadSite);
 loadSite();
+
+
+/* ---------------- phone layout when the browser claims to be a desktop ----
+   "Desktop site" hands this page a ~980px layout viewport and then scales the
+   result down to fit the phone, which is how Ido ended up looking at the full
+   desktop tables at thumbnail size. Media queries cannot see that, but a coarse
+   pointer on a wide layout is a reliable tell. When it happens we switch on the
+   compact rules ourselves AND zoom the content back up, because the layout
+   alone would still be rendered at a third of readable size. */
+(function () {
+  "use strict";
+  const wrap = document.querySelector(".wrap");
+
+  function sync() {
+    const coarse = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+    const w = document.documentElement.clientWidth;
+    const faking = coarse && w > 820;
+    document.documentElement.classList.toggle("compact", faking);
+    if (!wrap) return;
+    /* aim for a ~420px reading column whatever width the browser invented */
+    wrap.style.zoom = faking ? (w / 420).toFixed(3) : "";
+  }
+
+  sync();
+  addEventListener("resize", sync);
+  addEventListener("orientationchange", sync);
+})();
 
 /* ---------------- tabs ---------------- */
 
