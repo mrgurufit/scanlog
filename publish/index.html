@@ -361,6 +361,33 @@
     .sitedays { height: 62px; gap: 3px; }
     .siteday { max-width: 26px; }
     .siteday span { font-size: 8.5px; }
+
+    /* eight columns cannot fit a phone, and a sideways scroller per day means
+       dragging fifteen tables to read one week. Each row becomes a small card
+       with its label beside the number instead. */
+    .ptable, .ptable tbody, .ptable tr, .ptable td { display: block; width: 100%; }
+    .ptable thead { display: none; }
+    .ptable tr {
+      background: var(--panel2); border: 1px solid var(--border); border-radius: 11px;
+      padding: 9px 11px; margin-bottom: 8px;
+    }
+    .ptable td {
+      border: 0; padding: 4px 0; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px; text-align: right;
+    }
+    .ptable td[data-l]::before {
+      content: attr(data-l); color: var(--muted); font-size: 11.5px;
+      font-weight: 600; flex: 0 0 auto;
+    }
+    .ptable td.pf {
+      font-size: 15px; padding-bottom: 7px; margin-bottom: 3px;
+      border-bottom: 1px solid var(--border); justify-content: flex-start; gap: 8px;
+    }
+    .ptable .n { text-align: left; white-space: normal; }
+    .ptable .big { font-size: 17px; }
+    .ptable .bar { flex: 1 1 auto; min-width: 40px; }
+    .ptable td:last-child { justify-content: flex-start; padding-top: 6px; }
+    .dayblock > div[style*="overflow-x"] { overflow-x: visible !important; }
   }
 
   @media (max-width: 380px) {
@@ -1642,12 +1669,12 @@ function renderPerf() {
       }
       return `<tr>
         <td class="pf">${PLATFORM_LABELS[p]}${m.flag ? ` <span class="flag ${m.flag.startsWith("יום") ? "gone" : ""}">${m.flag}</span>` : ""}</td>
-        <td class="n big">${nf(m.views)}</td>
-        <td class="n dim">${nf(m.reach)}</td>
-        <td class="n">${nf(m.likes)} / ${nf(m.comments)}</td>
-        <td class="n">${m.er != null ? m.er.toFixed(2) + "%" : "—"}</td>
-        <td class="n">${ret}</td>
-        <td class="n dim">${hhmm(m.at)}</td>
+        <td class="n big" data-l="צפיות">${nf(m.views)}</td>
+        <td class="n dim" data-l="חשיפה">${nf(m.reach)}</td>
+        <td class="n" data-l="לייק / תגובה">${nf(m.likes)} / ${nf(m.comments)}</td>
+        <td class="n" data-l="מעורבות">${m.er != null ? m.er.toFixed(2) + "%" : "—"}</td>
+        <td class="n" data-l="נשארו לצפות">${ret}</td>
+        <td class="n dim" data-l="פורסם">${hhmm(m.at)}</td>
         <td class="n"><a href="${m.url}" target="_blank" rel="noopener">צפה ↗</a></td>
       </tr>`;
     }).join("");
