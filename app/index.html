@@ -2104,13 +2104,14 @@ async function webSearch() {
   const token = searchToken;
   const hits = await offSearch(q);
   if (token !== searchToken) return;          /* he kept typing */
-  const res = localMatches(q);
-  const seen = new Set(res.map(r => r.name));
-  for (const h of hits) {
-    if (seen.has(h.name)) continue;
-    seen.add(h.name);
-    res.push(h);
-  }
+  /* what came back from the internet goes FIRST. He pressed the button because
+     the local list did not have it, and the list only shows ten - appending
+     world hits under ten local ones made the button look like it did nothing. */
+  const local = localMatches(q);
+  const seen = new Set();
+  const res = [];
+  for (const h of hits) { if (!seen.has(h.name)) { seen.add(h.name); res.push(h); } }
+  for (const l of local) { if (!seen.has(l.name)) { seen.add(l.name); res.push(l); } }
   renderSearch(res, token, false);
   btn.disabled = false;
   btn.textContent = hits.length ? T("🌐 חפש שוב באינטרנט") : T("לא נמצא גם באינטרנט");
