@@ -2610,7 +2610,15 @@ loadSite();
   function sync() {
     const coarse = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
     const w = document.documentElement.clientWidth;
-    const faking = coarse && w > 820;
+    /* a real tablet in landscape is also a coarse pointer at 1024px, and it
+       genuinely has that much room - it must NOT get the zoomed phone layout.
+       The tell for a faked width is that the layout is far wider than the
+       screen the device actually has. */
+    const sw = screen.width || 0;
+    const sh = screen.height || 0;
+    const stretched = sw ? w / sw >= 1.5 : false;
+    const phoneSized = sw && sh ? Math.min(sw, sh) <= 520 : false;
+    const faking = coarse && w > 820 && (stretched || phoneSized);
     document.documentElement.classList.toggle("compact", faking);
     if (!wrap) return;
     /* aim for a ~420px reading column whatever width the browser invented */
