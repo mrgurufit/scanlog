@@ -350,6 +350,22 @@
     #bulk .selinfo { flex-basis: 100%; text-align: center; font-size: 13px; }
     #publishAllBtn { flex: 1; }
     button { padding: 10px 14px; }
+
+    /* the title was running off the left edge at 375px */
+    header h1 { font-size: 15px; letter-spacing: .3px; }
+
+    /* five boxes read as two rows of two plus one, not five slivers */
+    .sitegrid { gap: 6px; }
+    .sitebox { flex: 1 1 calc(50% - 3px); padding: 9px 8px; }
+    .sitebox b { font-size: 18px; }
+    .sitedays { height: 62px; gap: 3px; }
+    .siteday { max-width: 26px; }
+    .siteday span { font-size: 8.5px; }
+  }
+
+  @media (max-width: 380px) {
+    header h1 { font-size: 13.5px; letter-spacing: 0; }
+    .cd .cn { font-size: 13px; }
   }
   /* ---- gate ---- */
   #gate {
@@ -393,8 +409,17 @@
   }
   .sitebox b { display: block; font-size: 21px; color: var(--accent); font-variant-numeric: tabular-nums; }
   .sitebox small { font-size: 11px; color: var(--muted); }
-  .sitedays { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-top: 6px; }
-  .siteday { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+  .sitedays {
+    display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-top: 6px;
+    direction: ltr;  /* days read oldest to newest, left to right, in both languages */
+  }
+  /* a bar has its own width and only shrinks once there are many days. Without
+     the cap, a single day stretched across the whole card and read as a solid
+     yellow block instead of a chart. */
+  .siteday {
+    flex: 1 1 0; max-width: 34px;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px;
+  }
   .siteday i { display: block; width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
   .siteday span { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .sitenote { font-size: 12px; color: var(--muted); margin-top: 8px; }
