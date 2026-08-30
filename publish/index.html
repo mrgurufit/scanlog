@@ -2328,11 +2328,11 @@ function renderFollowers() {
   const rows = dates.map(dt => {
     const cells = pfs.map(pf => {
       const cur = byPf[pf][dt];
-      if (cur == null) return `<td class="n dim">—</td>`;
+      if (cur == null) return `<td class="n dim" data-l="${PLATFORM_LABELS[pf]}">—</td>`;
       const prevDate = Object.keys(byPf[pf]).filter(x => x < dt).sort().pop();
       const d = prevDate == null ? null : cur - byPf[pf][prevDate];
       const chip = d == null || d === 0 ? "" : d > 0 ? ` <span class="fdelta up">+${d}</span>` : ` <span class="fdelta down">${d}</span>`;
-      return `<td class="n">${cur}${chip}</td>`;
+      return `<td class="n" data-l="${PLATFORM_LABELS[pf]}">${cur}${chip}</td>`;
     }).join("");
     return `<tr><td class="pf">${dt.slice(8)}.${dt.slice(5, 7)}</td>${cells}</tr>`;
   }).join("");
