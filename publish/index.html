@@ -902,10 +902,17 @@
      typing the address with #relogin. Without this there is no way back in
      once the page decides you are already signed in - which is exactly the
      dead end the tolerant gate created. */
-  if (location.hash === "#relogin") {
+  function askForLockScreen() {
     try { localStorage.removeItem("pc_gate_at"); } catch { /* private mode */ }
     history.replaceState(null, "", location.pathname + location.search);
   }
+  if (location.hash === "#relogin") askForLockScreen();
+  /* typing #relogin onto an address already open does NOT reload the page, so
+     without this the route silently does nothing - which is how it first
+     failed when I tested it */
+  addEventListener("hashchange", () => {
+    if (location.hash === "#relogin") { askForLockScreen(); location.reload(); }
+  });
 
   const REQUIRED = ["mk_webhook", "pc_proxy", "cld_name", "cld_preset",
                     "df_read", "df_write"];
