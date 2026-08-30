@@ -126,5 +126,24 @@
   <a href="../join/">Get the app</a>
 </footer>
 </div>
+<script>
+/* Counts a page view, and a visit only the first time in a browsing session,
+   so refreshes and back-navigation do not inflate the number. */
+(function () {
+  try {
+    var first = "0";
+    try {
+      if (!sessionStorage.getItem("mgf_seen")) {
+        sessionStorage.setItem("mgf_seen", "1");
+        first = "1";
+      }
+    } catch (e) { /* private mode: count the view, skip the visit */ }
+    var u = "https://hook.us2.make.com/iwafet153pkallo64gaqd7ryoutllx4x"
+          + "?s=" + first + "&p=" + encodeURIComponent(location.pathname);
+    if (navigator.sendBeacon) navigator.sendBeacon(u);
+    else fetch(u, { mode: "no-cors", keepalive: true }).catch(function () {});
+  } catch (e) { /* measurement must never break the page */ }
+})();
+</script>
 </body>
 </html>

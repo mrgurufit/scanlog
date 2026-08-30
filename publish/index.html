@@ -385,6 +385,19 @@
   .gatemsg { margin-top: 16px; font-size: 13px; min-height: 18px; }
   .gatemsg.bad { color: var(--red); }
   .gatemsg.good { color: var(--green); }
+  /* ---- site reach ---- */
+  .sitegrid { display: flex; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+  .sitebox {
+    flex: 1 1 110px; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 11px; padding: 11px 10px; text-align: center;
+  }
+  .sitebox b { display: block; font-size: 21px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sitebox small { font-size: 11px; color: var(--muted); }
+  .sitedays { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-top: 6px; }
+  .siteday { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+  .siteday i { display: block; width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .siteday span { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sitenote { font-size: 12px; color: var(--muted); margin-top: 8px; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0f14">
@@ -552,6 +565,18 @@
         <b>למה רק יוטיוב:</b> אינסטגרם חושפת דמוגרפיה רק מ-100 עוקבים (יופעל כאן אוטומטית כשנגיע), וטיקטוק לא חושפת דרך ה-API בכלל — רואים רק באפליקציה: פרופיל ← תפריט ← TikTok Studio ← Analytics.
       </div>
     </div>
+    <div class="card">
+      <h2 class="viewtitle">🌐 חשיפה לאתר</h2>
+      <p class="viewsub">כמה אנשים מגיעים ל-mrgurufit.com. ביקור = אדם אחד בסשן גלישה, צפייה = כל טעינת עמוד.</p>
+      <div class="refreshrow">
+        <button id="siteBtn">🔄 רענן תנועה</button>
+        <span id="siteStatus"></span>
+      </div>
+      <div id="siteWrap"></div>
+      <div class="perffoot">
+        <b>איך זה נמדד:</b> המונה הוא שלנו — GitHub Pages לא מדווח כלום, אז כל עמוד שולח טיק יומי בלי עוגיות ובלי שום מזהה של הגולש, ולכן גם לא צריך באנר הסכמה. ספירת הביקורים מתעלמת מרענון של אותו אדם באותו סשן. <b>המנויים למייל</b> מתעדכנים פעם ביום מ-MailerLite ולא בזמן אמת, כי המפתח שלהם לא יכול לשבת בקובץ הזה.
+      </div>
+    </div>
   </div><!-- /viewStats -->
 
   <!-- ============ VIEW: FOLLOWERS ============ -->
@@ -684,6 +709,7 @@
     set("cld_preset", cfg.up);
     set("df_read", cfg.dr);
     set("df_write", cfg.dw);
+    set("site_read", cfg.tr);
     set("pc_gate_at", String(Date.now()));
     set("pc_gate_who", cfg.who || "");
     say("נפתח, טוען…", "good");
@@ -1471,6 +1497,7 @@ const store = {
     if (c.up) store.set("cld_preset", c.up);
     if (c.dr) store.set("df_read", c.dr);
     if (c.dw) store.set("df_write", c.dw);
+    if (c.tr) store.set("site_read", c.tr);
     history.replaceState(null, "", location.pathname + location.search);
   } catch { /* bad fragment - ignore */ }
 })();
@@ -2370,6 +2397,67 @@ $("dfSiteBtn").addEventListener("click", async () => {
     dfStartPoll();
   } catch (e) { dfMsg("dfSiteMsg", "השליחה נכשלה: " + e.message, "err"); }
 });
+
+
+/* ---------------- site reach ----------------
+   The traffic counter is ours (Make scenario "SITE - traffic read"); it answers
+   "date,views,visits;date,views,visits;..." newest first. The mailing list
+   number is written in by the nightly task - see MAIL_LIST below. */
+const SITE_READ = store.get("site_read") || "";
+
+/* refreshed nightly from MailerLite. Keep `at` honest: it is what tells him
+   how old this number is, and a stale number nobody can date is worse than
+   no number. */
+const MAIL_LIST = { total: 2, real: 0, at: "2026-08-30" };
+
+function renderSite(rows) {
+  const days = rows.slice(0, 14);
+  const totalViews = rows.reduce((a, r) => a + r.views, 0);
+  const totalVisits = rows.reduce((a, r) => a + r.visits, 0);
+  const today = days[0] || { views: 0, visits: 0 };
+  const peak = Math.max(1, ...days.map(d => d.views));
+
+  const bars = days.slice().reverse().map(d => {
+    const h = Math.round((d.views / peak) * 62);
+    return `<div class="siteday" title="${d.date}: ${d.views} צפיות, ${d.visits} ביקורים">
+      <i style="height:${Math.max(2, h)}px"></i><span>${d.date.slice(8)}</span></div>`;
+  }).join("");
+
+  $("siteWrap").innerHTML = `
+    <div class="sitegrid">
+      <div class="sitebox"><b>${today.visits}</b><small>ביקורים היום</small></div>
+      <div class="sitebox"><b>${today.views}</b><small>צפיות היום</small></div>
+      <div class="sitebox"><b>${totalVisits}</b><small>ביקורים בסה"כ</small></div>
+      <div class="sitebox"><b>${totalViews}</b><small>צפיות בסה"כ</small></div>
+      <div class="sitebox"><b>${MAIL_LIST.total}</b><small>מנויים למייל</small></div>
+    </div>
+    ${days.length ? `<div class="sitedays">${bars}</div>` : ""}
+    <div class="sitenote">${days.length
+      ? "14 הימים האחרונים, צפיות ליום."
+      : "עוד לא נרשמה אף כניסה. המונה עלה לאוויר היום."}
+      ${MAIL_LIST.real === 0
+        ? " <b>שים לב:</b> כל " + MAIL_LIST.total + " המנויים ברשימה הם כתובות שלך — עוד לא נרשם אף אחד מבחוץ."
+        : " מתוכם " + MAIL_LIST.real + " נרשמו מבחוץ."}
+      (מנויים נכון ל-${MAIL_LIST.at})</div>`;
+}
+
+async function loadSite() {
+  $("siteStatus").textContent = "טוען…";
+  try {
+    const r = await fetch(SITE_READ, { cache: "no-store" });
+    const t = (await r.text()).trim();
+    const rows = t ? t.split(";").map(x => {
+      const [date, views, visits] = x.split(",");
+      return { date, views: Number(views) || 0, visits: Number(visits) || 0 };
+    }).filter(x => x.date) : [];
+    renderSite(rows);
+    $("siteStatus").textContent = "עודכן " + new Date().toLocaleTimeString("he-IL");
+  } catch (e) {
+    $("siteStatus").textContent = "לא נטען: " + e.message;
+  }
+}
+$("siteBtn").addEventListener("click", loadSite);
+loadSite();
 
 /* ---------------- tabs ---------------- */
 
