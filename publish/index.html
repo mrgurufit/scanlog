@@ -2687,15 +2687,45 @@ async function dfPoll() {
       $("dfPubBar").innerHTML = "";
     }
     if (percent >= 100 && stage.includes("פורסם")) dfStopPoll();
-    else if (percent > 0) dfStartPoll();
+    else if (percent > 0) { dfStartPoll(); dfWiden(); }
   } catch (e) {
     $("dfProg").style.display = "block";
     $("dfStage").textContent = "אין עדיין נתונים ליום הזה";
     $("dfBarFill").style.width = "0%";
   }
 }
-function dfStartPoll() { if (!dfTimer) { dfPoll(); dfTimer = setInterval(dfPoll, 20000); } }
-function dfStopPoll() { if (dfTimer) { clearInterval(dfTimer); dfTimer = null; } }
+/* Polling used to be a flat 20 seconds for as long as the day was unfinished,
+   running just the same in a tab nobody was looking at - 12 operations a
+   minute to watch nothing. It now widens after the first minute and sleeps
+   while the page is hidden, picking straight back up when he returns. */
+let dfPollGap = 20000, dfPollCount = 0;
+
+function dfSchedule() {
+  clearTimeout(dfTimer);
+  dfTimer = setTimeout(async () => {
+    if (!document.hidden) { await dfPoll(); }
+    if (dfTimer) dfSchedule();
+  }, dfPollGap);
+}
+function dfStartPoll() {
+  if (dfTimer) return;
+  dfPollCount = 0;
+  dfPollGap = 20000;
+  dfPoll();
+  dfSchedule();
+}
+function dfStopPoll() { clearTimeout(dfTimer); dfTimer = null; }
+
+/* the first minute is the impatient part - after that a slower beat is plenty */
+function dfWiden() {
+  dfPollCount++;
+  if (dfPollCount === 3) dfPollGap = 60000;
+  else if (dfPollCount === 10) dfPollGap = 120000;
+}
+document.addEventListener("visibilitychange", () => {
+  /* coming back should feel instant, so ask once immediately */
+  if (!document.hidden && dfTimer) dfPoll();
+});
 
 function dfRenderCopies() {
   const d = parseInt($("dfDay").value, 10);
@@ -3012,15 +3042,29 @@ function showView(name) {
 
 /* the tabs refresh themselves - entering stats or followers pulls fresh
    numbers automatically, throttled so tab-hopping does not hammer the proxy */
-let lastPerfAuto = 0, lastFolAuto = 0, lastDemoAuto = 0;
+/* The throttle has to outlive the page, or it does nothing: it used to sit in
+   a variable, so every reload started the clock again and a fresh visit to the
+   stats tab pulled all four platforms plus demographics regardless. That one
+   detail was 43% of the month's operations. The windows below are set by how
+   fast the numbers actually change - the nightly task refreshes them anyway,
+   and every panel still has a button that forces a pull right now. */
+const AUTO_EVERY = { perf: 6 * 3600e3, followers: 6 * 3600e3, demo: 24 * 3600e3 };
+
+function autoDue(what) {
+  const k = "pc_auto_" + what;
+  const last = Number(store.get(k) || 0);
+  if (Date.now() - last < AUTO_EVERY[what]) return false;
+  store.set(k, String(Date.now()));
+  return true;
+}
 function autoStats() {
-  const now = Date.now();
-  if (ANALYTICS_PROXY && now - lastPerfAuto > 600000) { lastPerfAuto = now; refreshPerf(); }
-  if (ANALYTICS_PROXY && now - lastDemoAuto > 21600000) { lastDemoAuto = now; refreshDemo(); }
+  if (!ANALYTICS_PROXY) return;
+  if (autoDue("perf")) refreshPerf();
+  if (autoDue("demo")) refreshDemo();
 }
 function autoFollowers() {
-  const now = Date.now();
-  if (ANALYTICS_PROXY && now - lastFolAuto > 600000) { lastFolAuto = now; refreshFollowers(); }
+  if (!ANALYTICS_PROXY) return;
+  if (autoDue("followers")) refreshFollowers();
 }
 document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => {
