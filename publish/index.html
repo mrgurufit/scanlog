@@ -898,6 +898,15 @@
      existed was thrown back behind this lock screen with no warning, which is
      what "the portal stopped responding" turned out to mean. A feature missing
      its key says so on its own card; it does not take the building down. */
+  /* an explicit request for the lock screen, from the card's button or by
+     typing the address with #relogin. Without this there is no way back in
+     once the page decides you are already signed in - which is exactly the
+     dead end the tolerant gate created. */
+  if (location.hash === "#relogin") {
+    try { localStorage.removeItem("pc_gate_at"); } catch { /* private mode */ }
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+
   const REQUIRED = ["mk_webhook", "pc_proxy", "cld_name", "cld_preset",
                     "df_read", "df_write"];
   const seen = Number(get("pc_gate_at") || 0);
@@ -2775,8 +2784,16 @@ async function loadSite() {
      page, and the portal used to parse its own stylesheet as traffic rows */
   if (!SITE_READ) {
     $("siteStatus").textContent = "לא מוגדר — התחבר מחדש";
-    $("siteWrap").innerHTML = `<div class="sitenote">מפתח התנועה חסר במכשיר הזה.
-      רענן את הדף והתחבר שוב כדי לקבל אותו.</div>`;
+    $("siteWrap").innerHTML = `<div class="sitenote">מפתח התנועה חסר במכשיר הזה —
+      הוא נוצר אחרי שהתחברת, אז הוא לא הגיע לכאן.</div>
+      <button id="siteRelogin" class="b-copy" style="margin-top:8px">🔑 התחבר מחדש כדי לקבל אותו</button>`;
+    $("siteRelogin").onclick = () => {
+      /* drop the "already signed in" stamp and come back to the lock screen.
+         The keys themselves stay put, so nothing else stops working if he
+         changes his mind and closes it. */
+      try { localStorage.removeItem("pc_gate_at"); } catch { /* private mode */ }
+      location.reload();
+    };
     return;
   }
   $("siteStatus").textContent = "טוען…";
