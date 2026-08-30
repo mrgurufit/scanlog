@@ -902,6 +902,25 @@
      typing the address with #relogin. Without this there is no way back in
      once the page decides you are already signed in - which is exactly the
      dead end the tolerant gate created. */
+  /* A config link carries the keys in the fragment, which never leaves the
+     browser. Holding one proves as much as the vault does, so it counts as a
+     sign-in - and unlike the vault it keeps working when Make is down, which
+     is the only reason the page could be rescued on 2026-08-31. */
+  const cfgMatch = location.hash.match(/cfg=([A-Za-z0-9+/=_-]+)/);
+  if (cfgMatch) {
+    try {
+      const c = JSON.parse(atob(cfgMatch[1].replace(/-/g, "+").replace(/_/g, "/")));
+      const MAP = { w: "mk_webhook", p: "pc_proxy", cn: "cld_name", up: "cld_preset",
+                    dr: "df_read", dw: "df_write", tr: "site_read" };
+      let took = 0;
+      for (const [short, key] of Object.entries(MAP)) {
+        if (c[short]) { set(key, c[short]); took++; }
+      }
+      if (took) set("pc_gate_at", String(Date.now()));
+      history.replaceState(null, "", location.pathname + location.search);
+    } catch { /* a mangled link should just leave the gate up */ }
+  }
+
   function askForLockScreen() {
     try { localStorage.removeItem("pc_gate_at"); } catch { /* private mode */ }
     history.replaceState(null, "", location.pathname + location.search);
