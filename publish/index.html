@@ -794,9 +794,15 @@
   const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
-  /* already signed in recently, and the keys survived - let the page run */
+  /* Already signed in recently AND holding every key - only then let the page
+     run. Checking just one key used to be enough, until a new key was added to
+     the vault: everyone already signed in kept a half-filled config for the
+     rest of their 30 days, and the page quietly ran against a blank endpoint. */
+  const NEEDED = ["mk_webhook", "pc_proxy", "cld_name", "cld_preset",
+                  "df_read", "df_write", "site_read"];
   const seen = Number(get("pc_gate_at") || 0);
-  if (seen && Date.now() - seen < REMEMBER_DAYS * 864e5 && get("mk_webhook")) return;
+  const complete = NEEDED.every(k => get(k));
+  if (seen && Date.now() - seen < REMEMBER_DAYS * 864e5 && complete) return;
 
   window.__PC_LOCKED = true;
   const gate = document.getElementById("gate");
@@ -2578,14 +2584,25 @@ function renderSite(rows) {
 }
 
 async function loadSite() {
+  /* a blank endpoint is not a reason to fetch nothing - fetch("") reloads THIS
+     page, and the portal used to parse its own stylesheet as traffic rows */
+  if (!SITE_READ) {
+    $("siteStatus").textContent = "לא מוגדר — התחבר מחדש";
+    $("siteWrap").innerHTML = `<div class="sitenote">מפתח התנועה חסר במכשיר הזה.
+      רענן את הדף והתחבר שוב כדי לקבל אותו.</div>`;
+    return;
+  }
   $("siteStatus").textContent = "טוען…";
   try {
     const r = await fetch(SITE_READ, { cache: "no-store" });
     const t = (await r.text()).trim();
-    const rows = t ? t.split(";").map(x => {
+    const rows = t.split(";").map(x => {
       const [date, views, visits] = x.split(",");
-      return { date, views: Number(views) || 0, visits: Number(visits) || 0 };
-    }).filter(x => x.date) : [];
+      return { date: (date || "").trim(), views: Number(views) || 0, visits: Number(visits) || 0 };
+    // only a real YYYY-MM-DD row counts; anything else means we are not
+    // looking at the counter's answer at all
+    }).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x.date));
+    if (t && !rows.length) throw new Error("תשובה לא מזוהה");
     renderSite(rows);
     $("siteStatus").textContent = "עודכן " + new Date().toLocaleTimeString("he-IL");
   } catch (e) {
