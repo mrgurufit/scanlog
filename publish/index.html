@@ -891,15 +891,18 @@
   const get = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const set = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
-  /* Already signed in recently AND holding every key - only then let the page
-     run. Checking just one key used to be enough, until a new key was added to
-     the vault: everyone already signed in kept a half-filled config for the
-     rest of their 30 days, and the page quietly ran against a blank endpoint. */
-  const NEEDED = ["mk_webhook", "pc_proxy", "cld_name", "cld_preset",
-                  "df_read", "df_write", "site_read"];
+  /* Signed in recently and holding the keys the portal cannot work without.
+     ONLY these block: publishing, the day flow and the stats all die without
+     them. Keys added to the vault later are deliberately NOT listed - on
+     2026-08-30 `site_read` was, and every device that had signed in before it
+     existed was thrown back behind this lock screen with no warning, which is
+     what "the portal stopped responding" turned out to mean. A feature missing
+     its key says so on its own card; it does not take the building down. */
+  const REQUIRED = ["mk_webhook", "pc_proxy", "cld_name", "cld_preset",
+                    "df_read", "df_write"];
   const seen = Number(get("pc_gate_at") || 0);
-  const complete = NEEDED.every(k => get(k));
-  if (seen && Date.now() - seen < REMEMBER_DAYS * 864e5 && complete) return;
+  const usable = REQUIRED.every(k => get(k));
+  if (seen && Date.now() - seen < REMEMBER_DAYS * 864e5 && usable) return;
 
   window.__PC_LOCKED = true;
   const gate = document.getElementById("gate");
