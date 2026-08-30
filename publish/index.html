@@ -3048,7 +3048,10 @@ function showView(name) {
    detail was 43% of the month's operations. The windows below are set by how
    fast the numbers actually change - the nightly task refreshes them anyway,
    and every panel still has a button that forces a pull right now. */
-const AUTO_EVERY = { perf: 6 * 3600e3, followers: 6 * 3600e3, demo: 24 * 3600e3 };
+/* once a day, at his instruction 2026-08-31: "לא צריך יותר מזה". The numbers
+   are refreshed by the nightly task anyway, and every panel has a button
+   that pulls immediately when he actually wants fresh figures. */
+const AUTO_EVERY = { perf: 24 * 3600e3, followers: 24 * 3600e3, demo: 24 * 3600e3 };
 
 function autoDue(what) {
   const k = "pc_auto_" + what;
