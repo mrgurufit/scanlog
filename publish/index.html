@@ -127,8 +127,21 @@
   .synced { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
   .dayblock { border-top: 1px solid var(--border); padding: 14px 0 4px; }
   .dayhead {
-    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 4px; margin: 0; cursor: pointer; border-radius: 10px;
+    user-select: none; -webkit-tap-highlight-color: transparent;
   }
+  .dayhead:hover { background: var(--panel2); }
+  .dayhead:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dayhead .dchev {
+    color: var(--muted); font-size: 12px; transition: transform .18s ease;
+    flex: 0 0 auto; width: 12px; text-align: center;
+  }
+  .dayblock.open .dayhead .dchev { transform: rotate(180deg); color: var(--accent); }
+  /* closed days cost one row each, so fifteen of them still fit a screen */
+  .daybody { display: none; padding-top: 4px; }
+  .dayblock.open .daybody { display: block; }
+  .dayblock { padding: 2px 0; }
   .dayhead .dnum {
     background: var(--accent); color: #000; font-weight: 800; font-size: 13px;
     padding: 3px 11px; border-radius: 999px;
@@ -1768,12 +1781,14 @@ function renderPerf() {
         <td class="n"><a href="${m.url}" target="_blank" rel="noopener">צפה ↗</a></td>
       </tr>`;
     }).join("");
-    return `<div class="dayblock">
-      <div class="dayhead">
+    return `<div class="dayblock" data-day="${d.day}">
+      <div class="dayhead" role="button" tabindex="0" aria-expanded="false">
+        <span class="dchev" aria-hidden="true">▾</span>
         <span class="dnum">DAY ${d.day}</span>
         <span class="ddate">${d.date}</span>
         <span class="dtot">סה״כ <b>${nf(dayTotal)}</b> צפיות</span>
       </div>
+      <div class="daybody">
       ${d.note ? `<div class="perfnote">${d.note}</div>` : ""}
       <div style="overflow-x:auto">
         <table class="ptable">
@@ -1785,8 +1800,32 @@ function renderPerf() {
           <tbody>${rows}</tbody>
         </table>
       </div>
+      </div>
     </div>`;
   }).join("");
+
+  /* one open at a time, newest already open - opening a day closes the one
+     before it, which is what keeps the list a single screen tall */
+  const blocks = [...$("perfDays").querySelectorAll(".dayblock")];
+  function openBlock(b) {
+    blocks.forEach(x => {
+      const on = x === b;
+      x.classList.toggle("open", on);
+      x.querySelector(".dayhead").setAttribute("aria-expanded", on ? "true" : "false");
+    });
+  }
+  blocks.forEach(b => {
+    const head = b.querySelector(".dayhead");
+    head.addEventListener("click", () => {
+      const wasOpen = b.classList.contains("open");
+      openBlock(wasOpen ? null : b);
+      if (!wasOpen) head.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    head.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); head.click(); }
+    });
+  });
+  if (blocks[0]) openBlock(blocks[0]);
 }
 
 /* ---------------- live refresh, via the Make proxy ----------------
