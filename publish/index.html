@@ -535,6 +535,52 @@
   .siteday i { display: block; width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
   .siteday span { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .sitenote { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  /* ---- improve tab ---- */
+  .impgap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .impgap div {
+    flex: 1 1 130px; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 10px; text-align: center;
+  }
+  .impgap b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .impgap small { font-size: 11.5px; color: var(--muted); }
+  .impgap .bad b { color: var(--red); }
+  .impgap .good b { color: var(--accent); }
+  .impact {
+    border: 1px solid var(--border); border-radius: 13px; background: var(--panel2);
+    padding: 13px 14px; margin-bottom: 10px;
+  }
+  .impact.hot { border-color: var(--accent); }
+  .impact .ih { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 6px; }
+  .impact .rank {
+    background: var(--accent); color: #000; font-weight: 800; font-size: 12px;
+    width: 22px; height: 22px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; flex: 0 0 auto;
+  }
+  .impact.cold .rank { background: var(--border); color: var(--text); }
+  .impact .it { font-weight: 700; font-size: 15px; }
+  .impact .iw { font-size: 13px; color: var(--muted); line-height: 1.65; }
+  .impact .ih2 { font-size: 13.5px; margin-top: 7px; line-height: 1.65; }
+  .impact .ih2 b { color: var(--accent); }
+  .hook {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 11px;
+    padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .hook .hq { font-size: 14.5px; direction: ltr; text-align: left; flex: 1; }
+  .hook .hy { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .hook button {
+    flex: 0 0 auto; padding: 6px 12px; font-size: 12px;
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+  }
+  .testrow {
+    display: flex; gap: 10px; align-items: flex-start; padding: 9px 0;
+    border-bottom: 1px solid var(--border); font-size: 13.5px;
+  }
+  .testrow:last-child { border-bottom: 0; }
+  .testrow .td { flex: 0 0 62px; color: var(--muted); font-size: 12px; }
+  .testrow .tv { flex: 1; line-height: 1.6; }
+  .testrow .tr2 { flex: 0 0 auto; font-weight: 700; font-size: 12px; }
+  .testrow .up { color: var(--green); } .testrow .down { color: var(--red); }
+  .testrow .flat { color: var(--muted); }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0f14">
@@ -582,6 +628,7 @@
     <button class="tab" data-view="day">🎬 העלאת ריל יומי</button>
     <button class="tab" data-view="stats">📊 סטטיסטיקות</button>
     <button class="tab" data-view="followers">👥 עוקבים</button>
+    <button class="tab" data-view="improve">🚀 מה לשפר</button>
   </nav>
 
   <!-- ============ VIEW: PUBLISH ============ -->
@@ -732,6 +779,39 @@
       </div>
     </div>
   </div><!-- /viewFollowers -->
+
+  <!-- ============ VIEW: IMPROVE ============ -->
+  <div class="view" id="viewImprove">
+    <div class="card">
+      <h2 class="viewtitle">🚀 מה לשפר בריל הבא</h2>
+      <p class="viewsub">נבנה מ-56 הפרסומים שלך ומהמגבלות האמיתיות של כל פלטפורמה. מתעדכן כל לילה.</p>
+      <div id="impGap"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">✅ הפעולות להיום</h2>
+      <p class="viewsub">לפי סדר השפעה. הראשונה היא תמיד זו ששווה הכי הרבה צפיות או נרשמים.</p>
+      <div id="impNext"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">🎵 המוזיקה</h2>
+      <div id="impMusic"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">🎣 בנק הוקים</h2>
+      <p class="viewsub">שתי השניות הראשונות מחליטות. 50-60 אחוז מהנוטשים עוזבים שם.</p>
+      <div id="impHooks"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">🧪 יומן ניסויים</h2>
+      <p class="viewsub">מה שינינו, ומה זה עשה. בלי זה משפרים באותו מעגל שוב ושוב.</p>
+      <div id="impTests"></div>
+    </div>
+  </div><!-- /viewImprove -->
+
 
   <!-- ============ VIEW: DAY FLOW ============ -->
   <div class="view" id="viewDay">
@@ -2689,6 +2769,128 @@ loadSite();
   addEventListener("resize", sync);
   addEventListener("orientationchange", sync);
 })();
+
+
+/* ---------------- improve tab ----------------
+   Everything below is data, so the nightly task can rewrite it as the numbers
+   move. Written 2026-08-30 off all 56 posts of days 1-14 plus the platform
+   rules that actually constrain us. */
+
+const IMPROVE = {
+  updated: "2026-08-30",
+
+  /* the funnel, stated honestly. 26,491 views and one single ask. */
+  gap: { views: 26491, posts: 56, ctas: 1, signups: 0, best: 1254 },
+
+  next: [
+    {
+      hot: true,
+      t: "בכל ריל, קריאה אחת לפעולה לאתר",
+      w: "מתוך 56 פרסומים, בדיוק אחד ביקש ממישהו ללחוץ על משהו — יום 7, 'Link in bio'. כל השאר ביקשו רק עוקב. 26,491 צפיות עברו בלי שנשלחו לשום מקום, ואפס אנשים מבחוץ נרשמו לרשימה. זו לא בעיית המרה, זו בעיה של לא לבקש.",
+      h: "בשתי השניות האחרונות של הריל, שורה אחת על המסך: <b>mrgurufit.com</b>. ובקופי, שורה לפני ההאשטגים: <b>The full day, every gram, plus the free guide: mrgurufit.com</b>. לא יותר מקריאה אחת — שתי בקשות מבטלות אחת את השנייה.",
+    },
+    {
+      hot: true,
+      t: "לתפוס כישלון זריעה ביוטיוב תוך שעה",
+      w: "יוטיוב הוא 52 אחוז מכל החשיפה שלך, חציון 1,254 צפיות לסרטון תקין. אבל 3 מתוך 14 (ימים 5, 8, 13) קיבלו 12, 25 ו-9 צפיות. בדקתי אותם מול המצליחים: אותו אורך, אנכי, ציבורי, כשיר ל-Shorts, אותה כותרת. הם זהים. פיד ה-Shorts פשוט לא זרע אותם, וזה עלה כ-3,762 צפיות.",
+      h: "שעה אחרי ההעלאה, סרטון שנזרע כבר במאות צפיות ואחד שלא נשאר בספרות בודדות. <b>בדיקה אוטומטית שעה אחרי הפרסום</b> תגיד לנו מיד אם היום הזה מת, ואז אפשר להעלות שוב באותו ערב במקום לגלות למחרת.",
+    },
+    {
+      t: "הקישור הלחיץ באינסטגרם עדיין ריק",
+      w: "הכתובת נמצאת בטקסט הביו, אבל שדה הקישור עצמו ריק. אינסטגרם חוסמת עריכה שלו מהדסקטופ, אז רק אתה יכול למלא אותו מהאפליקציה. החץ 👇 בביו מצביע כרגע על כלום.",
+      h: "אינסטגרם בנייד ← עריכת פרופיל ← אתר אינטרנט ← <b>mrgurufit.com</b>. שלושים שניות, וזה הצינור היחיד שיש לאינסטגרם.",
+    },
+    {
+      t: "לדחוף את הריטנשן מעל 38 אחוז",
+      w: "זה המנוף היחיד עם הוכחה במספרים שלך: רילים שעברו 38 אחוז ריטנשן באינסטגרם קיבלו חציון 261 צפיות, מול 161 מתחת. עלית מ-24 אחוז ביום 1 ל-38 בממוצע, והשיא הוא 47 (יום 13). המעבר ל-25 שניות עשה את רוב העבודה.",
+      h: "האויב הוא כל שנייה לפני ההוק. בלי כרטיס פתיחה, בלי לוגו, בלי צילום רחב שמסביר איפה אנחנו. <b>הפריים הראשון הוא הפנים שלך באמצע משפט</b> — בדיוק כמו שיום 14 נפתח.",
+    },
+    {
+      t: "פייסבוק: לפרסם, לא ללמוד",
+      w: "4,521 צפיות ו-9 אינטראקציות בסך הכל על פני 14 יום. שתי אינטראקציות לכל 1,000 צפיות, מול 36.7 באינסטגרם. הצפיות שם הן הרצה אוטומטית בפיד, לא תשומת לב.",
+      h: "להמשיך לפרסם כי זה חינם ואוטומטי, אבל <b>לא לגזור מסקנות מהמספרים שלו</b> ולא להשקיע בו דקה של עריכה.",
+    },
+  ],
+
+  music: {
+    finding: "אי אפשר לצרף סאונד טרנדי דרך API. לא בטיקטוק ולא באינסטגרם — בשתיהן האודיו חייב להיות בתוך קובץ הווידאו לפני ההעלאה. זה אומר שפרסום אוטומטי ומוזיקה טרנדית הם שתי אפשרויות שסותרות זו את זו, ולא משהו ששכחנו להגדיר.",
+    options: [
+      { t: "פסקול מוטמע ברינדור (מומלץ)", d: "מוסיפים שכבת מוזיקה נטולת תמלוגים מתחת לקול שלך בזמן הבנייה. שומר על האוטומציה המלאה, מרים את איכות ההפקה הנתפסת, ועובד בכל ארבע הפלטפורמות. לא מקבל את דחיפת הפיד שסאונד טרנדי נותן." },
+      { t: "טיקטוק ואינסטגרם ידנית עם סאונד טרנדי", d: "הדרך היחידה לקבל סאונד טרנדי אמיתי. עולה לך כמה דקות בכל ערב ושובר את הזרימה של כפתור אחד. שווה לשקול רק לטיקטוק ואינסטגרם — יוטיוב ופייסבוק הם 69 אחוז מהחשיפה ולא מרוויחים מזה." },
+      { t: "היברידי", d: "יוטיוב ופייסבוק אוטומטית עם פסקול מוטמע, טיקטוק ואינסטגרם ידנית עם סאונד. הכי טוב משני העולמות, והכי יקר בזמן שלך." },
+    ],
+    note: "לחשבון עסקי בטיקטוק יש ספריית מוזיקה מסחרית מאושרת מראש. הסאונדים הטרנדיים הרגילים מורשים לשימוש אישי בלבד, וחשבון שמקדם מוצר לא אמור להשתמש בהם.",
+  },
+
+  hooks: [
+    { q: "I have messed up pretty bad.", y: "וידוי. יום 14 נפתח בזה והוא הפרק הכי בר-שיתוף שעשית." },
+    { q: "This is what 5,858 calories in one night looks like.", y: "מספר קונקרטי בשנייה הראשונה. עוצר גלילה כי הוא לא סביר." },
+    { q: "Day 15. The scale went the wrong way.", y: "מתח מיידי. הצופה נשאר כדי לדעת מה קרה." },
+    { q: "Nobody talks about the days it goes up.", y: "אמירה שנויה במחלוקת. מזמינה תגובות, ותגובות הן מה שמזיז את הפיד." },
+    { q: "Everything I ate today, weighed, on camera.", y: "הבטחה ברורה. הצופה יודע בדיוק מה הוא מקבל." },
+    { q: "107.5. Up 2.2 overnight. Here is the math nobody explains.", y: "מספר ואז הבטחת הסבר. הפורמט הכי חזק לריטנשן." },
+  ],
+
+  tests: [
+    { d: "יום 3", w: "קיצור מ-40 ל-25 שניות", r: "up", o: "ריטנשן 24% ← 31%, ומשם טיפס ל-38 בממוצע" },
+    { d: "יום 13", w: "יום בטן, קצב חיתוך מהיר", r: "up", o: "שיא ריטנשן 47%, אבל יוטיוב לא נזרע באותו יום" },
+    { d: "יום 14", w: "פתיחה במשפט מדובר שלו במקום בכרטיס", r: "wait", o: "פורסם 00:04, המספרים עוד נאספים" },
+    { d: "ימים 1-14", w: "שעת פרסום 18:00 עד 02:00", r: "flat", o: "אין הבדל. יוטיוב 1,191 / 1,268 / 1,219 בשלושת החלונות" },
+  ],
+};
+
+function renderImprove() {
+  const g = IMPROVE.gap;
+  $("impGap").innerHTML = `
+    <div class="impgap">
+      <div class="good"><b>${nf(g.views)}</b><small>צפיות ב-14 יום</small></div>
+      <div class="good"><b>${g.posts}</b><small>פרסומים</small></div>
+      <div class="bad"><b>${g.ctas}</b><small>פרסומים עם קריאה לפעולה</small></div>
+      <div class="bad"><b>${g.signups}</b><small>נרשמים מבחוץ</small></div>
+    </div>
+    <div class="perffoot">כל המספרים האלה נכונים ל-${IMPROVE.updated}. השניים האדומים הם אותו סיפור:
+    הגעת ל-26 אלף צפיות ולא ביקשת מהן כלום.</div>`;
+
+  $("impNext").innerHTML = IMPROVE.next.map((a, i) => `
+    <div class="impact ${a.hot ? "hot" : "cold"}">
+      <div class="ih"><span class="rank">${i + 1}</span><span class="it">${a.t}</span></div>
+      <div class="iw">${a.w}</div>
+      <div class="ih2">${a.h}</div>
+    </div>`).join("");
+
+  const m = IMPROVE.music;
+  $("impMusic").innerHTML = `
+    <div class="iw" style="margin-bottom:12px">${m.finding}</div>
+    ${m.options.map(o => `<div class="impact cold">
+      <div class="ih"><span class="it">${o.t}</span></div>
+      <div class="iw">${o.d}</div></div>`).join("")}
+    <div class="perffoot">${m.note}</div>`;
+
+  $("impHooks").innerHTML = IMPROVE.hooks.map((h, i) => `
+    <div class="hook">
+      <button type="button" data-hook="${i}">העתק</button>
+      <div><div class="hq">${h.q}</div><div class="hy">${h.y}</div></div>
+    </div>`).join("");
+  $("impHooks").querySelectorAll("button[data-hook]").forEach(b => {
+    b.addEventListener("click", async () => {
+      const txt = IMPROVE.hooks[Number(b.dataset.hook)].q;
+      try { await navigator.clipboard.writeText(txt); b.textContent = "הועתק ✓"; }
+      catch { b.textContent = "לא הצליח"; }
+      setTimeout(() => (b.textContent = "העתק"), 1600);
+    });
+  });
+
+  const MARK = { up: ["▲", "up"], down: ["▼", "down"], flat: ["=", "flat"], wait: ["…", "flat"] };
+  $("impTests").innerHTML = IMPROVE.tests.map(t => {
+    const [sym, cls] = MARK[t.r] || MARK.flat;
+    return `<div class="testrow">
+      <div class="td">${t.d}</div>
+      <div class="tv"><b>${t.w}</b><br><span class="iw">${t.o}</span></div>
+      <div class="tr2 ${cls}">${sym}</div>
+    </div>`;
+  }).join("");
+}
+renderImprove();
 
 /* ---------------- tabs ---------------- */
 
