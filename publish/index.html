@@ -211,6 +211,14 @@
   .dfstage { font-size: 13px; color: var(--muted); }
   .dfstage b { color: var(--accent); }
   #dfPreview { width: 100%; max-width: 300px; border-radius: 12px; border: 1px solid var(--border); background: #000; display: block; margin: 4px auto 10px; }
+  .dfcopyhead {
+    font-size: 12.5px; line-height: 1.6; border-radius: 9px;
+    padding: 8px 10px; margin-bottom: 8px;
+  }
+  .dfcopyhead.ok { color: var(--green); background: rgba(46,204,113,.10); }
+  .dfcopyhead.pend { color: var(--accent); background: rgba(255,165,0,.10); }
+  .dfcopy.istemplate > summary { color: var(--muted); }
+  .dfcopy.iswritten > summary { color: var(--green); }
   #dfNotes {
     width: 100%; min-height: 76px; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
     border-radius: 10px; padding: 10px; font-size: 14px; line-height: 1.6; font-family: inherit; resize: vertical; margin-bottom: 8px;
@@ -740,7 +748,7 @@
     <button id="selectAllBtn">בחר הכל</button>
     <span class="selinfo" id="selInfo">0 נבחרו</span>
     <span style="flex:1"></span>
-    <button id="publishAllBtn">🚀 פרסם נבחרים</button>
+    <button id="publishAllBtn">☁️ אחסן נבחרים</button>
   </div>
 
   </div><!-- /viewPublish -->
@@ -1972,7 +1980,7 @@ for (const p of PLATFORMS) {
       <div class="picon">${p.icon}</div>
       <div>
         <div class="pname">${p.name}</div>
-        <div class="pnote">${p.note || (p.mode === "auto" ? "פרסום אוטומטי דרך Make" : "העלאה ידנית — הקופי מוכן להעתקה")}</div>
+        <div class="pnote">${p.note || (p.mode === "auto" ? "הפרסום עובר דרך קלוד (זרינו) — הכפתור כאן רק מאחסן את הסרטון" : "העלאה ידנית — הקופי מוכן להעתקה")}</div>
       </div>
       <div class="spacer"></div>
       <input type="checkbox" class="psel" ${p.mode === "auto" ? "" : "disabled title='ידני'"}>
@@ -1981,7 +1989,7 @@ for (const p of PLATFORMS) {
     <div class="btnrow">
       <button class="b-copy">📋 העתק</button>
       ${p.mode === "auto"
-        ? `<button class="b-pub">פרסם</button>`
+        ? `<button class="b-pub">☁️ העלה לאחסון</button>`
         : `<a class="b-link" href="${p.link}" target="_blank">${p.linkText}</a>`}
     </div>
     <div class="pstatus"></div>`;
@@ -2455,8 +2463,6 @@ $("saveHook").addEventListener("click", () => {
 /* ---------------- publish ---------------- */
 
 async function publish(card) {
-  const hook = ($("webhookUrl").value || "").trim();
-  if (!hook) { setStatus(card, "אין Webhook בהגדרות", "err"); $("settings").open = true; return; }
   if (!currentFile) { setStatus(card, "קודם טען את קובץ הריל למעלה", "err"); return; }
 
   const p = PLATFORMS.find(x => x.id === card.dataset.pid);
@@ -2469,42 +2475,22 @@ async function publish(card) {
     setStatus(card, "אין כתובת ציבורית לסרטון — בדוק הגדרות Cloudinary", "err");
     return;
   }
-  // TikTok removed the DAY 6 reel; publishing the shared cut there again is the
-  // exact mistake that caused it, so warn loudly instead of failing silently.
+  // TikTok removed two reels over calorie and weight numbers. Nothing is
+  // published from here any more, so this is a note and not a gate.
   if (p.id === "tiktok" && !ttHostedUrl) {
-    const go = confirm(
-      "לא נטענה גרסת טיקטוק נפרדת.\n\n" +
-      "טיקטוק כבר הסיר שני סרטונים מהחשבון, והריל הראשי מכיל מספרי קלוריות ומשקל שהם הסיבה להסרה. " +
-      "הפרה נוספת מוציאה את כל החשבון מה-For You feed.\n\n" +
-      "לפרסם בכל זאת את הריל הראשי לטיקטוק?");
-    if (!go) { setStatus(card, "בוטל — טען קודם DAY<n>_REEL_TIKTOK.mp4", "err"); return; }
+    setStatus(card, "אוחסן, אבל אין גרסת טיקטוק נפרדת — טען DAY<n>_REEL_TIKTOK.mp4", "err");
+    log(`${p.name}: אין גרסת טיקטוק ייעודית`);
+    return;
   }
-  const caption = card.querySelector(".pcopy").value;
-  // form-urlencoded so Make parses each field into a separate variable
-  const payload = new URLSearchParams({
-    action: "publish",
-    platform: p.id,
-    day: String(currentDay),
-    date: new Date().toISOString().slice(0, 10),
-    filename: currentFile.name,
-    reelUrl: url,
-    longCaption: caption,
-    fbTitle: `Day ${currentDay}/100 — Losing 25KG`,
-  });
-  setStatus(card, "שולח ל-Make…", "pend");
-  try {
-    await fetch(hook, {
-      method: "POST",
-      mode: "no-cors",
-      body: payload,
-    });
-    recordPublish(p.id, currentDay);
-    setStatus(card, `נשלח ✓ ${new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`, "ok");
-    log(`${p.name}: payload נשלח`);
-  } catch (err) {
-    setStatus(card, "שליחה נכשלה: " + err.message, "err");
-    log(`${p.name}: שגיאה — ${err.message}`);
-  }
+  /* The Make publish route is gone. Its scenario has been inactive and
+     invalid since 22.8, and because the old fetch ran mode:"no-cors" the
+     card could never see that - it printed "נשלח ✓" over a dead queue.
+     What this button can still do honestly is host the file and hand back
+     the URL; publishing itself runs through Claude on Zernio. */
+  setStatus(card, "הועלה לאחסון ✓ — הפרסום עצמו דרך טאב האשף", "ok");
+  log(`${p.name}: הסרטון מאוחסן — ${url}`);
+  const box = card.querySelector(".pcopy");
+  if (box) box.dataset.hosted = url;
 }
 
 /* ---------------- bulk ---------------- */
@@ -2842,10 +2828,22 @@ document.addEventListener("visibilitychange", () => {
 
 function dfRenderCopies() {
   const d = parseInt($("dfDay").value, 10);
-  $("dfCopies").innerHTML = PLATFORMS.map(p => `
-    <details class="dfcopy"><summary>${p.name} — הקופי שיעלה</summary>
+  /* Never call a template "the copy that will go up". When the day has no
+     written text the honest answer is that it has not been written yet. */
+  const anyWritten = PLATFORMS.some(p => DAY_COPY[d] && DAY_COPY[d][p.id]);
+  const head = anyWritten
+    ? `<div class="dfcopyhead ok">✍️ זה הטקסט שיתפרסם — נכתב ליום ${d}</div>`
+    : `<div class="dfcopyhead pend">הטקסט ליום ${d} עדיין לא נכתב.
+        מה שמופיע למטה הוא תבנית כללית ו<b>לא</b> מה שיתפרסם — קלוד כותב את
+        הטקסט האמיתי כשהריל מוכן, והוא מופיע כאן אחרי זה.</div>`;
+  $("dfCopies").innerHTML = head + PLATFORMS.map(p => {
+    const written = !!(DAY_COPY[d] && DAY_COPY[d][p.id]);
+    return `
+    <details class="dfcopy ${written ? "iswritten" : "istemplate"}">
+      <summary>${p.name} — ${written ? "הקופי שיעלה" : "תבנית בלבד"}</summary>
       <pre>${esc2(copyFor(p, d))}</pre>
-    </details>`).join("");
+    </details>`;
+  }).join("");
 }
 function esc2(x) { return String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
@@ -3163,9 +3161,9 @@ const AUTOS = {
     {
       n: "בדיקת אישור גוגל פליי",
       when: "09:00 ו-19:00",
-      on: true,
-      d: "נכנס ל-Play Console ובודק אם החשבון אושר. אם כן — שולח לך וואטסאפ, מכין את קובץ ה-AAB ומפרט מה חסר לחנות. אם לא — לא שולח כלום, כדי שהודעה ממנו תמיד תהיה חדשות.",
-      cost: "פעולת Make אחת רק כשיש מה לדווח.",
+      on: false,
+      d: "סיים את תפקידו. גוגל אישרה את החשבון ב-31.8, קובץ ה-AAB מוכן, וההמשך תלוי בך: 12 בודקים ל-14 יום רצוף, צילומי מסך ותמונת נושא. כבוי כדי שלא ירוץ לריק.",
+      cost: "0 — כבוי.",
     },
     {
       n: "מעקב אחרי לחיצות באשף",
@@ -3181,7 +3179,7 @@ const AUTOS = {
       n: "בקשות האשף",
       when: "בלחיצה על כפתור",
       on: true,
-      d: "רושם את הלחיצה שלך, מדליק את הצ'יפים בפס ההתקדמות ושולח לך וואטסאפ שהבקשה נקלטה.",
+      d: "רושם את הלחיצה שלך, מדליק את הצ'יפים בפס ההתקדמות ושולח לך וואטסאפ שהבקשה נקלטה. חשוב: הרישום הוא כל מה שקורה. מאז שמעקב הלחיצות כבוי, אף לחיצה — 'צור ריל', 'פרסם' או 'פרסם באתר' — לא מעירה את קלוד ולא מפרסמת דבר. הבקשה מחכה עד שתגיד לו בצ'אט.",
       cost: "3 עד 6 פעולות ללחיצה.",
     },
     {
