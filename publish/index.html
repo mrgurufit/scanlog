@@ -108,7 +108,9 @@
   .viewsub { color: var(--muted); font-size: 13.5px; margin-bottom: 18px; }
   /* ---- performance dashboard ---- */
   .refreshrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  #refreshBtn, #folRefreshBtn, #demoBtn { display: none !important; }
+  /* These were hidden back when the page pulled by itself and a button was
+     just clutter. Since 2026-08-31 nothing pulls on its own, so this is the
+     ONLY way to get fresh numbers - hiding them made the page look broken. */
   #refreshBtn { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
   #refreshBtn:hover:not(:disabled) { border-color: var(--accent); }
   #refreshBtn:disabled { opacity: .55; cursor: wait; }
