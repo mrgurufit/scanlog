@@ -2659,7 +2659,8 @@ try {
   if (dc && dc.data) renderDemo(dc.data);
 } catch { /* no cache */ }
 
-$("demoBtn").addEventListener("click", refreshDemo);
+$("demoBtn").addEventListener("click", () =>
+  pullOnce("demo", "demoBtn", "רענן דמוגרפיה", refreshDemo));
 
 /* ---------------- day flow wizard ----------------
    Front-end for the daily pipeline. The heavy lifting happens on the PC
@@ -3239,32 +3240,58 @@ function showView(name) {
 
 /* the tabs refresh themselves - entering stats or followers pulls fresh
    numbers automatically, throttled so tab-hopping does not hammer the proxy */
-/* The throttle has to outlive the page, or it does nothing: it used to sit in
-   a variable, so every reload started the clock again and a fresh visit to the
-   stats tab pulled all four platforms plus demographics regardless. That one
-   detail was 43% of the month's operations. The windows below are set by how
-   fast the numbers actually change - the nightly task refreshes them anyway,
-   and every panel still has a button that forces a pull right now. */
-/* once a day, at his instruction 2026-08-31: "לא צריך יותר מזה". The numbers
-   are refreshed by the nightly task anyway, and every panel has a button
-   that pulls immediately when he actually wants fresh figures. */
-const AUTO_EVERY = { perf: 24 * 3600e3, followers: 24 * 3600e3, demo: 24 * 3600e3 };
+function autoStats() {}
+function autoFollowers() {}
 
-function autoDue(what) {
-  const k = "pc_auto_" + what;
-  const last = Number(store.get(k) || 0);
-  if (Date.now() - last < AUTO_EVERY[what]) return false;
-  store.set(k, String(Date.now()));
-  return true;
+/* ---- one pull a day, per source ----
+   The allowance is stamped in localStorage so it outlives a reload. An
+   in-memory guard would let every refresh of the page hand out a new pull,
+   which is exactly how the old throttle quietly became 43% of a month. */
+const PULL_EVERY = 24 * 3600e3;
+
+function pullStamp(k) { return Number(store.get("pc_pull_" + k) || 0); }
+
+function pullState(k) {
+  const last = pullStamp(k);
+  const left = last + PULL_EVERY - Date.now();
+  return { last, ready: left <= 0, left };
 }
-function autoStats() {
-  if (!ANALYTICS_PROXY) return;
-  if (autoDue("perf")) refreshPerf();
-  if (autoDue("demo")) refreshDemo();
+
+function whenBack(ms) {
+  const h = Math.floor(ms / 3600e3), m = Math.round((ms % 3600e3) / 60000);
+  return h >= 1 ? `בעוד ${h} שעות` : `בעוד ${m} דקות`;
 }
-function autoFollowers() {
-  if (!ANALYTICS_PROXY) return;
-  if (autoDue("followers")) refreshFollowers();
+
+/* the button is the whole interface for this: it says what it will do, or why
+   it will not, without him having to remember when he last pressed it */
+function paintPull(btnId, k, label) {
+  const b = $(btnId);
+  if (!b) return;
+  const st = pullState(k);
+  b.disabled = !st.ready;
+  b.textContent = st.ready
+    ? "🔄 " + label
+    : `✓ נשאב היום · ${whenBack(st.left)}`;
+  b.title = st.last
+    ? "השאיבה האחרונה: " + new Date(st.last).toLocaleString("he-IL")
+    : "עוד לא נשאב מהמכשיר הזה";
+}
+
+function paintAllPulls() {
+  paintPull("refreshBtn", "perf", "רענן נתונים מכל הפלטפורמות");
+  paintPull("folRefreshBtn", "fol", "רענן עוקבים");
+  paintPull("demoBtn", "demo", "רענן דמוגרפיה");
+}
+
+/* run the pull only if today's allowance is unused, then spend it */
+async function pullOnce(k, btnId, label, fn) {
+  if (!pullState(k).ready) return;
+  try {
+    await fn();
+    store.set("pc_pull_" + k, String(Date.now()));
+  } finally {
+    paintPull(btnId, k, label);
+  }
 }
 document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => {
@@ -3273,9 +3300,14 @@ document.querySelectorAll(".tab").forEach(t =>
     if (t.dataset.view === "day") dfPoll();
     if (t.dataset.view === "stats") autoStats();
   }));
-$("folRefreshBtn").addEventListener("click", refreshFollowers);
+$("folRefreshBtn").addEventListener("click", () =>
+  pullOnce("fol", "folRefreshBtn", "רענן עוקבים", refreshFollowers));
 
-$("refreshBtn").addEventListener("click", refreshPerf);
+$("refreshBtn").addEventListener("click", () =>
+  pullOnce("perf", "refreshBtn", "רענן נתונים מכל הפלטפורמות", refreshPerf));
+paintAllPulls();
+/* the countdown would otherwise sit there stale on a page left open */
+setInterval(paintAllPulls, 60000);
 /* a refresh he ran survives closing the page - the device cache wins only
    while it is FRESHER than the numbers baked into the file by the nightly task */
 try {
