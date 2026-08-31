@@ -581,6 +581,26 @@
   .testrow .tr2 { flex: 0 0 auto; font-weight: 700; font-size: 12px; }
   .testrow .up { color: var(--green); } .testrow .down { color: var(--red); }
   .testrow .flat { color: var(--muted); }
+  /* ---- automations ---- */
+  .auto {
+    border: 1px solid var(--border); border-radius: 13px; background: var(--panel2);
+    padding: 13px 14px; margin-bottom: 10px;
+  }
+  .auto.off { opacity: .62; border-style: dashed; }
+  .autoh { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 5px; }
+  .autoh .an { font-weight: 700; font-size: 15px; }
+  .autopill {
+    font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px;
+    background: #123a22; color: var(--green); flex: 0 0 auto;
+  }
+  .auto.off .autopill { background: #3a1e1e; color: #ff9b9b; }
+  .autowhen {
+    margin-inline-start: auto; font-size: 12px; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .autod { font-size: 13px; color: var(--muted); line-height: 1.65; }
+  .autocost { font-size: 11.5px; color: #7d879a; margin-top: 6px; }
+  .autocost b { color: var(--text); font-variant-numeric: tabular-nums; }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d0f14">
@@ -629,6 +649,7 @@
     <button class="tab" data-view="stats">📊 סטטיסטיקות</button>
     <button class="tab" data-view="followers">👥 עוקבים</button>
     <button class="tab" data-view="improve">🚀 מה לשפר</button>
+    <button class="tab" data-view="autos">⚙️ אוטומציות</button>
   </nav>
 
   <!-- ============ VIEW: PUBLISH ============ -->
@@ -811,6 +832,28 @@
       <div id="impTests"></div>
     </div>
   </div><!-- /viewImprove -->
+
+  <!-- ============ VIEW: AUTOMATIONS ============ -->
+  <div class="view" id="viewAutos">
+    <div class="card">
+      <h2 class="viewtitle">⏰ רץ לפי שעון</h2>
+      <p class="viewsub">משימות שמתעוררות בעצמן. השעות בשעון ישראל.</p>
+      <div id="autoClock"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">⚡ רץ לפי אירוע</h2>
+      <p class="viewsub">תרחישי Make. הם לא רצים בזמנים קבועים אלא כשמשהו קורה — לחיצה שלך, סריקה באפליקציה, כניסה לאתר.</p>
+      <div id="autoEvent"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="viewtitle">🔁 בנוי לתוך הדף והאפליקציה</h2>
+      <p class="viewsub">התנהגות אוטומטית שלא צריכה שרת ולא עולה כלום.</p>
+      <div id="autoBuiltin"></div>
+    </div>
+  </div><!-- /viewAutos -->
+
 
 
   <!-- ============ VIEW: DAY FLOW ============ -->
@@ -3028,6 +3071,160 @@ function renderImprove() {
   }).join("");
 }
 renderImprove();
+
+
+/* ---------------- automations register ----------------
+   Read off the live system on 2026-08-31: the scheduled tasks from their own
+   task list, the Make scenarios from the account. `on:false` MUST stay honest -
+   a page that shows a paused job as running is worse than no page at all,
+   because he would count on it. */
+
+const AUTOS = {
+  updated: "2026-08-31",
+
+  clock: [
+    {
+      n: "מענה אוטומטי לתגובות",
+      when: "10:00 ו-20:00",
+      on: true,
+      d: "עובר על התגובות בארבע הפלטפורמות ועונה בשמך באנגלית, קצר ואנושי. מדלג על תגובות ריקות ועל מה שכבר ענית עליו. שאלות רפואיות, עוינות ופניות של מדיה לא נענות אלא מדווחות לך.",
+      cost: "לא צורך פעולות Make. עובר דרך זרניו.",
+    },
+    {
+      n: "בדיקת אישור גוגל פליי",
+      when: "09:00 ו-19:00",
+      on: true,
+      d: "נכנס ל-Play Console ובודק אם החשבון אושר. אם כן — שולח לך וואטסאפ, מכין את קובץ ה-AAB ומפרט מה חסר לחנות. אם לא — לא שולח כלום, כדי שהודעה ממנו תמיד תהיה חדשות.",
+      cost: "פעולת Make אחת רק כשיש מה לדווח.",
+    },
+    {
+      n: "מעקב אחרי לחיצות באשף",
+      when: "כל 10 דקות, 15:00 עד 02:00",
+      on: false,
+      d: "היה בודק אם לחצת על 'צור' או 'פרסם' ופועל בהתאם. כבוי מאז 31.8 — אתה מעלה בעצמך ושום דבר לא מתפרסם לפי לוח זמנים.",
+      cost: "כשהיה דלוק: 264 פעולות ביום. זה היה הצרכן השני בגודלו.",
+    },
+  ],
+
+  event: [
+    {
+      n: "בקשות האשף",
+      when: "בלחיצה על כפתור",
+      on: true,
+      d: "רושם את הלחיצה שלך, מדליק את הצ'יפים בפס ההתקדמות ושולח לך וואטסאפ שהבקשה נקלטה.",
+      cost: "3 עד 6 פעולות ללחיצה.",
+    },
+    {
+      n: "סטטוס האשף",
+      when: "כשהאשף פתוח",
+      on: true,
+      d: "מביא את שלב העבודה, אחוז ההתקדמות והפריוויו. מאט אחרי הדקה הראשונה ונעצר לגמרי כשהדף מוסתר.",
+      cost: "4 פעולות לבדיקה.",
+    },
+    {
+      n: "מספרים מזרניו",
+      when: "פעם ביום, או בלחיצה על רענן",
+      on: true,
+      d: "מושך צפיות, מעורבות, דמוגרפיה ועוקבים לכל הפלטפורמות. היה רץ בכל כניסה ללשונית והיה 43 אחוז מכל צריכת החודש.",
+      cost: "3 פעולות לפלטפורמה, 5 קריאות ליום מלא.",
+    },
+    {
+      n: "כספת המפתחות",
+      when: "בהתחברות לפורטל",
+      on: true,
+      d: "מוסר את מפתחות ההגדרה רק אחרי שגוגל מאמתת שהכתובת היא שלך.",
+      cost: "3 פעולות להתחברות.",
+    },
+    {
+      n: "דוח היומן מהאפליקציה",
+      when: "כשהיומן שלך משתנה",
+      on: true,
+      d: "האפליקציה שולחת את דוח היום כדי שאוכל לבנות את הריל בלי שתעתיק לי כלום. מקובץ, לא פריט אחר פריט.",
+      cost: "3 פעולות, כ-3 פעמים ביום.",
+    },
+    {
+      n: "חיפוש מוצר באינטרנט",
+      when: "רק בלחיצה על הכפתור",
+      on: true,
+      d: "מתווך חיפוש למאגר העולמי. עד 31.8 רץ בכל הקלדה — 618 פעולות בחודש. עכשיו הקלדה מחפשת מקומית בלבד, ומוצר שנבחר נשמר אצלך ולא עולה פעם שנייה.",
+      cost: "3 פעולות ללחיצה, פעם אחת לכל מוצר.",
+    },
+    {
+      n: "מאגר הברקודים המשותף",
+      when: "בסריקת ברקוד לא מוכר",
+      on: true,
+      d: "בודק אם מישהו כבר זיהה את הברקוד, ותורם בחזרה מוצר חדש. סריקה של ברקוד מוכר לא פונה לשום מקום.",
+      cost: "3 פעולות, רק לברקוד שלא מוכר לטלפון.",
+    },
+    {
+      n: "מונה התנועה לאתר",
+      when: "בכל כניסה ל-mrgurufit.com",
+      on: true,
+      d: "טיק יומי בלי עוגיות ובלי מזהה של הגולש. GitHub Pages לא מדווח כלום, אז בלי זה אין דרך לדעת אם הביו שולח אנשים.",
+      cost: "4 פעולות לכניסה.",
+    },
+    {
+      n: "הודעות וואטסאפ",
+      when: "כשיש מה לדווח",
+      on: true,
+      d: "הצינור שדרכו מגיעות אליך ההתראות מכל שאר התהליכים.",
+      cost: "2 פעולות להודעה.",
+    },
+  ],
+
+  builtin: [
+    {
+      n: "פרסום יומי",
+      when: "ידני",
+      on: false,
+      d: "אין פרסום אוטומטי לפי שעון. אתה מעלה את החומרים, אני בונה, ואתה לוחץ פרסם. זו החלטה שלך מ-31.8.",
+    },
+    {
+      n: "המאגר המקומי באפליקציה",
+      when: "בכל סריקה והקלדה",
+      on: true,
+      d: "כ-12,000 מאכלים בתוך האפליקציה עצמה. עונה מיידית, עובד בלי אינטרנט, ולא עולה כלום. זו הסיבה שרוב השימוש היומיומי לא נוגע ב-Make בכלל.",
+    },
+    {
+      n: "בנק הקלוריות",
+      when: "בכל רישום",
+      on: true,
+      d: "מחשב מחדש כמה נשאר בבנק לפי מה שנכנס ומה שנשרף, כולל הצעדים והאימון מהשעון.",
+    },
+    {
+      n: "שמירת מספרים במכשיר",
+      when: "אחרי כל שאיבה",
+      on: true,
+      d: "המספרים האחרונים נשמרים בטלפון, כך שהפורטל נפתח מלא גם בלי רשת ובלי לשאוב מחדש.",
+    },
+  ],
+};
+
+function renderAutos() {
+  const card = a => `
+    <div class="auto ${a.on ? "" : "off"}">
+      <div class="autoh">
+        <span class="autopill">${a.on ? "פעיל" : "כבוי"}</span>
+        <span class="an">${a.n}</span>
+        <span class="autowhen">${a.when}</span>
+      </div>
+      <div class="autod">${a.d}</div>
+      ${a.cost ? `<div class="autocost">${a.cost}</div>` : ""}
+    </div>`;
+
+  $("autoClock").innerHTML = AUTOS.clock.map(card).join("") +
+    `<div class="perffoot">כל אלה רצים על המחשב שלך. אם הוא כבוי או ישן — הם לא ירוצו,
+     וזה בכוונה: שום דבר לא מפרסם ולא עונה בשמך בלי שהמחשב פעיל.</div>`;
+
+  $("autoEvent").innerHTML = AUTOS.event.map(card).join("") +
+    `<div class="perffoot"><b>למה המחיר כתוב:</b> ב-30.8 נגמרו 10,000 הפעולות של Make באמצע החודש
+     והחשבון השהה את עצמו — הכפתורים, הסטטוס והכספת מתו יחד בזמן שהם עדיין החזירו תשובה תקינה.
+     המספרים כאן כדי שזה לא יקרה שוב בלי שנראה את זה מגיע.</div>`;
+
+  $("autoBuiltin").innerHTML = AUTOS.builtin.map(card).join("") +
+    `<div class="perffoot">נכון ל-${AUTOS.updated}. הרשימה נבדקה מול המערכת עצמה ולא מהזיכרון.</div>`;
+}
+renderAutos();
 
 /* ---------------- tabs ---------------- */
 
