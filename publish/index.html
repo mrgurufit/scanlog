@@ -3086,7 +3086,7 @@ const AUTOS = {
   clock: [
     {
       n: "מענה אוטומטי לתגובות",
-      when: "10:00 ו-20:00",
+      when: "20:00",
       on: true,
       d: "עובר על התגובות בארבע הפלטפורמות ועונה בשמך באנגלית, קצר ואנושי. מדלג על תגובות ריקות ועל מה שכבר ענית עליו. שאלות רפואיות, עוינות ופניות של מדיה לא נענות אלא מדווחות לך.",
       cost: "לא צורך פעולות Make. עובר דרך זרניו.",
@@ -3173,6 +3173,16 @@ const AUTOS = {
     },
   ],
 
+  clockOff: [
+    {
+      n: "המשמרת הלילית המלאה",
+      when: "לא מתוזמן",
+      on: false,
+      d: "ההוראות קיימות ומלאות — שאיבת מספרים, בריף למחר, בקשת קלוריות ומשקל בוואטסאפ, בניית הריל וגרסת הטיקטוק, פרסום, הוספה לוולוג ומייל יומי. אבל היא לא רשומה כמשימה מתוזמנת, כלומר בפועל שום דבר מזה לא קורה בלילה. המספרים בפורטל מתעדכנים רק בשיחה איתי או בלחיצה על רענן.",
+      cost: "0 — היא לא רצה.",
+    },
+  ],
+
   builtin: [
     {
       n: "פרסום יומי",
@@ -3213,7 +3223,7 @@ function renderAutos() {
       ${a.cost ? `<div class="autocost">${a.cost}</div>` : ""}
     </div>`;
 
-  $("autoClock").innerHTML = AUTOS.clock.map(card).join("") +
+  $("autoClock").innerHTML = (AUTOS.clock.concat(AUTOS.clockOff)).map(card).join("") +
     `<div class="perffoot">כל אלה רצים על המחשב שלך. אם הוא כבוי או ישן — הם לא ירוצו,
      וזה בכוונה: שום דבר לא מפרסם ולא עונה בשמך בלי שהמחשב פעיל.</div>`;
 
@@ -3268,12 +3278,15 @@ function paintPull(btnId, k, label) {
   const b = $(btnId);
   if (!b) return;
   const st = pullState(k);
-  b.disabled = !st.ready;
+  /* NEVER disabled. The cap exists so the page does not spend his Make month
+     behind his back - not to refuse him when he deliberately asks. */
+  b.disabled = false;
   b.textContent = st.ready
     ? "🔄 " + label
     : `✓ נשאב היום · ${whenBack(st.left)}`;
   b.title = st.last
-    ? "השאיבה האחרונה: " + new Date(st.last).toLocaleString("he-IL")
+    ? "השאיבה האחרונה: " + new Date(st.last).toLocaleString("he-IL") +
+      (st.ready ? "" : " · אפשר לשאוב שוב בכל זאת")
     : "עוד לא נשאב מהמכשיר הזה";
 }
 
@@ -3283,13 +3296,23 @@ function paintAllPulls() {
   paintPull("demoBtn", "demo", "רענן דמוגרפיה");
 }
 
-/* run the pull only if today's allowance is unused, then spend it */
+/* Today's allowance runs without asking. Past it, he is asked once and then
+   it runs anyway - the point is that he knows he is spending, not that he is
+   stopped. */
 async function pullOnce(k, btnId, label, fn) {
-  if (!pullState(k).ready) return;
+  const st = pullState(k);
+  if (!st.ready) {
+    const when = st.last ? new Date(st.last).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : "";
+    if (!confirm(`כבר נשאב היום${when ? " ב-" + when : ""}. לשאוב שוב בכל זאת?`)) return;
+  }
+  const b = $(btnId);
+  b.disabled = true;
+  b.textContent = "מושך מהפלטפורמות…";
   try {
     await fn();
     store.set("pc_pull_" + k, String(Date.now()));
   } finally {
+    b.disabled = false;
     paintPull(btnId, k, label);
   }
 }
