@@ -245,7 +245,11 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
-  #stepsHint { font-size:11.5px; color:var(--muted); margin-top:4px; min-height:14px; }
+  #stepsRow { display:flex; align-items:center; gap:6px; margin-top:4px; min-height:16px; }
+  #stepsHint { font-size:11.5px; color:var(--muted); min-height:14px; }
+  #hcMini { display:none; background:#1d5c39; color:#d9ffe8; border:0; border-radius:7px;
+            padding:2px 7px; font-size:11px; font-family:inherit; cursor:pointer; flex:none; }
+  #hcMini:disabled { opacity:.5; cursor:default; }
 
   #ob {
     display:none; position:fixed; inset:0; z-index:90; background:#0a0c11;
@@ -662,7 +666,10 @@
       <div class="efield">
         <label for="actIn">נשרף היום סה"כ (צעדים + אימון)</label>
         <input type="number" id="actIn" inputmode="numeric" placeholder="0">
-        <div id="stepsHint"></div>
+        <div id="stepsRow">
+          <div id="stepsHint"></div>
+          <button type="button" id="hcMini">🔄</button>
+        </div>
       </div>
     </div>
     <div id="ebal"></div>
@@ -930,6 +937,7 @@ const I18N = {
   "· <u id=\"dbgLink\" style=\"cursor:pointer\">אבחון</u>": "· <u id=\"dbgLink\" style=\"cursor:pointer\">Diagnostics</u>",
   "🩺 חבר ל-Health Connect": "🩺 Connect Health Connect",
   "🔄 רענן מ-Health Connect": "🔄 Refresh from Health Connect",
+  "רענן מ-Health Connect": "Refresh from Health Connect",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
   "מחובר · מרענן…": "Connected · refreshing…",
@@ -1127,12 +1135,27 @@ function dayEnergy(day, kcalIn) {
   return { w, bmr, act, out: bmr + act, in: Math.round(kcalIn), bal: Math.round(kcalIn) - (bmr + act) };
 }
 
+/* What the number above actually came from. Steps alone say nothing about the
+   calories; the split does, and it is the thing he asked to see. */
+function stepsHintText(d) {
+  const bits = [];
+  if (d.steps) bits.push("👟 " + Number(d.steps).toLocaleString("he-IL") + " " + T("צעדים"));
+  const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
+  if (!d.activityManual && (s || w)) {
+    const total = (s + w).toLocaleString("he-IL");
+    bits.push("🔥 " + total + " " + T("קק\"ל")
+      + (w ? " (" + T("צעדים") + " " + s + " " + T("+ אימון") + " " + w + ")" : ""));
+  }
+  return bits.join(" · ");
+}
+
 function renderEnergy(kcalIn) {
   const d = DAYDATA[viewDay] || {};
   $("wIn").value = d.weight || "";
   $("wIn").placeholder = weightFor(viewDay);
   $("actIn").value = d.activity || "";
-  $("stepsHint").textContent = d.steps ? "👟 " + Number(d.steps).toLocaleString("he-IL") + " צעדים" : "";
+  $("stepsHint").textContent = stepsHintText(d);
+  if (typeof hcMiniVis === "function") hcMiniVis();
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
   $("autoScanChk").checked = PROFILE.autoScan !== false;
@@ -1155,7 +1178,10 @@ function saveDayData() {
   const a = parseFloat($("actIn").value);
   if (isFinite(w) && w > 30 && w < 250) { d.weight = w; d.weightManual = true; }
   else if (!$("wIn").value) { delete d.weight; delete d.weightManual; }
-  if (isFinite(a) && a >= 0) { d.activity = Math.round(a); d.activityManual = true; }
+  if (isFinite(a) && a >= 0) {
+    d.activity = Math.round(a); d.activityManual = true;
+    delete d.burnSteps; delete d.burnWork;   // his own number, not a synced one
+  }
   else if (!$("actIn").value) { delete d.activity; delete d.activityManual; }
   store.set(LS_DAY, DAYDATA);
   renderTotals();
@@ -1407,7 +1433,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.08.31.36";
+const APP_BUILD = "2026.09.01.37";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1526,10 +1552,21 @@ let hcLastSync = 0;
 
 function hcConnectedUI() {
   $("hcBtn").textContent = T("🔄 רענן מ-Health Connect");
+  hcMiniVis();
+}
+
+/* the small refresh next to the step count. Only shown when there is
+   something behind it: the native bridge AND a live connection. */
+function hcMiniVis() {
+  const b = $("hcMini"); if (!b) return;
+  const on = !!(HB() && localStorage.getItem("fl_hc"));
+  b.style.display = on ? "block" : "none";
+  b.title = T("רענן מ-Health Connect");
 }
 
 async function hcInit() {
   const hb = HB(); if (!hb) return;
+  hcMiniVis();
   $("hcRow").style.display = "flex";
   $("skRow").style.display = "flex";
   debugDumpOnce();
@@ -1679,6 +1716,12 @@ async function hcSync(force) {
     const workoutKcal = Math.round(r.workoutKcal || 0);
     const workout = (stepsKcal + workoutKcal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
+    // keep the two halves he asked to see under the field itself
+    if (workout && !d.activityManual) {
+      if (d.burnSteps !== stepsKcal || d.burnWork !== workoutKcal) {
+        d.burnSteps = stepsKcal; d.burnWork = workoutKcal; changed = true;
+      }
+    }
     const bits = [];
     if (r.weightKg) bits.push(T("משקל") + " " + (Math.round(r.weightKg * 10) / 10));
     if (workout) bits.push(T("נשרף") + " " + workout + " " + T("קק\"ל")
@@ -2861,6 +2904,16 @@ $("setClose").addEventListener("click", () => { closeSettings(); ovDrop(); });
 $("setModal").addEventListener("click", e => { if (e.target === $("setModal")) closeSettings(); });
 $("bankWrap").addEventListener("click", bankSetup);
 $("hcBtn").addEventListener("click", hcTap);
+$("hcMini").addEventListener("click", async () => {
+  const b = $("hcMini");
+  b.disabled = true;
+  $("stepsHint").textContent = T("מרענן…");
+  try { await hcSync(true); }
+  finally {
+    b.disabled = false;
+    renderTotals();                       // repaints the hint from the day record
+  }
+});
 $("skBtn").addEventListener("click", skOpen);
 /* coming back from the Health Connect permission screen: pick up whatever he
    just granted without making him press anything */
