@@ -938,6 +938,8 @@ const I18N = {
   "🩺 חבר ל-Health Connect": "🩺 Connect Health Connect",
   "🔄 רענן מ-Health Connect": "🔄 Refresh from Health Connect",
   "רענן מ-Health Connect": "Refresh from Health Connect",
+  "הגיבוי נשמר ב-": "Backup saved to ",
+  "שמירת הגיבוי נכשלה: ": "The backup could not be saved: ",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
   "מחובר · מרענן…": "Connected · refreshing…",
@@ -1433,7 +1435,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.01.37";
+const APP_BUILD = "2026.09.01.38";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -3191,17 +3193,34 @@ $("copyBtn").addEventListener("click", async () => {
     ta.remove();
   }
 });
-$("expBtn").addEventListener("click", () => {
+$("expBtn").addEventListener("click", async () => {
   const payload = { v: 2, exported: new Date().toISOString(),
     log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
     bank: BANK, lang: LANG,
     push: localStorage.getItem("fl_push") || "",
     pushkey: localStorage.getItem("fl_pushkey") || "",
     onboarded: localStorage.getItem(LS_OB) || "" };
-  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  const text = JSON.stringify(payload);
+  const name = "scanlog-backup-" + todayKey() + ".json";
+
+  /* Inside the APK an <a download> is inert - the WebView has no download
+     handler behind it - so this button used to do nothing at all and say
+     nothing either. The native bridge writes the file for real. */
+  const hb = HB();
+  if (hb && hb.saveToDownloads) {
+    try {
+      const r = await hb.saveToDownloads({ filename: name, text });
+      msg("scanMsg", T("הגיבוי נשמר ב-") + ((r && r.path) || ("Download/" + name)), "ok");
+    } catch (err) {
+      msg("scanMsg", T("שמירת הגיבוי נכשלה: ") + String((err && err.message) || err).slice(0, 120), "err");
+    }
+    return;
+  }
+
+  const blob = new Blob([text], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "scanlog-backup-" + todayKey() + ".json";
+  a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   msg("scanMsg", T("קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו."), "ok");
 });
