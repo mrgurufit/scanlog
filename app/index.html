@@ -245,6 +245,9 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+  #updBar { display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
+            background:var(--accent); color:#141005; font-weight:800; text-align:center;
+            padding:9px 12px; font-size:13.5px; cursor:pointer; }
   #stepsRow { display:flex; align-items:center; gap:6px; margin-top:4px; min-height:16px; }
   #stepsHint { font-size:11.5px; color:var(--muted); min-height:14px; white-space:pre-line; }
   #hcMini { display:none; background:#1d5c39; color:#d9ffe8; border:0; border-radius:7px;
@@ -423,6 +426,8 @@
 </style>
 </head>
 <body>
+
+<div id="updBar">🔄 יש גרסה חדשה — הקש לעדכון</div>
 
 <div class="wrap">
   <div class="hdr">
@@ -942,6 +947,7 @@ const I18N = {
   "הגיבוי נשמר ב-": "Backup saved to ",
   "הגיבוי נשמר בהצלחה בתיקיית ההורדות": "Backup saved successfully to your Downloads folder",
   "מסונכרן": "Synced",
+  "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
   "שמירת הגיבוי נכשלה: ": "The backup could not be saved: ",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
@@ -1438,7 +1444,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.39";
+const APP_BUILD = "2026.09.02.40";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -2934,12 +2940,31 @@ document.addEventListener("visibilitychange", async () => {
   hcSync(true);
 });
 
+/* A deploy only reaches the APK when the page actually reloads, and Android
+   keeps the WebView alive in the recents for days - so a pushed fix used to
+   sit unseen until he happened to kill the app. Poll a tiny version file and
+   offer the reload instead of waiting for a process death. */
+let updLast = 0;
+async function checkForUpdate() {
+  if (Date.now() - updLast < 60 * 1000) return;
+  updLast = Date.now();
+  try {
+    const r = await fetch("./version.json?_=" + Date.now(), { cache: "no-store" });
+    const v = await r.json();
+    if (v && v.build && v.build !== APP_BUILD) $("updBar").style.display = "block";
+  } catch { /* offline - the next resume tries again */ }
+}
+$("updBar").addEventListener("click", () => location.reload());
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
+checkForUpdate();
+
 /* pull down from the top to refresh, like a web page */
 async function doRefresh() {
   const ind = $("ptr");
   ind.textContent = T("מרענן…");
   ind.style.opacity = "1";
   ind.style.transform = "translate(-50%, 12px)";
+  updLast = 0; checkForUpdate();
   try { await hcSync(true); } catch { /* offline */ }
   LOG = store.get(LS_LOG, LOG);
   PRODUCTS = store.get(LS_PROD, PRODUCTS);
