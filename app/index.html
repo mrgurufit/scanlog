@@ -256,6 +256,10 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+  .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
+          padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .acctin { font-size:13px; color:var(--text); }
+  .acctin b { color:var(--green); }
   #manState { font-size:11.5px; color:var(--accent); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
@@ -741,6 +745,7 @@
             </div>
           </div>
         </div>
+        <div id="acctRow" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"></div>
         <div class="row" style="margin-top:12px">
           <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
         </div>
@@ -977,6 +982,15 @@ const I18N = {
   "רענן מ-Health Connect": "Refresh from Health Connect",
   "הגיבוי נשמר ב-": "Backup saved to ",
   "הגיבוי נשמר בהצלחה בתיקיית ההורדות": "Backup saved successfully to your Downloads folder",
+  "התחבר עם Google (גיבוי בענן)": "Sign in with Google (cloud backup)",
+  "שמור את הנתונים שלך בענן כדי שיישרדו החלפת טלפון או מחיקת האפליקציה.": "Save your data to the cloud so it survives a new phone or a reinstall.",
+  "מתחבר…": "Signing in…",
+  "מחובר כ-": "Signed in as",
+  "ההתחברות נכשלה: ": "Sign-in failed: ",
+  "התנתקת מהחשבון": "Signed out",
+  "מחובר:": "Signed in:",
+  "התנתק": "Sign out",
+  "הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.": "Your data is saved to the cloud and syncs automatically. New phone? Sign in and get it all back.",
   "מסונכרן": "Synced",
   "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
   "⬇️ מוריד עדכון…": "⬇️ Downloading update…",
@@ -1098,9 +1112,18 @@ function setLang(l) {
 }
 
 const LS_LOG = "fl_log", LS_PROD = "fl_products", LS_PROF = "fl_profile", LS_DAY = "fl_daydata";
+// keys that make up the user's own data - a write to any of them schedules a
+// cloud sync (when signed in). Catalog/image-cache keys are deliberately absent.
+const CLOUD_KEYS = new Set(["fl_log", "fl_products", "fl_daydata", "fl_profile", "fl_bank"]);
 const store = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      if (CLOUD_KEYS.has(k) && typeof cloudPush === "function") cloudPush();
+      return true;
+    } catch { return false; }
+  },
 };
 /* one-time device setup: open the app once with #cfg=<base64url {pr,pk}>
    and the report push hook lands in THIS device's storage - the public file
@@ -1544,13 +1567,14 @@ function scheduleAutoPush() {
 function save() {
   if (!store.set(LS_LOG, LOG)) msg("entryMsg", T("אין מקום בזיכרון הדפדפן"), "err");
   scheduleAutoPush();
+  if (typeof cloudPush === "function") cloudPush();
 }
 function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.className = "msg " + (cls || ""); }
 
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.52";
+const APP_BUILD = "2026.09.03.53";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3149,6 +3173,7 @@ $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())))
 $("setBtn").addEventListener("click", () => {
   ovPush();
   msg("setMsg", "");
+  if (typeof renderAccount === "function") renderAccount();
   $("setModal").classList.add("on");
   document.body.style.overflow = "hidden";
 });
@@ -3518,14 +3543,103 @@ $("copyBtn").addEventListener("click", async () => {
     ta.remove();
   }
 });
-$("expBtn").addEventListener("click", async () => {
-  const payload = { v: 2, exported: new Date().toISOString(),
+/* the whole app in one object - the same shape the backup file uses and the
+   cloud account stores. buildPayload() reads it, mergePayload() folds one back
+   into this phone (union of log ids, newest wins per product/day). */
+function buildPayload() {
+  return { v: 2, exported: new Date().toISOString(),
     log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
     bank: BANK, lang: LANG,
     push: localStorage.getItem("fl_push") || "",
     pushkey: localStorage.getItem("fl_pushkey") || "",
     onboarded: localStorage.getItem(LS_OB) || "" };
-  const text = JSON.stringify(payload);
+}
+function mergePayload(d) {
+  if (!d || !Array.isArray(d.log)) return -1;
+  const ids = new Set(LOG.map(x => x.id));
+  let added = 0;
+  for (const en of d.log) if (!ids.has(en.id)) { LOG.push(en); added++; }
+  Object.assign(PRODUCTS, d.products || {});
+  for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
+  if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
+  if (d.bank && d.bank.total) { BANK = d.bank; store.set(LS_BANK, BANK); }
+  if (d.push) localStorage.setItem("fl_push", d.push);
+  if (d.pushkey) localStorage.setItem("fl_pushkey", d.pushkey);
+  if (d.onboarded) localStorage.setItem(LS_OB, d.onboarded);
+  store.set(LS_LOG, LOG); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
+  renderLog();
+  return added;
+}
+
+/* ---------------- cloud account (Google sign-in + Firestore) ----------------
+   Ido, 2026-09-03: sign in with Google and the whole log/products/weight/bank
+   live in the cloud under your account - a new phone or a reinstall gets it all
+   back. Native only (the bridge does the Google flow + Firestore); in a plain
+   browser HB() is null and the account row simply never appears. */
+let cloudUser = null, cloudTimer = null;
+function isSignedIn() { return !!(cloudUser && cloudUser.signedIn); }
+
+async function cloudRefreshUser() {
+  const hb = HB(); if (!hb || !hb.authState) return;
+  try { cloudUser = await hb.authState(); } catch { cloudUser = null; }
+  renderAccount();
+}
+async function cloudSignIn() {
+  const hb = HB(); if (!hb || !hb.googleSignIn) return;
+  msg("setMsg", T("מתחבר…"), "");
+  try {
+    cloudUser = await hb.googleSignIn();
+    await cloudMergeSync();
+    renderAccount();
+    msg("setMsg", "✅ " + T("מחובר כ-") + " " + (cloudUser.email || ""), "ok");
+  } catch (e) {
+    msg("setMsg", T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 140), "err");
+  }
+}
+async function cloudSignOut() {
+  const hb = HB(); if (!hb || !hb.googleSignOut) return;
+  try { await hb.googleSignOut(); } catch { /* ignore */ }
+  cloudUser = null; renderAccount();
+  msg("setMsg", T("התנתקת מהחשבון"), "ok");
+}
+// pull the cloud copy, MERGE it into this phone, then push the merged result -
+// so a new device downloads everything and an existing one never loses data
+async function cloudMergeSync() {
+  const hb = HB(); if (!hb || !isSignedIn() || !hb.cloudGet) return;
+  try {
+    const r = await hb.cloudGet();
+    if (r && r.json) { try { mergePayload(JSON.parse(r.json)); renderTotals(); } catch { /* bad json */ } }
+    await cloudPushNow();
+  } catch { /* offline - try again next launch */ }
+}
+async function cloudPushNow() {
+  const hb = HB(); if (!hb || !isSignedIn() || !hb.cloudSet) return;
+  try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); } catch { /* offline */ }
+}
+function cloudPush() {   // debounced; called on every change to the user's data
+  if (!isSignedIn()) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(cloudPushNow, 4000);
+}
+function renderAccount() {
+  const row = $("acctRow"); if (!row) return;
+  const hb = HB();
+  if (!hb || !hb.googleSignIn) { row.style.display = "none"; return; }  // web/PWA: no native auth
+  row.style.display = "block";
+  if (isSignedIn()) {
+    row.innerHTML = `<div class="acctin">☁️ ${T("מחובר:")} <b>${esc(cloudUser.email || cloudUser.name || "")}</b>`
+      + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u></div>`
+      + `<div class="ehint">${T("הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.")}</div>`;
+    const b = $("acctOut"); if (b) b.onclick = cloudSignOut;
+  } else {
+    row.innerHTML = `<button type="button" id="acctIn" class="gbtn">${T("התחבר עם Google (גיבוי בענן)")}</button>`
+      + `<div class="ehint">${T("שמור את הנתונים שלך בענן כדי שיישרדו החלפת טלפון או מחיקת האפליקציה.")}</div>`;
+    const b = $("acctIn"); if (b) b.onclick = cloudSignIn;
+  }
+}
+
+$("expBtn").addEventListener("click", async () => {
+  const text = JSON.stringify(buildPayload());
   const name = "scanlog-backup-" + todayKey() + ".json";
 
   /* Inside the APK an <a download> is inert - the WebView has no download
@@ -3557,19 +3671,10 @@ $("impInput").addEventListener("change", e => {
   rd.onload = () => {
     try {
       const d = JSON.parse(rd.result);
-      if (!d || !Array.isArray(d.log)) throw 0;
-      const ids = new Set(LOG.map(x => x.id));
-      let added = 0;
-      for (const en of d.log) if (!ids.has(en.id)) { LOG.push(en); added++; }
-      Object.assign(PRODUCTS, d.products || {});
-      for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
-      if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
-      if (d.bank && d.bank.total) { BANK = d.bank; store.set(LS_BANK, BANK); }
-      if (d.push) localStorage.setItem("fl_push", d.push);
-      if (d.pushkey) localStorage.setItem("fl_pushkey", d.pushkey);
-      if (d.onboarded) localStorage.setItem(LS_OB, d.onboarded);
-      save(); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
-      renderLog();
+      const added = mergePayload(d);
+      if (added < 0) throw 0;
+      renderTotals();
+      cloudPush();
       msg("setMsg", T("שוחזר: ") + added + " " + T("רישומים,") + " " + Object.keys(d.products || {}).length + " " + T("מוצרים בזיכרון."), "ok");
     } catch { msg("setMsg", T("הקובץ לא נראה כמו גיבוי של האפליקציה."), "err"); }
   };
@@ -3704,6 +3809,11 @@ renderLog();
 // pull the shared catalog (once a day) and flush any queued contributions
 catalogPull();
 contribFlush();
+// cloud account: pick up the signed-in user and sync their data down+up
+(async () => {
+  await cloudRefreshUser();
+  if (isSignedIn()) await cloudMergeSync();
+})();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
 // The tutorial ends by spotlighting the + button so the first scan is a
 // deliberate tap; the boot auto-open used to fire anyway and the scanner
