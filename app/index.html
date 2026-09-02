@@ -836,6 +836,8 @@ const I18N = {
   "🔎 מחפש התאמות לפי הברקוד והכיתוב שעל המוצר…": "🔎 Looking for matches from the barcode and the text on the package…",
   "לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.": "No matches. Fill it in from the label once and it is remembered forever.",
   "אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:": "Maybe one of these? Picking one fills the values and saves them under the scanned barcode:",
+  "חפש באינטרנט": "Search online",
+  "מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.": "Fill it in from the label once and it is remembered forever.",
   "קק״ל · ח": "kcal · P",
   "קק״ל ·": "kcal ·",
   "לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה.": "No barcode found in the photo. Get closer and straighter, or just fill it in manually below.",
@@ -1548,7 +1550,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.51";
+const APP_BUILD = "2026.09.02.52";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1592,26 +1594,11 @@ async function showDbg() {
    Every product anyone identifies is contributed here, so the next person who
    scans that barcode gets it instantly - and offline afterwards, because the
    answer is written into this phone's own product memory the moment it lands. */
-const SHARED_LOOKUP = "https://hook.us2.make.com/dvnhts66ozhjd7auedcj9xn18o11kjp0";
+// The only Make webhook the app still writes to: one contribution per
+// never-before-seen product. The per-scan Make LOOKUP was removed - barcodes
+// resolve from local -> the CDN catalog -> Open Food Facts, all with zero Make
+// operations, so the app stays cheap at world scale.
 const SHARED_PUT = "https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo";
-
-async function sharedLookup(code) {
-  if (!code) return null;
-  try {
-    const r = await fetch(SHARED_LOOKUP + "?barcode=" + encodeURIComponent(code), { cache: "no-store" });
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (!d || !d.name) return null;
-    return {
-      name: d.name,
-      kcal: parseFloat(d.kcal) || 0,
-      pro: parseFloat(d.pro) || 0,
-      carb: parseFloat(d.carb) || 0,
-      fat: parseFloat(d.fat) || 0,
-      photo: d.photo || "",
-    };
-  } catch { return null; }
-}
 
 /* ---------------- community catalog (bulk, on the phone) ----------------
    Ido, 2026-09-02: every product every user enters, on every phone. Each
@@ -1717,15 +1704,21 @@ async function contribFlush() {
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
   const photo = (p.photo || "").startsWith("http") ? p.photo : "";
-  // 1) queue it for the cloud (durable + retried), 2) put it in THIS phone's
-  // catalog at once so it is offline-known immediately, not only next pull
-  contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, src: p.src || "app" });
+  CATALOG.codes = CATALOG.codes || {};
+  const ex = CATALOG.codes[code];
+  // Already in the catalog with the same values? Then the cloud already has it
+  // (this device sent it, or it arrived in a pull) - do NOT send again. This is
+  // what caps app->Make writes at one per never-before-seen product, no matter
+  // how many times the barcode is re-scanned.
+  const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0);
   try {
-    CATALOG.codes = CATALOG.codes || {};
     CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
+  if (already) return;
+  // queue for the cloud (durable + retried) and flush now
+  contribEnqueue({ barcode: code, name: p.name,
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, src: p.src || "app" });
   contribFlush();
 }
 
@@ -2391,7 +2384,7 @@ async function webSearch() {
    sources with them - plus the raw digits - then rank matches by how many
    of the printed words they contain. Picking one keeps the SCANNED
    barcode, so the match is remembered under it forever. */
-let missResults = [];
+let missResults = [], missWords = [], missCode = "";
 
 const MISS_STOP = /[0-9%]|קלורי|אנרגי|חלבו|שומן|פחמימ|נתרן|סוכר|ליטר|גרם|משקל|כשר|בד"ץ|תאריך|יצרן|ברקוד|טעם|חדש|kcal|energy|protein|fat|carb|net|weight|new/i;
 
@@ -2422,37 +2415,69 @@ async function missSearch(code, photo) {
     try { words = await frontLabelWords(photo); } catch { words = []; }
   }
   if (!pending || pending.barcode !== code) return;
-  const queries = [];
-  if (words.length >= 2) queries.push(words[0] + " " + words[1]);
-  if (words.length) queries.push(words[0]);
-  if (words.length >= 3) queries.push(words[2]);
-  queries.push(code);
-  const all = [];
-  for (const q of queries) all.push(...localMatches(q));
-  const offLists = await Promise.all(queries.map(q => offSearch(q)));
-  if (!pending || pending.barcode !== code) return;
-  for (const l of offLists) all.push(...l);
-  const seen = new Set();
-  const merged = [];
+  missWords = words; missCode = code;
+  // AUTOMATIC part is LOCAL ONLY (free): built-in staples, USDA, the catalog.
+  // The Open Food Facts text search goes through the Make proxy, so at world
+  // scale auto-running it on every barcode miss would be up to four Make
+  // operations per scan. It is now behind an explicit button instead.
+  const queries = missQueries(words);
+  const local = [];
+  for (const q of queries) local.push(...localMatches(q));
+  renderMiss(dedupeMiss(local, code, words), code, true);
+}
+
+function missQueries(words) {
+  const q = [];
+  if (words.length >= 2) q.push(words[0] + " " + words[1]);
+  if (words.length) q.push(words[0]);
+  if (words.length >= 3) q.push(words[2]);
+  return q;
+}
+
+function dedupeMiss(all, code, words) {
+  const seen = new Set(), merged = [];
   for (const r of all) {
     if (r.barcode === code || seen.has(r.name)) continue;
-    seen.add(r.name);
-    merged.push(r);
+    seen.add(r.name); merged.push(r);
   }
   const score = r => words.reduce((a, w) => a + (r.name.includes(w) ? 1 : 0), 0);
   merged.sort((a, b) => score(b) - score(a));
-  missResults = merged.slice(0, 5);
-  if (!missResults.length) {
-    box.innerHTML = `<div class="misshead">${T("לא נמצאו התאמות — מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.")}</div>`;
-    return;
+  return merged.slice(0, 6);
+}
+
+function renderMiss(list, code, offerWeb) {
+  const box = $("missRes");
+  missResults = list;
+  const webBtn = offerWeb
+    ? `<button class="sr dim" id="missWebBtn" style="justify-content:center;font-weight:700">🌐 ${T("חפש באינטרנט")}</button>`
+    : "";
+  if (!list.length) {
+    box.innerHTML = `<div class="misshead">${T("מלא מהמדבקה פעם אחת וזה ייזכר לתמיד.")}</div>` + webBtn;
+  } else {
+    box.innerHTML = `<div class="misshead">🔎 ${T("אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:")}</div>` +
+      list.map((r, i) =>
+        `<button class="sr" data-mi="${i}">
+           <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${T(r.src)}</span>
+           <span class="srn">${esc(r.name)}</span>
+           <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
+         </button>`).join("") + webBtn;
   }
-  box.innerHTML = `<div class="misshead">🔎 ${T("אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:")}</div>` +
-    missResults.map((r, i) =>
-      `<button class="sr" data-mi="${i}">
-         <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${T(r.src)}</span>
-         <span class="srn">${esc(r.name)}</span>
-         <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
-       </button>`).join("");
+  const wb = $("missWebBtn");
+  if (wb) wb.onclick = missWebSearch;
+}
+
+// on-demand only: the single place the app still calls the Make search proxy
+async function missWebSearch() {
+  const code = missCode, words = missWords || [];
+  const wb = $("missWebBtn");
+  if (wb) { wb.disabled = true; wb.textContent = T("מחפש במאגר העולמי…"); }
+  const queries = missQueries(words); queries.push(code);
+  const offLists = await Promise.all(queries.map(q => offSearch(q)));
+  if (!pending || pending.barcode !== code) return;
+  const all = [];
+  for (const q of missQueries(words)) all.push(...localMatches(q));
+  for (const l of offLists) all.push(...l);
+  renderMiss(dedupeMiss(all, code, words), code, false);
 }
 
 function applyMissPick(r) {
@@ -2983,6 +3008,7 @@ async function onBarcode(code, photo) {
       if (!shotSrc() && cat.photo) setShot(cat.photo);
       PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
       store.set(LS_PROD, PRODUCTS);
+      if (pending) pending.fromDB = true;   // already shared - do not re-contribute
       $("foundTag").textContent = T("✓ זוהה:") + " " + cat.name;
       $("foundTag").className = "foundtag known";
       preview();
@@ -2991,32 +3017,13 @@ async function onBarcode(code, photo) {
     }
   }
 
-  // unknown barcode -> ask the world database, and fill only if he hasn't
-  // moved on to a different scan meanwhile
+  // unknown barcode -> Open Food Facts direct (free, global, CORS *). We do NOT
+  // ask the Make lookup per scan any more: at world scale that would be one
+  // Make operation for every scan. The shared catalog (a static file on the
+  // CDN, pulled once a day) already carries every crowdsourced product, so a
+  // barcode is answered from local -> catalog -> OFF with zero Make calls.
   if (!known && code) {
     $("foundTag").textContent = T("מחפש במאגר העולמי…");
-
-    // someone has already identified this barcode - take theirs and remember it
-    // on this phone, so it works offline from now on
-    const shared = await sharedLookup(code);
-    if (!pending || pending.barcode !== code) return;
-    if (shared) {
-      if (!$("pName").value) $("pName").value = shared.name;
-      if (!$("p100kcal").value && shared.kcal) $("p100kcal").value = shared.kcal;
-      if (!$("p100pro").value && shared.pro) $("p100pro").value = shared.pro;
-      if (!$("p100carb").value && shared.carb) $("p100carb").value = shared.carb;
-      if (!$("p100fat").value && shared.fat) $("p100fat").value = shared.fat;
-      if (!shotSrc() && shared.photo) setShot(shared.photo);
-      PRODUCTS[code] = { name: shared.name, kcal: shared.kcal, pro: shared.pro,
-                         carb: shared.carb, fat: shared.fat, photo: shared.photo || "" };
-      store.set(LS_PROD, PRODUCTS);
-      $("foundTag").textContent = T("✓ זוהה:") + " " + shared.name;
-      $("foundTag").className = "foundtag known";
-      preview();
-      $("grams").focus();
-      return;
-    }
-
     const off = await lookupOFF(code);
     if (!pending || pending.barcode !== code) return;
     if (off) {
@@ -3027,6 +3034,10 @@ async function onBarcode(code, photo) {
       if (!$("p100fat").value && off.fat !== "") $("p100fat").value = off.fat;
       if (!shotSrc() && off.photo) setShot(off.photo);
       const complete = off.name && off.kcal !== "";
+      // a COMPLETE OFF product needs no contribution - OFF already serves it to
+      // everyone for free, so storing it in Make would only burn an operation.
+      // A partial hit is treated as new: if he completes it, it IS worth sharing.
+      if (pending) pending.fromDB = complete;
       $("foundTag").textContent = complete
         ? T("✓ זוהה:") + " " + off.name
         : T("זוהה חלקית:") + " " + (off.name || code) + " " + T("— השלם מהמדבקה");
@@ -3034,11 +3045,6 @@ async function onBarcode(code, photo) {
       preview();
       $("grams").focus();
       if (off.name) autoImage(off.name);
-      // pass it on: the next person who scans this gets it without the round trip
-      if (complete) sharedContribute(code, {
-        name: off.name, kcal: off.kcal, pro: off.pro, carb: off.carb, fat: off.fat,
-        photo: off.photo, src: "off",
-      });
     } else {
       $("foundTag").textContent = T("לא במאגר · ") + code;
       $("foundTag").className = "foundtag newp";
@@ -3083,9 +3089,13 @@ function addEntry() {
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
     store.set(LS_PROD, PRODUCTS);
-    /* only real scanned codes belong in the shared barcode store - a name key
-       is this phone's own shorthand and would be noise to everyone else */
-    if (/^\d{6,}$/.test(e.barcode)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    /* Contribute to the cloud ONLY a genuinely new product - a real barcode the
+       catalog and OFF did not already have. A name key is this phone's own
+       shorthand, and a product that came from the catalog or a complete OFF hit
+       is already shared, so re-sending either would just burn a Make operation.
+       This keeps app->Make writes down to one per never-before-seen product. */
+    const fromDB = pending && pending.fromDB;
+    if (/^\d{6,}$/.test(e.barcode) && !fromDB) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
