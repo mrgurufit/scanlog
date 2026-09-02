@@ -1483,7 +1483,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.42";
+const APP_BUILD = "2026.09.02.43";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1495,6 +1495,7 @@ try {
 } catch { /* web */ }
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
+    (typeof updErr !== "undefined" && updErr ? ' · <span style="color:#c05555">upd: ' + esc(updErr) + "</span>" : "") +
     (NATIVE_VER ? ' · <u id="dbgLink" style="cursor:pointer">אבחון</u>' : "");
   const l = document.getElementById("dbgLink");
   if (l) l.onclick = showDbg;
@@ -2991,11 +2992,15 @@ document.addEventListener("visibilitychange", async () => {
    keeps the WebView alive in the recents for days - so a pushed fix used to
    sit unseen until he happened to kill the app. Poll a tiny version file and
    offer the reload instead of waiting for a process death. */
-let updLast = 0;
+let updLast = 0, updErr = "";
 // inside the APK the page is served from local files, so the version file
 // must come from the real site (github.io answers with ACAO:* so the
-// cross-origin fetch is allowed); in the browser/PWA relative is correct
-const IN_APK = navigator.userAgent.includes("ScanLogAPK");
+// cross-origin fetch is allowed); in the browser/PWA relative is correct.
+// APK detection: the Capacitor bridge object is definitive - the UA marker
+// (appendUserAgent ScanLogAPK) did NOT show up on the phone (1.25, live),
+// so it is only a fallback here, never the primary signal.
+const IN_APK = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+  || navigator.userAgent.includes("ScanLogAPK");
 const VERSION_URL = IN_APK ? "https://mrgurufit.github.io/scanlog/app/version.json" : "./version.json";
 async function checkForUpdate() {
   if (Date.now() - updLast < 60 * 1000) return;
@@ -3004,7 +3009,13 @@ async function checkForUpdate() {
     const r = await fetch(VERSION_URL + "?_=" + Date.now(), { cache: "no-store" });
     const v = await r.json();
     if (v && v.build && v.build !== APP_BUILD) $("updBar").style.display = "block";
-  } catch { /* offline - the next resume tries again */ }
+    if (updErr) { updErr = ""; renderVer(); }
+  } catch (e) {
+    // a silent failure here cost a whole evening once - surface it in the
+    // version line so a screenshot answers what went wrong
+    updErr = String((e && e.message) || e).slice(0, 60);
+    renderVer();
+  }
 }
 $("updBar").addEventListener("click", async () => {
   const hb = HB();
