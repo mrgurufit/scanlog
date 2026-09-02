@@ -246,7 +246,7 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
   #stepsRow { display:flex; align-items:center; gap:6px; margin-top:4px; min-height:16px; }
-  #stepsHint { font-size:11.5px; color:var(--muted); min-height:14px; }
+  #stepsHint { font-size:11.5px; color:var(--muted); min-height:14px; white-space:pre-line; }
   #hcMini { display:none; background:#1d5c39; color:#d9ffe8; border:0; border-radius:7px;
             padding:2px 7px; font-size:11px; font-family:inherit; cursor:pointer; flex:none; }
   #hcMini:disabled { opacity:.5; cursor:default; }
@@ -719,6 +719,7 @@
           <button id="impBtn">⬆️ שחזור מגיבוי</button>
         </div>
         <input type="file" id="impInput" accept=".json,application/json" hidden>
+        <div class="msg" id="setMsg"></div>
         </div>
       </div>
 </div>
@@ -939,6 +940,8 @@ const I18N = {
   "🔄 רענן מ-Health Connect": "🔄 Refresh from Health Connect",
   "רענן מ-Health Connect": "Refresh from Health Connect",
   "הגיבוי נשמר ב-": "Backup saved to ",
+  "הגיבוי נשמר בהצלחה בתיקיית ההורדות": "Backup saved successfully to your Downloads folder",
+  "מסונכרן": "Synced",
   "שמירת הגיבוי נכשלה: ": "The backup could not be saved: ",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
@@ -1137,18 +1140,19 @@ function dayEnergy(day, kcalIn) {
   return { w, bmr, act, out: bmr + act, in: Math.round(kcalIn), bal: Math.round(kcalIn) - (bmr + act) };
 }
 
-/* What the number above actually came from. Steps alone say nothing about the
-   calories; the split does, and it is the thing he asked to see. */
+/* What the number above actually came from. The synced kcal line sits ABOVE
+   the steps line (his request 2026-09-02), labelled מסונכרן so it reads as
+   the Health Connect number even when he typed his own into the field. */
 function stepsHintText(d) {
-  const bits = [];
-  if (d.steps) bits.push("👟 " + Number(d.steps).toLocaleString("he-IL") + " " + T("צעדים"));
+  const lines = [];
   const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
-  if (!d.activityManual && (s || w)) {
+  if (s || w) {
     const total = (s + w).toLocaleString("he-IL");
-    bits.push("🔥 " + total + " " + T("קק\"ל")
+    lines.push("🔥 " + T("מסונכרן") + " " + total + " " + T("קק\"ל")
       + (w ? " (" + T("צעדים") + " " + s + " " + T("+ אימון") + " " + w + ")" : ""));
   }
-  return bits.join(" · ");
+  if (d.steps) lines.push("👟 " + Number(d.steps).toLocaleString("he-IL") + " " + T("צעדים"));
+  return lines.join("\n");
 }
 
 function renderEnergy(kcalIn) {
@@ -1182,7 +1186,6 @@ function saveDayData() {
   else if (!$("wIn").value) { delete d.weight; delete d.weightManual; }
   if (isFinite(a) && a >= 0) {
     d.activity = Math.round(a); d.activityManual = true;
-    delete d.burnSteps; delete d.burnWork;   // his own number, not a synced one
   }
   else if (!$("actIn").value) { delete d.activity; delete d.activityManual; }
   store.set(LS_DAY, DAYDATA);
@@ -1435,7 +1438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.01.38";
+const APP_BUILD = "2026.09.02.39";
 let NATIVE_VER = "";
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
@@ -1718,8 +1721,9 @@ async function hcSync(force) {
     const workoutKcal = Math.round(r.workoutKcal || 0);
     const workout = (stepsKcal + workoutKcal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
-    // keep the two halves he asked to see under the field itself
-    if (workout && !d.activityManual) {
+    // the synced split is stored even when he typed his own number - the
+    // hint labels it מסונכרן, so it never claims to explain the manual value
+    if (workout) {
       if (d.burnSteps !== stepsKcal || d.burnWork !== workoutKcal) {
         d.burnSteps = stepsKcal; d.burnWork = workoutKcal; changed = true;
       }
@@ -2895,6 +2899,7 @@ $("addBtn").addEventListener("click", addEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("setBtn").addEventListener("click", () => {
   ovPush();
+  msg("setMsg", "");
   $("setModal").classList.add("on");
   document.body.style.overflow = "hidden";
 });
@@ -3183,13 +3188,13 @@ $("missRes").addEventListener("click", e => {
 });
 $("copyBtn").addEventListener("click", async () => {
   const text = report(viewDay);
-  try { await navigator.clipboard.writeText(text); msg("scanMsg", T("הדוח הועתק — הדבק אותו לקלוד"), "ok"); }
+  try { await navigator.clipboard.writeText(text); msg("setMsg", T("הדוח הועתק — הדבק אותו לקלוד"), "ok"); }
   catch {
     const ta = document.createElement("textarea");
     ta.value = text; ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
     document.body.appendChild(ta); ta.select();
-    try { document.execCommand("copy"); msg("scanMsg", T("הדוח הועתק"), "ok"); }
-    catch { msg("scanMsg", T("לא הצלחתי להעתיק — סמן ידנית"), "err"); }
+    try { document.execCommand("copy"); msg("setMsg", T("הדוח הועתק"), "ok"); }
+    catch { msg("setMsg", T("לא הצלחתי להעתיק — סמן ידנית"), "err"); }
     ta.remove();
   }
 });
@@ -3210,9 +3215,9 @@ $("expBtn").addEventListener("click", async () => {
   if (hb && hb.saveToDownloads) {
     try {
       const r = await hb.saveToDownloads({ filename: name, text });
-      msg("scanMsg", T("הגיבוי נשמר ב-") + ((r && r.path) || ("Download/" + name)), "ok");
+      msg("setMsg", "✅ " + T("הגיבוי נשמר בהצלחה בתיקיית ההורדות") + " · " + ((r && r.path) || ("Download/" + name)), "ok");
     } catch (err) {
-      msg("scanMsg", T("שמירת הגיבוי נכשלה: ") + String((err && err.message) || err).slice(0, 120), "err");
+      msg("setMsg", T("שמירת הגיבוי נכשלה: ") + String((err && err.message) || err).slice(0, 120), "err");
     }
     return;
   }
@@ -3222,7 +3227,7 @@ $("expBtn").addEventListener("click", async () => {
   a.href = URL.createObjectURL(blob);
   a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
-  msg("scanMsg", T("קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו."), "ok");
+  msg("setMsg", T("קובץ הגיבוי ירד. בכתובת החדשה לחץ \"שחזור מגיבוי\" ובחר אותו."), "ok");
 });
 $("impBtn").addEventListener("click", () => $("impInput").click());
 $("impInput").addEventListener("change", e => {
@@ -3245,8 +3250,8 @@ $("impInput").addEventListener("change", e => {
       if (d.onboarded) localStorage.setItem(LS_OB, d.onboarded);
       save(); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
       renderLog();
-      msg("scanMsg", T("שוחזר: ") + added + " " + T("רישומים,") + " " + Object.keys(d.products || {}).length + " " + T("מוצרים בזיכרון."), "ok");
-    } catch { msg("scanMsg", T("הקובץ לא נראה כמו גיבוי של האפליקציה."), "err"); }
+      msg("setMsg", T("שוחזר: ") + added + " " + T("רישומים,") + " " + Object.keys(d.products || {}).length + " " + T("מוצרים בזיכרון."), "ok");
+    } catch { msg("setMsg", T("הקובץ לא נראה כמו גיבוי של האפליקציה."), "err"); }
   };
   rd.readAsText(f);
 });
