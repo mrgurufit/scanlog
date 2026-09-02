@@ -1483,7 +1483,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.44";
+const APP_BUILD = "2026.09.02.45";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3005,10 +3005,19 @@ const VERSION_URL = IN_APK ? "https://mrgurufit.github.io/scanlog/app/version.js
 async function checkForUpdate() {
   if (Date.now() - updLast < 60 * 1000) return;
   updLast = Date.now();
+  const hb = HB();
   try {
-    const r = await fetch(VERSION_URL + "?_=" + Date.now(), { cache: "no-store" });
-    const v = await r.json();
-    if (v && v.build && v.build !== APP_BUILD) $("updBar").style.display = "block";
+    let build;
+    if (hb && hb.fetchVersion) {
+      // native HTTP: immune to whatever kills cross-origin fetch inside
+      // this WebView ("Failed to fetch" on 1.26, live on his phone), and
+      // it carries a second source behind GitHub Pages
+      build = (await hb.fetchVersion()).build;
+    } else {
+      const r = await fetch(VERSION_URL + "?_=" + Date.now(), { cache: "no-store" });
+      build = ((await r.json()) || {}).build;
+    }
+    if (build && build !== APP_BUILD) $("updBar").style.display = "block";
     if (updErr) { updErr = ""; renderVer(); }
   } catch (e) {
     // a silent failure here cost a whole evening once - surface it in the
@@ -3025,7 +3034,11 @@ $("updBar").addEventListener("click", async () => {
     // localStorage (his whole log) is untouched
     $("updBar").textContent = T("⬇️ מוריד עדכון…");
     try { await hb.applyUpdate(); }
-    catch { $("updBar").textContent = T("🔄 יש גרסה חדשה — הקש לעדכון"); }
+    catch (e) {
+      $("updBar").textContent = T("🔄 יש גרסה חדשה — הקש לעדכון");
+      updErr = String((e && e.message) || e).slice(0, 60);
+      renderVer();
+    }
     return;
   }
   location.reload();
