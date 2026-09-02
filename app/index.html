@@ -1544,7 +1544,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.48";
+const APP_BUILD = "2026.09.02.49";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1609,21 +1609,112 @@ async function sharedLookup(code) {
   } catch { return null; }
 }
 
+/* ---------------- community catalog (bulk, on the phone) ----------------
+   Ido, 2026-09-02: every product every user enters, on every phone. Each
+   contribution lands in the Make data store (PRODUCTS - contribute). That
+   whole store is published as ONE static file, catalog.json, which every
+   phone pulls once a day and keeps offline. A scanned barcode is answered
+   from this phone's own memory first, then the catalog (no network, works
+   offline), and only a barcode missing from BOTH falls through to the live
+   lookup and Open Food Facts. catalog.json is served from GitHub Pages (a
+   CDN - free and unlimited to read); the APK reads it over native HTTP
+   because the WebView's own fetch to that host fails on some devices. */
+const LS_CAT = "fl_catalog", LS_CAT_AT = "fl_catalog_at", LS_CONTRIB = "fl_contrib";
+const CATALOG_URLS = [
+  "https://mrgurufit.github.io/scanlog/app/catalog.json",
+  "https://raw.githubusercontent.com/mrgurufit/scanlog/main/app/catalog.json",
+];
+let CATALOG = store.get(LS_CAT, null);
+if (!CATALOG || typeof CATALOG.codes !== "object") CATALOG = { v: "", codes: {} };
+
+// a hit from the on-phone catalog, in the same shape as sharedLookup/OFF
+function catalogGet(code) {
+  const p = code && CATALOG.codes && CATALOG.codes[code];
+  if (!p || !p.n) return null;
+  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "" };
+}
+
+async function catalogText() {
+  const hb = HB();
+  if (hb && hb.httpGet) {
+    try { const r = await hb.httpGet({ urls: CATALOG_URLS }); return (r && r.body) || null; }
+    catch { return null; }
+  }
+  for (const u of CATALOG_URLS) {
+    try { const r = await fetch(u + "?_=" + Date.now(), { cache: "no-store" }); if (r.ok) return await r.text(); }
+    catch { /* try the next mirror */ }
+  }
+  return null;
+}
+
+async function catalogPull(force) {
+  const last = Number(localStorage.getItem(LS_CAT_AT)) || 0;
+  if (!force && Date.now() - last < 20 * 3600 * 1000) return;   // at most once a day
+  try {
+    const text = await catalogText();
+    if (!text) return;
+    const data = JSON.parse(text);
+    if (!data || typeof data.codes !== "object") return;
+    CATALOG = { v: data.v || "", codes: Object.assign({}, CATALOG.codes, data.codes) };
+    store.set(LS_CAT, CATALOG);
+    localStorage.setItem(LS_CAT_AT, String(Date.now()));
+  } catch { /* offline or malformed - keep whatever is already on the phone */ }
+}
+
+// contributions are queued durably so a lost signal never drops a new product
+function contribEnqueue(payload) {
+  let q = [];
+  try { q = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { q = []; }
+  q = q.filter(x => x.barcode !== payload.barcode);   // newest wins per barcode
+  q.push(payload);
+  if (q.length > 300) q = q.slice(-300);
+  localStorage.setItem(LS_CONTRIB, JSON.stringify(q));
+}
+
+let contribBusy = false;
+async function contribFlush() {
+  if (contribBusy) return;
+  contribBusy = true;
+  try {
+    let q = [];
+    try { q = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { q = []; }
+    if (!q.length) return;
+    const hb = HB(), rest = [];
+    for (const payload of q) {
+      let ok = false;
+      try {
+        if (hb && hb.httpPost) {
+          const r = await hb.httpPost({ url: SHARED_PUT, body: JSON.stringify(payload),
+            contentType: "application/json; charset=utf-8" });
+          ok = !!(r && r.ok);
+        } else {
+          // no-cors gives an opaque response we cannot read; a resolved fetch
+          // means the request left the device, which is all we can verify here
+          await fetch(SHARED_PUT, { method: "POST", mode: "no-cors",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            body: JSON.stringify(payload), keepalive: true });
+          ok = true;
+        }
+      } catch { ok = false; }
+      if (!ok) rest.push(payload);
+    }
+    localStorage.setItem(LS_CONTRIB, JSON.stringify(rest));
+  } finally { contribBusy = false; }
+}
+
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
+  const photo = (p.photo || "").startsWith("http") ? p.photo : "";
+  // 1) queue it for the cloud (durable + retried), 2) put it in THIS phone's
+  // catalog at once so it is offline-known immediately, not only next pull
+  contribEnqueue({ barcode: code, name: p.name,
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, src: p.src || "app" });
   try {
-    fetch(SHARED_PUT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify({
-        barcode: code, name: p.name,
-        kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0,
-        photo: (p.photo || "").startsWith("http") ? p.photo : "",
-        src: p.src || "app",
-      }),
-      keepalive: true,
-    }).catch(() => {});
-  } catch { /* contributing must never break a scan */ }
+    CATALOG.codes = CATALOG.codes || {};
+    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
+    store.set(LS_CAT, CATALOG);
+  } catch { /* storage full - the cloud queue still carries it */ }
+  contribFlush();
 }
 
 /* ---------------- native bridge (Android APK only) ----------------
@@ -2867,6 +2958,27 @@ async function onBarcode(code, photo) {
   (known ? $("grams") : $("pName")).focus();
   $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
 
+  // the community catalog is already on the phone - a barcode anyone in the
+  // world has entered is answered here with no network at all, offline
+  if (!known && code) {
+    const cat = catalogGet(code);
+    if (cat) {
+      if (!$("pName").value) $("pName").value = cat.name;
+      if (!$("p100kcal").value && cat.kcal) $("p100kcal").value = cat.kcal;
+      if (!$("p100pro").value && cat.pro) $("p100pro").value = cat.pro;
+      if (!$("p100carb").value && cat.carb) $("p100carb").value = cat.carb;
+      if (!$("p100fat").value && cat.fat) $("p100fat").value = cat.fat;
+      if (!shotSrc() && cat.photo) setShot(cat.photo);
+      PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
+      store.set(LS_PROD, PRODUCTS);
+      $("foundTag").textContent = T("✓ זוהה:") + " " + cat.name;
+      $("foundTag").className = "foundtag known";
+      preview();
+      $("grams").focus();
+      return;
+    }
+  }
+
   // unknown barcode -> ask the world database, and fill only if he hasn't
   // moved on to a different scan meanwhile
   if (!known && code) {
@@ -3104,7 +3216,7 @@ $("updBar").addEventListener("click", async () => {
   }
   location.reload();
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkForUpdate(); catalogPull(); contribFlush(); } });
 checkForUpdate();
 
 /* pull down from the top to refresh, like a web page */
@@ -3567,6 +3679,9 @@ async function fillMissingImages() {
 
 scrubImages();
 renderLog();
+// pull the shared catalog (once a day) and flush any queued contributions
+catalogPull();
+contribFlush();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
 // The tutorial ends by spotlighting the + button so the first scan is a
 // deliberate tap; the boot auto-open used to fire anyway and the scanner
