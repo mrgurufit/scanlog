@@ -120,6 +120,17 @@
     color: #f2f5fa; text-shadow: 0 1px 3px rgba(0,0,0,.75); letter-spacing: .2px;
   }
   #bankSub { font-size: 10.5px; color: #6f7a8c; text-align: center; margin-top: 4px; }
+  #bankBox { display:none; margin-top:10px; background:#12161f; border:1px solid var(--line);
+             border-radius:10px; padding:8px; }
+  #bankBox table { width:100%; border-collapse:collapse; font-size:11.5px; font-variant-numeric:tabular-nums; }
+  #bankBox th { color:var(--muted); font-weight:600; text-align:left; padding:3px 5px; font-size:10.5px; }
+  #bankBox td { padding:3px 5px; border-top:1px solid #1c2230; }
+  #bankBox .def { color:#3ddc84; }
+  #bankBox .sur { color:#e06d6d; }
+  #bankBox .brow { color:#8b95a7; }
+  #bankBox tfoot td { border-top:2px solid var(--line); font-weight:800; }
+  #bankBox .bkbtn { margin-top:8px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+                    border-radius:8px; padding:6px 12px; font-size:12px; font-family:inherit; cursor:pointer; }
   #bankWrap.done #bankFill { background: linear-gradient(90deg, #1d7a45, #3ddc84); }
   .calweek .cd { flex:0 0 calc((100% - 30px)/7); scroll-snap-align:center; }
   .cd {
@@ -454,6 +465,7 @@
     </div>
     <div class="calweek" id="calWeek"></div>
     <div id="bankWrap"><div id="bankBar"><div id="bankFill"></div><div id="bankTxt"></div></div><div id="bankSub"></div></div>
+    <div id="bankBox"></div>
   </div>
 
 
@@ -848,6 +860,7 @@ const I18N = {
   "נשרף היום סה\"כ (צעדים + אימון)": "Burned today (steps + workout)",
   "גירעון": "deficit",
   "עודף": "surplus",
+  "יום": "Day",
   "יצא:": "Out:",
   "נכנס:": "In:",
   "פעילות": "activity",
@@ -963,6 +976,11 @@ const I18N = {
   "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
   "⬇️ מוריד עדכון…": "⬇️ Downloading update…",
   "נשרף היום": "Burned today",
+  "מאזן היום": "Day balance",
+  "נשאר בבנק": "Left in bank",
+  "אין עדיין ימים רשומים": "No logged days yet",
+  "סה״כ": "Total",
+  "שנה יעד ק״ג": "Change kg goal",
   "✏️ הזן קלוריות ידנית": "✏️ Enter calories manually",
   "✏️ ערוך": "✏️ Edit",
   "ידני:": "Manual:",
@@ -1253,6 +1271,7 @@ function saveProfile() {
    food count - an untracked day is not a 2,000 kcal deficit.              */
 const LS_BANK = "fl_bank";
 let BANK = store.get(LS_BANK, null);
+let bankOpen = false;
 
 function bankDays() {
   // any day he touched: food logged, or a burn / weight entered
@@ -1262,7 +1281,14 @@ function bankDays() {
     if (v.activity || v.weight) set.add(d);
   });
   const days = [...set].sort();
-  return BANK && BANK.startDay ? days.filter(d => d >= BANK.startDay) : days;
+  // Count from the FIRST day he ever logged, not from the day the bank was
+  // set up (Ido, 2026-09-02: onboarding froze startDay at the setup day, so
+  // every earlier deficit was silently excluded and the bank barely moved).
+  // startDay now acts only as a floor a reset could raise - never above the
+  // first logged day - so it can no longer hide history.
+  const first = days[0];
+  const floor = BANK && BANK.startDay && first && BANK.startDay < first ? BANK.startDay : first;
+  return floor ? days.filter(d => d >= floor) : days;
 }
 
 function bankState() {
@@ -1310,6 +1336,41 @@ function renderBank() {
     bits.push("בקצב הנוכחי (" + s.avg.toLocaleString("he-IL") + '/יום) עוד ' + Math.ceil(s.left / s.avg) + " ימים");
   }
   $("bankSub").textContent = bits.join(" · ");
+  renderBankBox();
+}
+
+/* the per-day ledger behind the bank (Ido, 2026-09-02: "check the total
+   deficit from my first log day"). Every counted day with its balance and
+   the running bank, so the number is never a black box again. */
+function renderBankBox() {
+  const box = $("bankBox");
+  if (!bankOpen || !BANK || !BANK.total) { box.style.display = "none"; return; }
+  const days = bankDays();
+  let running = BANK.total, defSum = 0, surSum = 0, rows = "";
+  days.forEach(d => {
+    const kcalIn = entriesFor(d).reduce((a, e) => a + computed(e).kcal, 0);
+    const dd = DAYDATA[d] || {};
+    if (!kcalIn && !dd.activity) return;
+    const bal = dayEnergy(d, kcalIn).bal;
+    running += bal;
+    if (bal < 0) defSum += -bal; else surSum += bal;
+    const dn = Math.floor((Date.parse(d) - Date.UTC(2026, 7, 16)) / 864e5) + 1;
+    const cls = bal <= 0 ? "def" : "sur";
+    const sign = bal <= 0 ? "−" : "+";
+    rows += `<tr><td>${T("יום")} ${dn}</td><td class="${cls}">${sign}${Math.abs(bal).toLocaleString("he-IL")}</td>`
+      + `<td class="brow">${Math.max(0, Math.round(running)).toLocaleString("he-IL")}</td></tr>`;
+  });
+  const net = defSum - surSum;
+  box.innerHTML =
+    `<table><thead><tr><th>${T("יום")}</th><th>${T("מאזן היום")}</th><th>${T("נשאר בבנק")}</th></tr></thead>`
+    + `<tbody>${rows || `<tr><td colspan="3" class="brow">${T("אין עדיין ימים רשומים")}</td></tr>`}</tbody>`
+    + `<tfoot><tr><td>${T("סה״כ")}</td>`
+    + `<td>${T("גירעון")} ${defSum.toLocaleString("he-IL")} · ${T("עודף")} ${surSum.toLocaleString("he-IL")}</td>`
+    + `<td>${Math.max(0, Math.round(BANK.total - net)).toLocaleString("he-IL")}</td></tr></tfoot></table>`
+    + `<button type="button" class="bkbtn" id="bankEditBtn">🎯 ${T("שנה יעד ק״ג")}</button>`;
+  box.style.display = "block";
+  const eb = $("bankEditBtn");
+  if (eb) eb.onclick = e => { e.stopPropagation(); bankSetup(); };
 }
 
 function bankSetup() {
@@ -1483,7 +1544,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.46";
+const APP_BUILD = "2026.09.02.47";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2963,7 +3024,7 @@ function closeSettings() {
 }
 $("setClose").addEventListener("click", () => { closeSettings(); ovDrop(); });
 $("setModal").addEventListener("click", e => { if (e.target === $("setModal")) closeSettings(); });
-$("bankWrap").addEventListener("click", bankSetup);
+$("bankWrap").addEventListener("click", () => { bankOpen = !bankOpen; renderBankBox(); });
 $("hcBtn").addEventListener("click", hcTap);
 $("hcMini").addEventListener("click", async () => {
   const b = $("hcMini");
@@ -3139,7 +3200,8 @@ function obRenderKg() {
 }
 
 function obFinish() {
-  BANK = { kg: obKg, total: obKg * 10000, startDay: todayKey(), at: new Date().toISOString() };
+  const firstLog = [...new Set(LOG.map(e => e.day))].sort()[0] || todayKey();
+  BANK = { kg: obKg, total: obKg * 10000, startDay: firstLog, at: new Date().toISOString() };
   store.set(LS_BANK, BANK);
   localStorage.setItem(LS_OB, "1");
   $("ob").classList.remove("on");
