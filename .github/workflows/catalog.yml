@@ -1,0 +1,65 @@
+name: Compile community catalog
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalog-compile
+  cancel-in-progress: false
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the catalog from the Make export
+        run: |
+          set -euo pipefail
+          curl -sSf "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg" > export.json
+          echo "records: $(jq 'length' export.json)"
+
+      - name: Build catalog.json
+        run: |
+          set -euo pipefail
+          jq -c '
+            ( map(select(.barcode != null and .barcode != "" and .name != null and .name != "")) ) as $ok
+            | {
+                v: (now | strftime("%Y-%m-%d")),
+                count: ($ok | length),
+                codes: (
+                  $ok
+                  | map({
+                      key: (.barcode | tostring),
+                      value: {
+                        n: .name,
+                        k: ((.kcal // 0) | tonumber? // 0),
+                        p: ((.pro  // 0) | tonumber? // 0),
+                        c: ((.carb // 0) | tonumber? // 0),
+                        f: ((.fat  // 0) | tonumber? // 0),
+                        img: ((.photo // "") | if type=="string" and startswith("http") then . else "" end)
+                      }
+                    })
+                  | from_entries
+                )
+              }' export.json > catalog.new
+
+      - name: Commit only if the products changed
+        run: |
+          set -euo pipefail
+          old="$(jq -cS '.codes // {}' app/catalog.json 2>/dev/null || echo '{}')"
+          new="$(jq -cS '.codes // {}' catalog.new)"
+          if [ "$old" = "$new" ]; then
+            echo "catalog unchanged — nothing to publish"; exit 0
+          fi
+          mv catalog.new app/catalog.json
+          git config user.name "catalog-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/catalog.json
+          git commit -m "Catalog: republish community products ($(jq -r '.count' app/catalog.json) items)"
+          git push
