@@ -77,6 +77,25 @@
   .consent a { color:#8ab4f8; }
   .msg { margin-top:11px; font-size:14px; min-height:20px; }
   .msg.ok { color:var(--green); } .msg.err { color:#ff8f8f; }
+  .wcard { padding:14px 12px 10px; }
+  .wwrap { position:relative; }
+  .wwrap svg { display:block; width:100%; }
+  .wtip { position:absolute; top:0; left:0; pointer-events:none; display:none; z-index:2;
+          background:#0d1017f2; border:1px solid var(--line); border-radius:9px;
+          padding:7px 10px; white-space:nowrap; }
+  .wtip b { display:block; font-size:15px; font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+  .wtip small { display:block; color:var(--muted); font-size:11.5px; }
+  .wtip small .num { direction:ltr; unicode-bidi:isolate; }
+  .wfoot { margin:8px 4px 2px; font-size:11.5px; color:var(--muted); }
+  .wtable { margin:6px 4px 2px; }
+  .wtable summary { font-size:12px; color:var(--muted); cursor:pointer; }
+  .wtable table { width:100%; border-collapse:collapse; margin-top:8px;
+                  font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .wtable th { text-align:start; font-size:11px; color:var(--muted); font-weight:600;
+               padding:4px 6px; border-bottom:1px solid var(--line); }
+  .wtable td { padding:4px 6px; border-bottom:1px solid var(--line); }
+  .wtable td.n { direction:ltr; text-align:start; }
+  .wtable .dn { color:var(--green); } .wtable .up { color:#ff8f8f; }
   .who { margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
   .who p { font-size:13.5px; color:var(--muted); margin:0; }
   .who a { color:#8ab4f8; }
@@ -113,6 +132,13 @@
     <div class="num"><b>111.5</b><small data-t="d1"></small></div>
     <div class="num"><b id="statNow">—</b><small id="statDay"></small></div>
     <div class="num"><b>86.5</b><small data-t="goal"></small></div>
+  </div>
+
+  <h2 data-t="wt"></h2>
+  <div class="card wcard">
+    <div class="wwrap" id="wwrap"></div>
+    <div class="wfoot" id="wfoot"></div>
+    <details class="wtable"><summary data-t="wtsum"></summary><div id="wtbl"></div></details>
   </div>
 
   <h2 data-t="latest"></h2>
@@ -216,6 +242,42 @@ const TXT = {
  "priv": {
   "en": "Privacy",
   "he": "פרטיות"
+ },
+ "wt": {
+  "en": "The weight, day by day",
+  "he": "המשקל, יום אחרי יום"
+ },
+ "wnote": {
+  "en": "Morning weigh-in, posted whether it went down or up.",
+  "he": "שקילת בוקר, עולה לאתר בין אם ירד ובין אם עלה."
+ },
+ "wmidnote": {
+  "en": "Hollow dot = weighed midday, not the usual morning weigh-in.",
+  "he": "נקודה חלולה = שקילה בצהריים, לא שקילת הבוקר הרגילה."
+ },
+ "wmid": {
+  "en": "midday weigh-in",
+  "he": "שקילת צהריים"
+ },
+ "wfrom": {
+  "en": "from day 1",
+  "he": "מיום 1"
+ },
+ "wtsum": {
+  "en": "All the numbers",
+  "he": "כל המספרים"
+ },
+ "wthd": {
+  "en": "Day",
+  "he": "יום"
+ },
+ "wthkg": {
+  "en": "kg",
+  "he": "ק\"ג"
+ },
+ "wthch": {
+  "en": "Change",
+  "he": "שינוי"
  }
 };
 
@@ -256,12 +318,12 @@ document.querySelectorAll(".lang button").forEach(b => {
 /* Episodes. One line per day; the nightly task appends the newest at the end. */
 const EPISODES = [
   { d: 1, yt: "LhUtdpYMyo0", kg: 111.5, en: "Day one. 111.5 kg, and a camera pointed at all of it.", he: "יום ראשון. 111.5 ק\"ג, ומצלמה על הכל." },
-  { d: 2, yt: "olY7rEAQlMk", kg: null, en: "The routine, unedited.", he: "השגרה, בלי עריכה." },
-  { d: 3, yt: "W6ZnToeD6h8", kg: null, en: "Training, and every gram weighed.", he: "אימון, וכל גרם על המשקל." },
-  { d: 4, yt: "OIvXY7OA68c", kg: null, en: "Same plan. This is what building a habit looks like.", he: "אותה תוכנית. ככה בונים הרגל." },
-  { d: 5, yt: "6ZrEZnc1o6w", kg: null, en: "The day the algorithm ignored me. Posted anyway.", he: "היום שהאלגוריתם התעלם ממני. העליתי בכל זאת." },
-  { d: 6, yt: "QGZ8HE61xos", kg: null, en: "Uploaded late. Still uploaded.", he: "עלה באיחור. אבל עלה." },
-  { d: 7, yt: "D5B5iSaJL1U", kg: null, en: "One week in.", he: "שבוע בפנים." },
+  { d: 2, yt: "olY7rEAQlMk", kg: 109.8, en: "The routine, unedited.", he: "השגרה, בלי עריכה." },
+  { d: 3, yt: "W6ZnToeD6h8", kg: 108.6, en: "Training, and every gram weighed.", he: "אימון, וכל גרם על המשקל." },
+  { d: 4, yt: "OIvXY7OA68c", kg: 108.1, en: "Same plan. This is what building a habit looks like.", he: "אותה תוכנית. ככה בונים הרגל." },
+  { d: 5, yt: "6ZrEZnc1o6w", kg: 107.3, en: "The day the algorithm ignored me. Posted anyway.", he: "היום שהאלגוריתם התעלם ממני. העליתי בכל זאת." },
+  { d: 6, yt: "QGZ8HE61xos", kg: 107.6, en: "Uploaded late. Still uploaded.", he: "עלה באיחור. אבל עלה." },
+  { d: 7, yt: "D5B5iSaJL1U", kg: 108.0, en: "One week in.", he: "שבוע בפנים." },
   { d: 8, yt: "S4yWKQ9sLYY", kg: 106.7, en: "Chest day, 50 kg dumbbells, and a scream you can hear.", he: "אימון חזה, משקולות 50 קילו, וצעקה ששומעים." },
   { d: 9, yt: "_Hadwj3cDck", kg: 107.1, en: "The scale went up. Here is why that is normal.", he: "המשקל עלה. הנה למה זה נורמלי." },
   { d: 10, yt: "CH5cXyjt3hM", kg: 107.3, en: "Double digits. 10% done.", he: "דו־ספרתי. 10 אחוז מאחורינו." },
@@ -340,6 +402,171 @@ f.addEventListener("submit", async e => {
 });
 
 paint();
+</script>
+<script>
+/* The weight, one line per day — the nightly task appends the newest at the
+   end, right after it appends the day's EPISODES line. mid:1 marks a weigh-in
+   that was not the usual morning one; the chart shows it hollow and says so. */
+const WEIGHTS = [
+  { d: 1,  kg: 111.5 },
+  { d: 2,  kg: 109.8 },
+  { d: 3,  kg: 108.6 },
+  { d: 4,  kg: 108.1 },
+  { d: 5,  kg: 107.3 },
+  { d: 6,  kg: 107.6 },
+  { d: 7,  kg: 108.0 },
+  { d: 8,  kg: 106.7 },
+  { d: 9,  kg: 107.1 },
+  { d: 10, kg: 107.3 },
+  { d: 11, kg: 106.4 },
+  { d: 12, kg: 106.2 },
+  { d: 13, kg: 105.3 },
+  { d: 14, kg: 107.5 },
+  { d: 15, kg: 105.5 },
+  { d: 16, kg: 104.7 },
+  { d: 17, kg: 105.6 },
+  { d: 18, kg: 107.4, mid: 1 }
+];
+
+function renderWeight() {
+  const pts = WEIGHTS.filter(p => typeof p.kg === "number").sort((a, b) => a.d - b.d);
+  const wrap = document.getElementById("wwrap");
+  if (!wrap || pts.length < 2) return;
+
+  const W = Math.max(280, wrap.clientWidth), H = 240;
+  const M = { t: 24, r: 16, b: 26, l: 34 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+
+  const kgs = pts.map(p => p.kg);
+  const lo = Math.floor(Math.min(...kgs) - 0.4), hi = Math.ceil(Math.max(...kgs) + 0.4);
+  const d0 = pts[0].d, d1 = pts[pts.length - 1].d;
+  const x = d => M.l + (d - d0) / (d1 - d0) * iw;
+  const y = kg => M.t + (hi - kg) / (hi - lo) * ih;
+
+  const yStep = (hi - lo) > 6 ? 2 : 1;
+  let g = "", xl = "", yl = "";
+  for (let v = lo; v <= hi; v += yStep) {
+    g += '<line x1="' + M.l + '" y1="' + y(v) + '" x2="' + (W - M.r) + '" y2="' + y(v) + '" stroke="#232a38" stroke-width="1"/>';
+    yl += '<text x="' + (M.l - 7) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10.5" fill="#8b95a7">' + v + '</text>';
+  }
+  const xStep = [1, 2, 5, 10, 20].find(s => (d1 - d0) / s <= 8) || 20;
+  const xdays = [];
+  for (let d = d0; d <= d1; d += xStep) xdays.push(d);
+  if (xdays[xdays.length - 1] !== d1) {
+    if (d1 - xdays[xdays.length - 1] < xStep / 2) xdays.pop();
+    xdays.push(d1);
+  }
+  xdays.forEach(d => {
+    xl += '<text x="' + x(d) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#8b95a7">' + d + '</text>';
+  });
+
+  const line = pts.map((p, i) => (i ? "L" : "M") + x(p.d).toFixed(1) + " " + y(p.kg).toFixed(1)).join(" ");
+  const area = line + " L" + x(d1).toFixed(1) + " " + (H - M.b) + " L" + x(d0).toFixed(1) + " " + (H - M.b) + " Z";
+
+  let dots = "";
+  pts.forEach(p => {
+    dots += p.mid
+      ? '<circle cx="' + x(p.d) + '" cy="' + y(p.kg) + '" r="3.5" fill="#151a24" stroke="#ffd21e" stroke-width="2"/>'
+      : '<circle cx="' + x(p.d) + '" cy="' + y(p.kg) + '" r="3.5" fill="#ffd21e"/>';
+  });
+
+  /* selective labels: start, lowest, latest — never one on every point */
+  const minP = pts.reduce((a, b) => (b.kg < a.kg ? b : a));
+  let lbl = "";
+  const put = (p, dy, anchor) => {
+    lbl += '<text x="' + x(p.d) + '" y="' + (y(p.kg) + dy) + '" text-anchor="' + anchor +
+           '" font-size="11" font-weight="700" fill="#eef2f8">' + p.kg + '</text>';
+  };
+  put(pts[0], -9, "start");
+  if (minP !== pts[0] && minP !== pts[pts.length - 1]) put(minP, 16, "middle");
+  put(pts[pts.length - 1], -9, "end");
+
+  wrap.innerHTML =
+    '<svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H + '" style="direction:ltr" role="img" aria-label="' + (TXT.wt[L] || "") + '">' +
+    '<defs><linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#ffd21e" stop-opacity="0.16"/><stop offset="1" stop-color="#ffd21e" stop-opacity="0"/>' +
+    "</linearGradient></defs>" +
+    g + yl + xl +
+    '<path d="' + area + '" fill="url(#wgrad)"/>' +
+    '<path d="' + line + '" fill="none" stroke="#ffd21e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<line id="wxh" y1="' + M.t + '" y2="' + (H - M.b) + '" stroke="#8b95a7" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>' +
+    dots + lbl +
+    "</svg>";
+
+  const tip = document.createElement("div");
+  tip.className = "wtip";
+  const tv = document.createElement("b"), ts = document.createElement("small"), tm = document.createElement("small");
+  const tsDay = document.createElement("span"), tsNum = document.createElement("span"), tsFrom = document.createElement("span");
+  tsNum.className = "num";
+  ts.append(tsDay, tsNum, tsFrom);
+  tip.append(tv, ts, tm);
+  wrap.appendChild(tip);
+
+  const svg = wrap.querySelector("svg"), xh = wrap.querySelector("#wxh");
+  const dayWord = () => (L === "he" ? "יום" : "DAY");
+  function show(p) {
+    const dlt = (p.kg - pts[0].kg).toFixed(1);
+    tv.textContent = p.kg + " kg";
+    tsDay.textContent = dayWord() + " " + p.d + " • ";
+    tsNum.textContent = (dlt > 0 ? "+" : "") + dlt + " kg";
+    tsFrom.textContent = " " + TXT.wfrom[L];
+    tm.textContent = p.mid ? TXT.wmid[L] : "";
+    tm.style.display = p.mid ? "block" : "none";
+    xh.setAttribute("x1", x(p.d)); xh.setAttribute("x2", x(p.d)); xh.setAttribute("opacity", "0.5");
+    tip.style.display = "block";
+    const r = wrap.getBoundingClientRect(), s = r.width / W;
+    let tx = x(p.d) * s + 12;
+    if (tx + tip.offsetWidth > r.width - 4) tx = x(p.d) * s - tip.offsetWidth - 12;
+    let ty = y(p.kg) * s - tip.offsetHeight - 10;
+    if (ty < 0) ty = y(p.kg) * s + 14;
+    tip.style.transform = "translate(" + tx + "px," + ty + "px)";
+  }
+  svg.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / (r.width / W);
+    let best = pts[0];
+    pts.forEach(p => { if (Math.abs(x(p.d) - px) < Math.abs(x(best.d) - px)) best = p; });
+    show(best);
+  });
+  svg.addEventListener("pointerleave", () => {
+    tip.style.display = "none"; xh.setAttribute("opacity", "0");
+  });
+
+  /* footnote + table view, so every number is reachable without hovering */
+  const foot = document.getElementById("wfoot");
+  foot.textContent = TXT.wnote[L] + (pts.some(p => p.mid) ? " " + TXT.wmidnote[L] : "");
+  const tbl = document.getElementById("wtbl");
+  tbl.textContent = "";
+  const t = document.createElement("table"), hr = document.createElement("tr");
+  [TXT.wthd[L], TXT.wthkg[L], TXT.wthch[L]].forEach(h => {
+    const th = document.createElement("th"); th.textContent = h; hr.appendChild(th);
+  });
+  t.appendChild(hr);
+  pts.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    const c1 = document.createElement("td"); c1.textContent = p.d + (p.mid ? " *" : "");
+    const c2 = document.createElement("td"); c2.className = "n"; c2.textContent = p.kg.toFixed(1);
+    const c3 = document.createElement("td"); c3.className = "n";
+    if (i) {
+      const ch = Math.round((p.kg - pts[i - 1].kg) * 10) / 10;
+      c3.textContent = (ch > 0 ? "+" : "") + ch.toFixed(1);
+      if (ch < 0) c3.classList.add("dn"); else if (ch > 0) c3.classList.add("up");
+    } else c3.textContent = "—";
+    tr.append(c1, c2, c3);
+    t.appendChild(tr);
+  });
+  tbl.appendChild(t);
+  if (pts.some(p => p.mid)) {
+    const note = document.createElement("div");
+    note.style.cssText = "margin-top:6px;font-size:11px;color:#8b95a7";
+    note.textContent = "* " + TXT.wmid[L];
+    tbl.appendChild(note);
+  }
+}
+renderWeight();
+document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", renderWeight));
+let wRsz;
+window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(renderWeight, 150); });
 </script>
 <script>
 /* Counts a page view, and a visit only the first time in a browsing session,
