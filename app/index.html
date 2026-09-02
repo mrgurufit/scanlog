@@ -245,6 +245,13 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+  #manState { font-size:11.5px; color:var(--accent); margin-top:3px; }
+  #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+            border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
+  #manRow { display:none; gap:6px; margin-top:6px; align-items:center; }
+  #manRow input { width:90px; }
+  #manRow button { background:var(--panel2); border:1px solid var(--line); color:var(--text);
+                   border-radius:9px; padding:6px 10px; font-size:13px; font-family:inherit; cursor:pointer; }
   #updBar { display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
             background:var(--accent); color:#141005; font-weight:800; text-align:center;
             padding:9px 12px; font-size:13.5px; cursor:pointer; }
@@ -669,11 +676,17 @@
         <input type="number" id="wIn" inputmode="decimal" step="0.1">
       </div>
       <div class="efield">
-        <label for="actIn">נשרף היום סה"כ (צעדים + אימון)</label>
-        <input type="number" id="actIn" inputmode="numeric" placeholder="0">
+        <label>נשרף היום</label>
         <div id="stepsRow">
           <div id="stepsHint"></div>
           <button type="button" id="hcMini">🔄</button>
+        </div>
+        <div id="manState"></div>
+        <button type="button" id="manBtn">✏️ הזן קלוריות ידנית</button>
+        <div id="manRow">
+          <input type="number" id="manIn" inputmode="numeric" placeholder='קק"ל'>
+          <button type="button" id="manOk">✓</button>
+          <button type="button" id="manCancel">✕</button>
         </div>
       </div>
     </div>
@@ -949,6 +962,11 @@ const I18N = {
   "מסונכרן": "Synced",
   "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
   "⬇️ מוריד עדכון…": "⬇️ Downloading update…",
+  "נשרף היום": "Burned today",
+  "✏️ הזן קלוריות ידנית": "✏️ Enter calories manually",
+  "✏️ ערוך": "✏️ Edit",
+  "ידני:": "Manual:",
+  "חזרה לסנכרון": "Back to sync",
   "שמירת הגיבוי נכשלה: ": "The backup could not be saved: ",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
@@ -1166,8 +1184,15 @@ function renderEnergy(kcalIn) {
   const d = DAYDATA[viewDay] || {};
   $("wIn").value = d.weight || "";
   $("wIn").placeholder = weightFor(viewDay);
-  $("actIn").value = d.activity || "";
   $("stepsHint").textContent = stepsHintText(d);
+  const manual = !!d.activityManual;
+  $("manState").innerHTML = manual
+    ? "✍️ " + T("ידני:") + " " + Number(d.activity || 0).toLocaleString("he-IL") + " " + T("קק\"ל")
+      + ' · <u id="manClear" style="cursor:pointer">' + T("חזרה לסנכרון") + "</u>"
+    : "";
+  const mc = document.getElementById("manClear");
+  if (mc) mc.onclick = clearManual;
+  $("manBtn").textContent = manual ? T("✏️ ערוך") : T("✏️ הזן קלוריות ידנית");
   if (typeof hcMiniVis === "function") hcMiniVis();
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
@@ -1188,15 +1213,28 @@ function saveDayData() {
   scheduleAutoPush();
   const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
   const w = parseFloat($("wIn").value);
-  const a = parseFloat($("actIn").value);
   if (isFinite(w) && w > 30 && w < 250) { d.weight = w; d.weightManual = true; }
   else if (!$("wIn").value) { delete d.weight; delete d.weightManual; }
-  if (isFinite(a) && a >= 0) {
-    d.activity = Math.round(a); d.activityManual = true;
-  }
-  else if (!$("actIn").value) { delete d.activity; delete d.activityManual; }
   store.set(LS_DAY, DAYDATA);
   renderTotals();
+}
+
+/* the burned-today field is display-only now (his request 2026-09-02): the
+   synced Health Connect lines carry the number, and this pair of helpers
+   backs the "enter calories manually" button underneath them. A manual
+   value still wins in d.activity; clearing it hands the day back to sync. */
+function setManual(v) {
+  const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
+  d.activity = Math.round(v); d.activityManual = true;
+  store.set(LS_DAY, DAYDATA); scheduleAutoPush(); renderTotals();
+}
+function clearManual() {
+  const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
+  delete d.activityManual;
+  const s = (Number(d.burnSteps) || 0) + (Number(d.burnWork) || 0);
+  if (s) d.activity = s; else delete d.activity;
+  store.set(LS_DAY, DAYDATA); scheduleAutoPush(); renderTotals();
+  hcSync(true);
 }
 
 function saveProfile() {
@@ -1445,7 +1483,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.41";
+const APP_BUILD = "2026.09.02.42";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3209,7 +3247,18 @@ $("searchRes").addEventListener("click", e => {
 });
 $("pName").addEventListener("blur", () => autoImage($("pName").value.trim()));
 $("wIn").addEventListener("change", saveDayData);
-$("actIn").addEventListener("change", saveDayData);
+$("manBtn").addEventListener("click", () => {
+  const d = DAYDATA[viewDay] || {};
+  $("manIn").value = d.activityManual ? (d.activity || "") : "";
+  $("manRow").style.display = "flex";
+  $("manIn").focus();
+});
+$("manOk").addEventListener("click", () => {
+  const v = parseFloat($("manIn").value);
+  if (isFinite(v) && v >= 0) { setManual(v); $("manRow").style.display = "none"; }
+});
+$("manIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("manOk").click(); } });
+$("manCancel").addEventListener("click", () => { $("manRow").style.display = "none"; });
 $("hIn").addEventListener("change", saveProfile);
 $("aIn").addEventListener("change", saveProfile);
 $("autoScanChk").addEventListener("change", saveProfile);
