@@ -875,6 +875,9 @@ const I18N = {
   "למחוק \\\"": "Delete \\\"",
   "אין רישומים ל-": "No entries for ",
   "מוצרים נשמרו בזיכרון ·": "products remembered ·",
+  "שלך ·": "yours ·",
+  "בקטלוג הקהילתי ·": "in the community catalog ·",
+  "רישומים.": "entries.",
   "רישומים בסך הכל.": "entries in total.",
   "הכל נשמר בטלפון הזה בלבד. \"העתק דוח\" מכין את היום לשליחה לקלוד.": "Everything is stored on this phone only. \"Copy report\" prepares the day to send.",
   "הדוח היומי מסתנכרן לקלוד אוטומטית ✓": "The daily report syncs automatically ✓",
@@ -1503,7 +1506,8 @@ function renderLog() {
     g.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveEditedGrams(); } });
   }
   const pushOn = localStorage.getItem("fl_push") && localStorage.getItem("fl_pushkey");
-  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> ${T("מוצרים נשמרו בזיכרון ·")} <b>${LOG.length}</b> ${T("רישומים בסך הכל.")}
+  const catN = (CATALOG && CATALOG.codes) ? Object.keys(CATALOG.codes).length : 0;
+  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> ${T("שלך ·")} <b>${catN.toLocaleString(LOC())}</b> ${T("בקטלוג הקהילתי ·")} <b>${LOG.length}</b> ${T("רישומים.")}
     ${pushOn ? T("הדוח היומי מסתנכרן לקלוד אוטומטית ✓") : T('הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.')}`;
   renderTotals(); renderCal(); renderStreak(); renderBank();
 }
@@ -1544,7 +1548,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.50";
+const APP_BUILD = "2026.09.02.51";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
