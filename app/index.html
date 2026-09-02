@@ -948,6 +948,7 @@ const I18N = {
   "הגיבוי נשמר בהצלחה בתיקיית ההורדות": "Backup saved successfully to your Downloads folder",
   "מסונכרן": "Synced",
   "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
+  "⬇️ מוריד עדכון…": "⬇️ Downloading update…",
   "שמירת הגיבוי נכשלה: ": "The backup could not be saved: ",
   "Health Connect לא מותקן במכשיר הזה": "Health Connect is not installed on this device",
   "Health Connect לא זמין במכשיר הזה": "Health Connect is not available on this device",
@@ -1444,8 +1445,16 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.02.40";
+const APP_BUILD = "2026.09.02.41";
 let NATIVE_VER = "";
+
+/* the page booted - disarm the native dead-man switch, so a broken live
+   update can never brick the app (next launch falls back to the bundled
+   copy instead). Old APKs without bootOk are simply skipped. */
+try {
+  const _hb = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthBridge;
+  if (_hb && _hb.bootOk) _hb.bootOk().catch(() => {});
+} catch { /* web */ }
 function renderVer() {
   $("verLine").innerHTML = T("גרסת תוכן ") + APP_BUILD + (NATIVE_VER ? " · אפליקציה " + NATIVE_VER : "") +
     (NATIVE_VER ? ' · <u id="dbgLink" style="cursor:pointer">אבחון</u>' : "");
@@ -2945,16 +2954,33 @@ document.addEventListener("visibilitychange", async () => {
    sit unseen until he happened to kill the app. Poll a tiny version file and
    offer the reload instead of waiting for a process death. */
 let updLast = 0;
+// inside the APK the page is served from local files, so the version file
+// must come from the real site (github.io answers with ACAO:* so the
+// cross-origin fetch is allowed); in the browser/PWA relative is correct
+const IN_APK = navigator.userAgent.includes("ScanLogAPK");
+const VERSION_URL = IN_APK ? "https://mrgurufit.github.io/scanlog/app/version.json" : "./version.json";
 async function checkForUpdate() {
   if (Date.now() - updLast < 60 * 1000) return;
   updLast = Date.now();
   try {
-    const r = await fetch("./version.json?_=" + Date.now(), { cache: "no-store" });
+    const r = await fetch(VERSION_URL + "?_=" + Date.now(), { cache: "no-store" });
     const v = await r.json();
     if (v && v.build && v.build !== APP_BUILD) $("updBar").style.display = "block";
   } catch { /* offline - the next resume tries again */ }
 }
-$("updBar").addEventListener("click", () => location.reload());
+$("updBar").addEventListener("click", async () => {
+  const hb = HB();
+  if (hb && hb.applyUpdate) {
+    // the native side downloads the new page into filesDir, re-points the
+    // local server at it and reloads - same https://localhost origin, so
+    // localStorage (his whole log) is untouched
+    $("updBar").textContent = T("⬇️ מוריד עדכון…");
+    try { await hb.applyUpdate(); }
+    catch { $("updBar").textContent = T("🔄 יש גרסה חדשה — הקש לעדכון"); }
+    return;
+  }
+  location.reload();
+});
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkForUpdate(); });
 checkForUpdate();
 
@@ -3286,6 +3312,13 @@ $("impInput").addEventListener("change", e => {
 // deployed the request 404s and the catch swallows it, which is cheaper
 // than hard-coding a hostname the app then cannot be tested on.
 if ("serviceWorker" in navigator && window.isSecureContext && location.protocol.startsWith("http")) {
+  if (IN_APK) {
+    // NEVER register a service worker inside the APK: once a worker controls
+    // the page, loads bypass the WebView interception that injects the
+    // Capacitor bridge - no HealthBridge, no scanner, no backup (seen live
+    // on 1.24). Content updates arrive through applyUpdate instead.
+    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+  } else
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
