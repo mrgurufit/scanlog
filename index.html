@@ -545,7 +545,7 @@ function renderWeight() {
   if (!wrap || pts.length < 2) return;
 
   const W = Math.max(280, wrap.clientWidth), H = 240;
-  const M = { t: 34, r: 18, b: 26, l: 34 };   /* headroom for the calorie labels */
+  const M = { t: 46, r: 18, b: 26, l: 34 };   /* headroom for the calorie labels */
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
 
   const kgs = pts.map(p => p.kg);
@@ -595,17 +595,24 @@ function renderWeight() {
   /* the amount, above its own point, only while the points are far enough
      apart to read - past that the colour and the tooltip still carry it */
   const gap = iw / Math.max(1, pts.length - 1);
+  const upright = gap >= 26;          /* room for a horizontal number */
+  const turned = !upright && gap >= 11;  /* rotate rather than drop it */
   let cal = "";
-  if (gap >= 22) {
+  if (upright || turned) {
     pts.forEach(p => {
       const b = balFor(p.d);
       if (b == null) return;
       const k = Math.abs(b) >= 1000
         ? (Math.abs(b) / 1000).toFixed(1).replace(/\.0$/, "") + "k"
         : String(Math.abs(b));
-      cal += '<text x="' + x(p.d) + '" y="' + (y(p.kg) - 11) + '" text-anchor="middle" ' +
-             'font-size="9.5" font-weight="700" fill="' + colFor(b) + '">' +
-             (b >= 0 ? "\u2212" : "+") + k + '</text>';
+      const txt = (b >= 0 ? "\u2212" : "+") + k;
+      const px = x(p.d), py = y(p.kg) - (upright ? 11 : 10);
+      cal += upright
+        ? '<text x="' + px + '" y="' + py + '" text-anchor="middle" font-size="9.5" ' +
+          'font-weight="700" fill="' + colFor(b) + '">' + txt + '</text>'
+        : '<text x="' + px + '" y="' + py + '" text-anchor="start" font-size="9" ' +
+          'font-weight="700" fill="' + colFor(b) + '" transform="rotate(-90 ' +
+          px + ' ' + py + ')">' + txt + '</text>';
     });
   }
 
@@ -727,6 +734,19 @@ renderWeight();
 document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", renderWeight));
 let wRsz;
 window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(renderWeight, 150); });
+
+/* The first render happens before the browser has laid this element out, so
+   clientWidth reads 0 and the chart falls back to its 280px minimum - which
+   left no room for the per-day numbers. Redraw as soon as a real width exists. */
+(function () {
+  const wrap = document.getElementById("wwrap");
+  if (!wrap || !window.ResizeObserver) return;
+  let last = 0;
+  new ResizeObserver(entries => {
+    const w = Math.round(entries[0].contentRect.width);
+    if (w && Math.abs(w - last) > 8) { last = w; renderWeight(); }
+  }).observe(wrap);
+})();
 </script>
 <script>
 /* Counts a page view, and a visit only the first time in a browsing session,
