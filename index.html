@@ -16,6 +16,10 @@
   }
   * { box-sizing:border-box; }
   .bank { margin-top:14px; }
+  .bwrap { overflow-x:auto; }
+  .bfoot { margin-top:9px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+  .bfoot b.def { color:var(--green); }
+  .bfoot b.sur { color:#ff5c5c; }
   .bankhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
   .bankhead span { color:var(--muted); font-size:14px; }
   .bankhead b {
@@ -167,6 +171,12 @@
     <details class="wtable"><summary data-t="wtsum"></summary><div id="wtbl"></div></details>
   </div>
 
+  <h2 data-t="balh"></h2>
+  <div class="card">
+    <div class="bwrap" id="bwrap"></div>
+    <div class="bfoot" id="bfoot"></div>
+  </div>
+
   <h2 data-t="latest"></h2>
   <div id="latest"></div>
 
@@ -216,6 +226,10 @@ const TXT = {
  "bankh": {
   "en": "Calories left to burn",
   "he": "קלוריות שנותרו לשרוף"
+ },
+ "balh": {
+  "en": "Deficit or surplus, day by day",
+  "he": "גירעון או עודף, יום אחרי יום"
  },
  "latest": {
   "en": "Latest episode",
@@ -342,6 +356,7 @@ document.querySelectorAll(".lang button").forEach(b => {
     paint();
     if (typeof renderEpisodes === "function") renderEpisodes();
     if (typeof renderBank === "function") renderBank();
+    if (typeof renderBalance === "function") renderBalance();
   });
 });
 
@@ -461,35 +476,163 @@ const WEIGHTS = [
   { d: 19, kg: 106.5 }
 ];
 
-/* The calorie bank. Same conversion his app uses - 10,000 kcal per kg of fat -
-   so the site and the phone can never quote him two different numbers.
-   Midday weigh-ins (mid:1) are skipped: day 18 read 107.4 at 12:45 and the
-   whole point of flagging it was that it is not comparable, so it must not be
-   allowed to move the headline figure either. */
-const BANK_START = 111.5, BANK_GOAL = 86.5, KCAL_PER_KG = 10000;
+/* Every day's calories in and out, straight from the day_meta.json the reel
+   was rendered from - the same numbers that were burned into each video, so
+   the site cannot drift from what was published. Day 3 is null: that reel ran
+   without a calorie panel and the figures were never written down. */
+const DAILY = [
+  { d: 1, in: 987, out: 3576 },
+  { d: 2, in: 932, out: 3586 },
+  { d: 3, in: null, out: null },
+  { d: 4, in: 1291, out: 3576 },
+  { d: 5, in: 1126, out: 3300 },
+  { d: 6, in: 4731, out: 3758 },
+  { d: 7, in: 1729, out: 3523 },
+  { d: 8, in: 1252, out: 3230 },
+  { d: 9, in: 2008, out: 3024 },
+  { d: 10, in: 957, out: 2826 },
+  { d: 11, in: 921, out: 3002 },
+  { d: 12, in: 1317, out: 2897 },
+  { d: 13, in: 1911, out: 2847 },
+  { d: 14, in: 5858, out: 3297 },
+  { d: 15, in: 1025, out: 3373 },
+  { d: 16, in: 2161, out: 2987 },
+  { d: 17, in: 4000, out: 2260 },
+  { d: 18, in: 779, out: 2955 },
+  { d: 19, in: 2049, out: 3049 }
+];
+
+const DAY1_UTC = Date.UTC(2026, 7, 16);          /* DAY 1 = 2026-08-16 */
+function dateFor(d) { return new Date(DAY1_UTC + (d - 1) * 864e5); }
+function ddmm(d) {
+  const x = dateFor(d);
+  return String(x.getUTCDate()).padStart(2, "0") + "." +
+         String(x.getUTCMonth() + 1).padStart(2, "0");
+}
+function balanceOf(r) {
+  return (r.in == null || r.out == null) ? null : r.out - r.in;
+}
+
+/* The calorie bank, the way his app keeps it: 25 kg of fat at 10,000 kcal per
+   kg, drained by each day's ACTUAL deficit rather than by the scale. Those two
+   disagree - the scale has moved 5.0 kg while the logged deficits account for
+   about 2.2 kg - and the app's number is the one he checks on his phone, so it
+   is the one the site has to show. */
+const BANK_KG = 25, KCAL_PER_KG = 10000;
 
 function renderBank() {
-  const real = WEIGHTS.filter(w => !w.mid && w.kg);
-  const now = real.length ? real[real.length - 1].kg : BANK_START;
-  const total = (BANK_START - BANK_GOAL) * KCAL_PER_KG;
-  const burned = Math.max(0, (BANK_START - now) * KCAL_PER_KG);
+  const total = BANK_KG * KCAL_PER_KG;
+  let burned = 0, known = 0, gaps = [];
+  DAILY.forEach(r => {
+    const b = balanceOf(r);
+    if (b == null) { gaps.push(r.d); return; }
+    burned += b; known++;
+  });
+  burned = Math.max(0, burned);
   const left = Math.max(0, total - burned);
   const pct = Math.min(100, (burned / total) * 100);
-
-  const n = x => Math.round(x).toLocaleString(L === "he" ? "he-IL" : "en-US");
-  const kg = x => (Math.round(x * 10) / 10).toLocaleString(L === "he" ? "he-IL" : "en-US");
+  const loc = () => (L === "he" ? "he-IL" : "en-US");
+  const n = x => Math.round(x).toLocaleString(loc());
 
   document.getElementById("bankLeft").textContent = n(left);
   document.getElementById("bankFill").style.width = pct.toFixed(1) + "%";
+
+  const gapTxt = gaps.length
+    ? (L === "he"
+        ? ` (${gaps.length === 1 ? "יום" : "ימים"} ${gaps.join(", ")} ללא רישום קלוריות)`
+        : ` (day${gaps.length > 1 ? "s" : ""} ${gaps.join(", ")} not logged)`)
+    : "";
+
   document.getElementById("bankFoot").innerHTML = L === "he"
     ? `25 ק"ג שומן, 10,000 קק"ל לכל קילו, הם <b>${n(total)}</b> לשרוף.
-       ירדו עד כה <b>${kg(BANK_START - now)} ק"ג</b> ${'—'} כלומר
-       <b>${n(burned)}</b> כבר נשרפו, <b>${pct.toFixed(1)}%</b> מהדרך.
-       הבר עוקב אחרי שקילות הבוקר בלבד; שקילת צהריים לא מזיזה אותו.`
+       הבנק יורד לפי הגירעון האמיתי של כל יום, בדיוק כמו באפליקציה.
+       ${known} ימים נרשמו${gapTxt}, ובסך הכל <b>${n(burned)}</b> נשרפו,
+       <b>${pct.toFixed(1)}%</b> מהדרך.`
     : `25 kg of fat at 10,000 kcal per kg is <b>${n(total)}</b> to burn.
-       <b>${kg(BANK_START - now)} kg</b> down so far, so <b>${n(burned)}</b>
-       of it is gone ${'—'} <b>${pct.toFixed(1)}%</b> of the way.
-       The bar follows morning weigh-ins only; a midday reading never moves it.`;
+       The bank drains by each day's real deficit, exactly like the app does it.
+       ${known} days logged${gapTxt}, <b>${n(burned)}</b> burned so far,
+       <b>${pct.toFixed(1)}%</b> of the way.`;
+}
+
+/* One bar per day: green above the line for a deficit, red below for a
+   surplus. Days with no calorie record are drawn as a hollow dashed tick, not
+   as a zero, because a zero would claim he ate exactly his burn. */
+function renderBalance() {
+  const wrap = document.getElementById("bwrap");
+  if (!wrap) return;
+  const rows = DAILY.slice().sort((a, b) => a.d - b.d);
+  if (!rows.length) return;
+  const d0 = rows[0].d, d1 = rows[rows.length - 1].d;
+
+  const W = Math.max(320, wrap.clientWidth), H = 210;
+  const M = { t: 22, r: 14, b: 26, l: 46 };
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+
+  const vals = rows.map(balanceOf).filter(v => v != null);
+  const cap = Math.max(1, ...vals.map(Math.abs));
+  const mid = M.t + ih / 2;
+  const scale = v => Math.abs(v) / cap * (ih / 2);
+  const bw = Math.max(4, Math.min(18, iw / rows.length - 3));
+  const x = d => M.l + (d - d0 + 0.5) / (d1 - d0 + 1) * iw;
+  const round100 = Math.round(cap / 100) * 100;
+
+  let gl = "", bars = "", xl = "";
+  gl += '<line x1="' + M.l + '" y1="' + mid + '" x2="' + (W - M.r) + '" y2="' + mid +
+        '" stroke="#3a4356" stroke-width="1"/>';
+  [1, -1].forEach(sgn => {
+    const yy = mid - sgn * (ih / 2);
+    gl += '<line x1="' + M.l + '" y1="' + yy + '" x2="' + (W - M.r) + '" y2="' + yy +
+          '" stroke="#232a38" stroke-width="1"/>';
+    gl += '<text x="' + (M.l - 7) + '" y="' + (yy + 3.5) +
+          '" text-anchor="end" font-size="10" fill="#8b95a7">' +
+          (sgn > 0 ? "+" : "\u2212") + round100 + '</text>';
+  });
+
+  rows.forEach(r => {
+    const b = balanceOf(r);
+    const cx = x(r.d);
+    if (b == null) {
+      bars += '<rect x="' + (cx - bw / 2) + '" y="' + (mid - 3) + '" width="' + bw +
+              '" height="6" rx="2" fill="none" stroke="#4a5568" stroke-width="1" ' +
+              'stroke-dasharray="2 2"><title>' + ddmm(r.d) + '</title></rect>';
+      return;
+    }
+    const h = Math.max(2, scale(b));
+    const up = b >= 0;
+    bars += '<rect x="' + (cx - bw / 2) + '" y="' + (up ? mid - h : mid) + '" width="' + bw +
+            '" height="' + h + '" rx="2" fill="' + (up ? "#3ddc84" : "#ff5c5c") + '"><title>' +
+            ddmm(r.d) + "  " + (up ? "+" : "\u2212") + Math.abs(b).toLocaleString("en-US") +
+            '</title></rect>';
+  });
+
+  const marks = [];
+  for (let d = d0; d <= d1; d += 7) marks.push(d);
+  if (marks[marks.length - 1] !== d1) marks.push(d1);
+  marks.forEach(d => {
+    xl += '<text x="' + x(d) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#8b95a7">' +
+          ddmm(d) + '</text>';
+  });
+
+  wrap.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" width="' + W + '" height="' + H +
+                   '" style="direction:ltr" role="img">' + gl + bars + xl + '</svg>';
+
+  const defs = rows.filter(r => (balanceOf(r) || 0) > 0);
+  const surs = rows.filter(r => (balanceOf(r) || 0) < 0);
+  const best = defs.length ? defs.reduce((a, b) => (balanceOf(b) > balanceOf(a) ? b : a)) : null;
+  const worst = surs.length ? surs.reduce((a, b) => (balanceOf(b) < balanceOf(a) ? b : a)) : null;
+  const n = v => Math.abs(v).toLocaleString(L === "he" ? "he-IL" : "en-US");
+
+  document.getElementById("bfoot").innerHTML = L === "he"
+    ? '<b class="def">' + defs.length + ' \u05d9\u05de\u05d9 \u05d2\u05d9\u05e8\u05e2\u05d5\u05df</b> \u05de\u05d5\u05dc <b class="sur">' +
+      surs.length + ' \u05d9\u05de\u05d9 \u05e2\u05d5\u05d3\u05e3</b>. ' +
+      (best ? '\u05d4\u05d2\u05d9\u05e8\u05e2\u05d5\u05df \u05d4\u05d2\u05d3\u05d5\u05dc \u05d1\u05d9\u05d5\u05ea\u05e8: <b class="def">' + n(balanceOf(best)) + '</b> \u05d1-' + ddmm(best.d) + '. ' : '') +
+      (worst ? '\u05d4\u05e2\u05d5\u05d3\u05e3 \u05d4\u05d2\u05d3\u05d5\u05dc \u05d1\u05d9\u05d5\u05ea\u05e8: <b class="sur">' + n(balanceOf(worst)) + '</b> \u05d1-' + ddmm(worst.d) + '. ' : '') +
+      '\u05d9\u05e8\u05d5\u05e7 \u05d6\u05d4 \u05d2\u05d9\u05e8\u05e2\u05d5\u05df, \u05d0\u05d3\u05d5\u05dd \u05d6\u05d4 \u05e2\u05d5\u05d3\u05e3. \u05e7\u05d5 \u05de\u05e7\u05d5\u05d5\u05e7\u05d5 \u05d4\u05d5\u05d0 \u05d9\u05d5\u05dd \u05dc\u05dc\u05d0 \u05e8\u05d9\u05e9\u05d5\u05dd \u05e7\u05dc\u05d5\u05e8\u05d9\u05d5\u05ea.'
+    : '<b class="def">' + defs.length + ' days in deficit</b> against <b class="sur">' +
+      surs.length + ' in surplus</b>. ' +
+      (best ? 'Biggest deficit <b class="def">' + n(balanceOf(best)) + '</b> on ' + ddmm(best.d) + '. ' : '') +
+      (worst ? 'Biggest surplus <b class="sur">' + n(balanceOf(worst)) + '</b> on ' + ddmm(worst.d) + '. ' : '') +
+      'Green is deficit, red is surplus. A dashed tick is a day with no calorie record.';
 }
 
 function renderWeight() {
@@ -513,15 +656,17 @@ function renderWeight() {
     g += '<line x1="' + M.l + '" y1="' + y(v) + '" x2="' + (W - M.r) + '" y2="' + y(v) + '" stroke="#232a38" stroke-width="1"/>';
     yl += '<text x="' + (M.l - 7) + '" y="' + (y(v) + 3.5) + '" text-anchor="end" font-size="10.5" fill="#8b95a7">' + v + '</text>';
   }
-  const xStep = [1, 2, 5, 10, 20].find(s => (d1 - d0) / s <= 8) || 20;
+  /* real dates, every 7 days, plus the newest - he asked to see the calendar
+     rather than a day counter */
+  const xStep = 7;
   const xdays = [];
   for (let d = d0; d <= d1; d += xStep) xdays.push(d);
   if (xdays[xdays.length - 1] !== d1) {
-    if (d1 - xdays[xdays.length - 1] < xStep / 2) xdays.pop();
+    if (d1 - xdays[xdays.length - 1] < 3) xdays.pop();
     xdays.push(d1);
   }
   xdays.forEach(d => {
-    xl += '<text x="' + x(d) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#8b95a7">' + d + '</text>';
+    xl += '<text x="' + x(d) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10.5" fill="#8b95a7">' + ddmm(d) + '</text>';
   });
 
   const line = pts.map((p, i) => (i ? "L" : "M") + x(p.d).toFixed(1) + " " + y(p.kg).toFixed(1)).join(" ");
@@ -652,6 +797,7 @@ window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(
 })();
 
 renderBank();
+renderBalance();
 </script>
 </body>
 </html>
