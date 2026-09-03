@@ -775,6 +775,8 @@ const I18N = {
   "נשרפו": "burned",
   "אפשר גם מאוחר יותר, בהגדרות": "You can do this later, in Settings",
   "כוון את הברקוד למרכז — הזיהוי אוטומטי": "Point the barcode at the centre. It reads by itself",
+  "פנס דולק": "Torch on",
+  "הפנס לא נתמך במצלמה הזו": "The torch isn't supported on this camera",
   "🔦 פנס": "🔦 Torch",
   "📸 צלם ידנית": "📸 Shoot manually",
   "🖼️ צלם תמונה": "🖼️ Take a photo",
@@ -1574,7 +1576,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.03.53";
+const APP_BUILD = "2026.09.03.54";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2103,13 +2105,17 @@ async function startScan() {
   $("camHint").textContent = T("כוון את הברקוד למרכז — הזיהוי אוטומטי");
   lockCode = null; lockHits = 0;
   scanning = true;
-  // a torch helps barcodes in bad light - offer it only where the camera has one
+  // a torch helps barcodes in bad light. The Android WebView usually does NOT
+  // advertise the torch in getCapabilities() even on phones that have one, yet
+  // it honours the torch constraint on tap - so inside the APK we always offer
+  // the button and let toggleTorch try it (it fails gracefully if unsupported).
   torchOn = false;
   $("torchBtn").className = "";
   try {
     const track = stream.getVideoTracks()[0];
-    if (track.getCapabilities && track.getCapabilities().torch) $("torchBtn").classList.add("avail");
-  } catch { /* no capabilities API */ }
+    const caps = (track.getCapabilities && track.getCapabilities()) || {};
+    if (caps.torch || IN_APK) $("torchBtn").classList.add("avail");
+  } catch { if (IN_APK) $("torchBtn").classList.add("avail"); }
   loop();
 }
 
@@ -2121,7 +2127,11 @@ async function toggleTorch() {
     torchOn = !torchOn;
     await track.applyConstraints({ advanced: [{ torch: torchOn }] });
     $("torchBtn").classList.toggle("on", torchOn);
-  } catch { torchOn = false; $("torchBtn").classList.remove("on"); }
+    $("camHint").textContent = torchOn ? T("פנס דולק") : T("כוון את הברקוד למרכז — הזיהוי אוטומטי");
+  } catch {
+    torchOn = false; $("torchBtn").classList.remove("on");
+    $("camHint").textContent = T("הפנס לא נתמך במצלמה הזו");
+  }
 }
 
 /* Live scanning is the bonus, not the product. When the frame is not permitted
