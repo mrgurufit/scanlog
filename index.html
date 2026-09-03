@@ -15,6 +15,23 @@
     --text:#eef2f8; --muted:#8b95a7; --accent:#ffd21e; --green:#3ddc84;
   }
   * { box-sizing:border-box; }
+  .bank { margin-top:14px; }
+  .bankhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .bankhead span { color:var(--muted); font-size:14px; }
+  .bankhead b {
+    margin-inline-start:auto; font-size:26px; letter-spacing:-.5px;
+    font-variant-numeric:tabular-nums; color:var(--accent);
+  }
+  .banktrack {
+    margin-top:10px; height:12px; border-radius:99px;
+    background:var(--panel2); border:1px solid var(--line); overflow:hidden;
+  }
+  .banktrack i {
+    display:block; height:100%; width:0; border-radius:99px;
+    background:linear-gradient(90deg,#ffb800,var(--accent));
+    transition:width .6s ease;
+  }
+  .bankfoot { margin-top:9px; color:var(--muted); font-size:12.5px; line-height:1.65; }
   body {
     margin:0; background:var(--bg); color:var(--text); line-height:1.6;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
@@ -134,6 +151,15 @@
     <div class="num"><b>86.5</b><small data-t="goal"></small></div>
   </div>
 
+  <div class="card bank">
+    <div class="bankhead">
+      <span data-t="bankh"></span>
+      <b id="bankLeft">—</b>
+    </div>
+    <div class="banktrack"><i id="bankFill"></i></div>
+    <div class="bankfoot" id="bankFoot"></div>
+  </div>
+
   <h2 data-t="wt"></h2>
   <div class="card wcard">
     <div class="wwrap" id="wwrap"></div>
@@ -186,6 +212,10 @@ const TXT = {
  "goal": {
   "en": "the goal",
   "he": "היעד"
+ },
+ "bankh": {
+  "en": "Calories left to burn",
+  "he": "קלוריות שנותרו לשרוף"
  },
  "latest": {
   "en": "Latest episode",
@@ -311,6 +341,7 @@ document.querySelectorAll(".lang button").forEach(b => {
     localStorage.setItem(LS, L);
     paint();
     if (typeof renderEpisodes === "function") renderEpisodes();
+    if (typeof renderBank === "function") renderBank();
   });
 });
 
@@ -429,6 +460,37 @@ const WEIGHTS = [
   { d: 18, kg: 107.4, mid: 1 },
   { d: 19, kg: 106.5 }
 ];
+
+/* The calorie bank. Same conversion his app uses - 10,000 kcal per kg of fat -
+   so the site and the phone can never quote him two different numbers.
+   Midday weigh-ins (mid:1) are skipped: day 18 read 107.4 at 12:45 and the
+   whole point of flagging it was that it is not comparable, so it must not be
+   allowed to move the headline figure either. */
+const BANK_START = 111.5, BANK_GOAL = 86.5, KCAL_PER_KG = 10000;
+
+function renderBank() {
+  const real = WEIGHTS.filter(w => !w.mid && w.kg);
+  const now = real.length ? real[real.length - 1].kg : BANK_START;
+  const total = (BANK_START - BANK_GOAL) * KCAL_PER_KG;
+  const burned = Math.max(0, (BANK_START - now) * KCAL_PER_KG);
+  const left = Math.max(0, total - burned);
+  const pct = Math.min(100, (burned / total) * 100);
+
+  const n = x => Math.round(x).toLocaleString(L === "he" ? "he-IL" : "en-US");
+  const kg = x => (Math.round(x * 10) / 10).toLocaleString(L === "he" ? "he-IL" : "en-US");
+
+  document.getElementById("bankLeft").textContent = n(left);
+  document.getElementById("bankFill").style.width = pct.toFixed(1) + "%";
+  document.getElementById("bankFoot").innerHTML = L === "he"
+    ? `25 ק"ג שומן, 10,000 קק"ל לכל קילו, הם <b>${n(total)}</b> לשרוף.
+       ירדו עד כה <b>${kg(BANK_START - now)} ק"ג</b> ${'—'} כלומר
+       <b>${n(burned)}</b> כבר נשרפו, <b>${pct.toFixed(1)}%</b> מהדרך.
+       הבר עוקב אחרי שקילות הבוקר בלבד; שקילת צהריים לא מזיזה אותו.`
+    : `25 kg of fat at 10,000 kcal per kg is <b>${n(total)}</b> to burn.
+       <b>${kg(BANK_START - now)} kg</b> down so far, so <b>${n(burned)}</b>
+       of it is gone ${'—'} <b>${pct.toFixed(1)}%</b> of the way.
+       The bar follows morning weigh-ins only; a midday reading never moves it.`;
+}
 
 function renderWeight() {
   const pts = WEIGHTS.filter(p => typeof p.kg === "number").sort((a, b) => a.d - b.d);
@@ -588,6 +650,8 @@ window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(
     else fetch(u, { mode: "no-cors", keepalive: true }).catch(function () {});
   } catch (e) { /* measurement must never break the page */ }
 })();
+
+renderBank();
 </script>
 </body>
 </html>
