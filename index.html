@@ -737,15 +737,21 @@ window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(
 
 /* The first render happens before the browser has laid this element out, so
    clientWidth reads 0 and the chart falls back to its 280px minimum - which
-   left no room for the per-day numbers. Redraw as soon as a real width exists. */
+   leaves no room for the per-day numbers. Redrawing is cheap and idempotent,
+   so it hangs off every signal that a real width might now exist rather than
+   trusting any single one of them. */
 (function () {
   const wrap = document.getElementById("wwrap");
-  if (!wrap || !window.ResizeObserver) return;
+  if (!wrap) return;
   let last = 0;
-  new ResizeObserver(entries => {
-    const w = Math.round(entries[0].contentRect.width);
+  function sync() {
+    const w = Math.round(wrap.clientWidth);
     if (w && Math.abs(w - last) > 8) { last = w; renderWeight(); }
-  }).observe(wrap);
+  }
+  requestAnimationFrame(() => { sync(); requestAnimationFrame(sync); });
+  window.addEventListener("load", sync);
+  document.addEventListener("visibilitychange", sync);
+  if (window.ResizeObserver) new ResizeObserver(sync).observe(wrap);
 })();
 </script>
 <script>
