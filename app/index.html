@@ -438,7 +438,22 @@
   .shotwrap { position:relative; }
   .shotwrap button { position:absolute; inset:auto 0 -2px 0; width:64px; padding:2px 0; font-size:10px; line-height:1.4;
     border:0; border-radius:0 0 9px 9px; background:rgba(0,0,0,.66); color:#ffd84d; cursor:pointer; }
+  /* when the product has no picture the whole thumb becomes a "photograph me" prompt */
+  .shotwrap.needpic #shot { border:1.5px dashed var(--accent); }
+  .shotwrap.needpic button { background:var(--accent); color:#141005; font-weight:700; }
   .item img { cursor:pointer; }
+
+  /* camera-or-gallery chooser */
+  .picchoose { position:fixed; inset:0; z-index:90; display:none; align-items:flex-end; justify-content:center;
+    background:rgba(0,0,0,.55); }
+  .picchoose.on { display:flex; }
+  .picchoose-sheet { width:100%; max-width:460px; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px 16px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:10px; }
+  .picchoose-title { font-size:15px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .picchoose-sheet button { padding:14px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--text); font-size:15px; cursor:pointer; }
+  .picchoose-sheet button.prim { background:var(--accent); color:#141005; border-color:var(--accent); font-weight:700; }
+  .picchoose-sheet button.ghost { background:transparent; color:var(--muted); }
 
   /* log */
   .loghead { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
@@ -535,6 +550,16 @@
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
   <input type="file" id="picInput" accept="image/*" hidden>
+  <input type="file" id="picCam" accept="image/*" capture="environment" hidden>
+
+  <div id="picChoose" class="picchoose">
+    <div class="picchoose-sheet">
+      <div class="picchoose-title">תמונת המוצר</div>
+      <button type="button" id="picCamBtn" class="prim">📷 צלם את המוצר</button>
+      <button type="button" id="picGalBtn">🖼️ בחר מהגלריה</button>
+      <button type="button" id="picCancel" class="ghost">ביטול</button>
+    </div>
+  </div>
 
 <div id="ob">
   <div class="obcard">
@@ -843,6 +868,11 @@ const I18N = {
   "אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.": "You can take a photo, type the barcode, or search by name below.",
   "מוצר חדש": "New product",
   "החלף": "Change",
+  "📷 צלם": "📷 Photo",
+  "תמונת המוצר": "Product photo",
+  "📷 צלם את המוצר": "📷 Photograph the product",
+  "🖼️ בחר מהגלריה": "🖼️ Choose from gallery",
+  "ביטול": "Cancel",
   "בחר תמונה למוצר": "Choose a product photo",
   "שם המוצר": "Product name",
   "למשל: קוטג׳ 5%": "e.g. cottage cheese 5%",
@@ -1641,7 +1671,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.62";
+const APP_BUILD = "2026.09.04.63";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2776,6 +2806,10 @@ const shotSrc = () => $("shot").getAttribute("src") || "";
 function setShot(u) {
   if (u) $("shot").setAttribute("src", u); else $("shot").removeAttribute("src");
   $("shot").classList.toggle("blank", !u);
+  // no picture yet -> turn the thumb into a "photograph the product" prompt
+  const w = $("shot").closest(".shotwrap");
+  if (w) w.classList.toggle("needpic", !u);
+  $("picBtn").textContent = u ? T("החלף") : T("📷 צלם");
 }
 
 /* "פטריות, טריות" and "פלפל אדום, טרי" are the same foods as "פטריות" and
@@ -3791,7 +3825,7 @@ $("log").addEventListener("click", e => {
   // a tap on the thumbnail replaces that row's picture instead of opening the
   // grams editor
   const pic = e.target.dataset && e.target.dataset.pic;
-  if (pic) { picTarget = pic; $("picInput").click(); return; }
+  if (pic) { openPicChoose(pic); return; }
   if (e.target.closest("input")) return;
   // tapping a row opens the entry popup to change the amount / portion
   const row = e.target.closest(".item");
@@ -4009,7 +4043,7 @@ setTimeout(fillMissingImages, 2600);
    phone photo straight off the camera would blow through it in a dozen rows. */
 let picTarget = null;   // null = the entry card, otherwise a log entry id
 
-function toThumb(file, px = 256, q = 0.82) {
+function toThumb(file, px = 384, q = 0.82) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
     fr.onerror = () => reject(new Error("read"));
@@ -4045,11 +4079,28 @@ async function pickedPicture(file) {
   msg("scanMsg", T("התמונה הוחלפה."), "ok");
 }
 
-$("picBtn").addEventListener("click", () => { picTarget = null; $("picInput").click(); });
+/* "החלף" / tapping a thumbnail no longer jumps straight to the OS file picker -
+   it opens a chooser so he can decide CAMERA (photograph the product front, not
+   the barcode) or GALLERY every time. picTarget null = the entry card, else a
+   log row id. */
+function openPicChoose(target) { picTarget = target; $("picChoose").classList.add("on"); }
+function closePicChoose() { $("picChoose").classList.remove("on"); }
+$("picBtn").addEventListener("click", () => openPicChoose(null));
+$("picCamBtn").addEventListener("click", () => { closePicChoose(); $("picCam").click(); });
+$("picGalBtn").addEventListener("click", () => { closePicChoose(); $("picInput").click(); });
+$("picCancel").addEventListener("click", closePicChoose);
+$("picChoose").addEventListener("click", e => { if (e.target === $("picChoose")) closePicChoose(); });
 $("picInput").addEventListener("change", e => {
   if (e.target.files[0]) pickedPicture(e.target.files[0]);
   e.target.value = "";
 });
+$("picCam").addEventListener("change", e => {
+  if (e.target.files[0]) pickedPicture(e.target.files[0]);
+  e.target.value = "";
+});
+// a broken image URL (dead OFF link, offline) is the same as "no picture" -
+// clear it so the entry card prompts to photograph the product
+$("shot").addEventListener("error", () => { if (shotSrc()) setShot(""); });
 
 /* Rows whose food has no pinned picture still deserve one. Once, in the
    background and only while online, ask Wikipedia for each distinct missing
@@ -4061,8 +4112,11 @@ async function fillMissingImages() {
   if (!navigator.onLine) return;
   const tried = new Set(store.get(LS_TRIED, []));
   const want = new Map();
-  for (const e of LOG) if (!e.photo && e.name && !tried.has(e.name)) want.set(e.name, 1);
-  for (const p of Object.values(PRODUCTS)) if (!p.photo && p.name && !tried.has(p.name)) want.set(p.name, 1);
+  // ONLY recognised generic foods get a Wikipedia picture - a branded/scanned
+  // product name is not an article, so a search returns a wrong image (the
+  // durian). Those wait for a real photo from the camera or Open Food Facts.
+  for (const e of LOG) if (!e.photo && e.name && !tried.has(e.name) && isGenericName(e.name)) want.set(e.name, 1);
+  for (const p of Object.values(PRODUCTS)) if (!p.photo && p.name && !tried.has(p.name) && isGenericName(p.name)) want.set(p.name, 1);
   if (!want.size) return;
   let changed = false;
   for (const name of [...want.keys()].slice(0, 25)) {
