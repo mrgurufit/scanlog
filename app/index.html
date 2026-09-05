@@ -201,7 +201,9 @@
     max-height:92vh; overflow-y:auto;
   }
   #video.off { display:none; }
-  .camsearch { margin-top:10px; }
+  #searchToggle.on { background:var(--accent); color:#141005; border-color:var(--accent); }
+  #searchArea { margin-top:10px; }
+  .camsearch { margin-top:0; }
   .camfb { display:flex; gap:8px; margin-top:8px; }
   .camfb > * { flex:1; }
   #fab {
@@ -515,11 +517,14 @@
       <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
       <div id="camBar">
         <button id="torchBtn">🔦 פנס</button>
+        <button id="searchToggle">🔎 חפש בשם</button>
         <button id="shootBtn" style="display:none">📸 צלם ידנית</button>
       </div>
-      <input type="text" id="searchIn" class="camsearch" placeholder="🔎 או חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
-      <div id="searchRes"></div>
-      <button id="webSearchBtn" class="camweb" style="display:none">🌐 חפש באינטרנט</button>
+      <div id="searchArea" style="display:none">
+        <input type="text" id="searchIn" class="camsearch" placeholder="🔎 חפש בשם: אורז מבושל, עגבנייה, ביצה…" autocomplete="off">
+        <div id="searchRes"></div>
+        <button id="webSearchBtn" class="camweb" style="display:none">🌐 חפש באינטרנט</button>
+      </div>
       <div class="camfb" style="display:none">
         <button id="photoBtn">🖼️ צלם תמונה</button>
         <button id="manualBtn">⌨️ הקלד ברקוד</button>
@@ -858,6 +863,7 @@ const I18N = {
   "💾 עדכן": "💾 Update",
   "➕ הוסף לרשימה": "➕ Add to the log",
   "עודכן": "Updated",
+  "🔎 חפש בשם": "🔎 Search by name",
   "מחק מנה זו": "Delete this portion",
   "כמה גרם?": "How many grams?",
   "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "Portion name then its weight in grams, e.g. unit 50",
@@ -1633,7 +1639,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.59";
+const APP_BUILD = "2026.09.04.60";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2267,6 +2273,9 @@ function stopScan() {
   $("cam").classList.remove("on");
   $("vidwrap").classList.remove("live");
   document.querySelector(".campanel").classList.remove("searching");
+  $("searchArea").style.display = "none";
+  $("searchToggle").classList.remove("on");
+  $("searchIn").value = "";
   $("torchBtn").className = "";
   document.body.style.overflow = "";
 }
@@ -3722,9 +3731,16 @@ $("searchIn").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => doSearch(e.target.value), 250);
 });
-// tapping the name search shrinks the camera so the results list shows below
-$("searchIn").addEventListener("focus", () => document.querySelector(".campanel").classList.add("searching"));
-$("searchIn").addEventListener("blur", () => { if (!$("searchIn").value.trim()) document.querySelector(".campanel").classList.remove("searching"); });
+// name search is behind a button (like the torch), not an always-open box:
+// tapping it reveals the search + shrinks the camera so the list shows below
+$("searchToggle").addEventListener("click", () => {
+  const open = $("searchArea").style.display === "none";
+  $("searchArea").style.display = open ? "block" : "none";
+  $("searchToggle").classList.toggle("on", open);
+  document.querySelector(".campanel").classList.toggle("searching", open);
+  if (open) setTimeout(() => $("searchIn").focus(), 30);
+  else { $("searchIn").value = ""; doSearch(""); }
+});
 $("searchRes").addEventListener("click", e => {
   const b = e.target.closest("[data-i]");
   if (b) openProduct(lastResults[+b.dataset.i]);
