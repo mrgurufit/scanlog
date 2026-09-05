@@ -1738,7 +1738,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.65";
+const APP_BUILD = "2026.09.04.66";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4249,7 +4249,9 @@ async function fillMissingImages() {
    Ido with WHO sent it (their signed-in account), the subject and the image. */
 const LS_FB = "fl_fb";
 let fbImage = "";
-function updateFbButton() { $("fbBtn").style.display = isAdmin() ? "none" : "block"; }
+// the Contact-us button shows for everyone, admin included (Ido wanted to see
+// it too), so it can also be used to file a note from his own phone
+function updateFbButton() { $("fbBtn").style.display = "block"; }
 
 function openFb() {
   fbImage = "";
