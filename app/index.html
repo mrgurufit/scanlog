@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Scan &amp; Log</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <!-- so an icon added to the home screen opens dark and chromeless, like an app -->
 <meta name="theme-color" content="#0d0f14">
 <meta name="mobile-web-app-capable" content="yes">
@@ -258,13 +258,6 @@
   }
   .qtyrow { display:flex; gap:8px; align-items:stretch; }
   .qtyrow #grams { flex:1; }
-  .segtog { display:none; border:1px solid var(--line); border-radius:10px; overflow:hidden; flex:0 0 auto; }
-  .segtog.show { display:flex; }
-  .segtog button { background:var(--panel2); color:var(--muted); border:0; padding:0 14px; font-size:13px;
-                   font-weight:700; font-family:inherit; cursor:pointer; }
-  .segtog button.on { background:var(--accent); color:#141005; }
-  .unitset { display:flex; align-items:center; gap:6px; margin-top:9px; font-size:12px; color:var(--muted); }
-  .unitset input { width:78px; padding:6px 8px; font-size:13px; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
   .acctin { font-size:13px; color:var(--text); }
@@ -392,8 +385,29 @@
   .field { margin-bottom:11px; }
   .per100 { font-size:11px; color:var(--muted); }
 
+  /* the entry is a full-screen sheet (Ido, 2026-09-04): it stays on screen with
+     the keyboard open, instead of a card that scrolls away in the page. */
   #entry { display:none; }
-  #entry.on { display:block; }
+  #entry.on { display:block; position:fixed; inset:0; z-index:75; background:var(--bg);
+              overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .esheet { max-width:640px; margin:0 auto; padding:16px 16px 40px; }
+  .ehead { display:flex; align-items:flex-start; gap:11px; margin-bottom:14px; }
+  .ehead .ehinfo { flex:1; min-width:0; }
+  .ehead #pName { width:100%; font-size:16px; font-weight:700; }
+  .ehead #entryClose { flex:0 0 auto; background:var(--panel2); border:1px solid var(--line);
+                       color:var(--text); width:34px; height:34px; border-radius:9px; font-size:15px; cursor:pointer; }
+  .ehinfo .foundtag { margin:7px 0 0; }
+  /* locked per-100g for non-admins: dimmed, not editable */
+  #per100Field.locked input { opacity:.7; background:var(--panel2); }
+  #portionList { display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 10px; }
+  .pchip { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:999px;
+           padding:8px 13px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; }
+  .pchip.on { background:var(--accent); color:#141005; border-color:var(--accent); }
+  .pchip .pdel { color:#c05555; margin-inline-start:6px; font-weight:800; }
+  .qtyunit { align-self:center; color:var(--muted); font-size:13px; white-space:nowrap; }
+  #portionAdmin { margin-top:2px; }
+  #portionAdmin .padd { background:none; border:1px dashed var(--line); color:var(--muted); border-radius:9px;
+                        padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; }
   .foundtag {
     display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px;
     border-radius:999px; margin-bottom:10px;
@@ -642,59 +656,49 @@
   <div class="diag" id="diag"></div>
   <div class="offbar" id="offbar">אין חיבור לאינטרנט. הרישום, המוצרים השמורים, המאגר המובנה והחישובים עובדים רגיל. מה שיחזור עם החיבור: חיפוש מוצר חדש במאגר העולמי וקריאת טבלת ערכים בצילום.</div>
 
-  <div class="card" id="entry">
-    <div id="foundTag" class="foundtag newp">מוצר חדש</div>
-    <div id="missRes"></div>
-    <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:11px">
+  <div id="entry">
+   <div class="esheet">
+    <div class="ehead">
       <div class="shotwrap">
         <img id="shot" class="blank" alt="">
         <button type="button" id="picBtn" title="בחר תמונה למוצר">החלף</button>
       </div>
-      <div style="flex:1">
-        <div class="field" style="margin:0">
-          <label for="pName">שם המוצר</label>
-          <input type="text" id="pName" placeholder="למשל: קוטג׳ 5%">
-        </div>
+      <div class="ehinfo">
+        <input type="text" id="pName" placeholder="שם המוצר">
+        <div id="foundTag" class="foundtag newp">מוצר חדש</div>
       </div>
+      <button type="button" id="entryClose" aria-label="סגור">✕</button>
     </div>
+    <div id="missRes"></div>
 
-    <div class="field">
-      <label>ערכים ל-100 גרם <span class="per100">(מהמדבקה על האריזה — נשמר לפעם הבאה)</span></label>
+    <div class="field" id="per100Field">
+      <label>ערכים ל-100 גרם <span class="per100" id="per100Hint">(מהמדבקה על האריזה — נשמר לפעם הבאה)</span></label>
       <div class="grid4">
         <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal">
         <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal">
         <input type="number" id="p100carb" placeholder="פחמ׳" inputmode="decimal">
         <input type="number" id="p100fat" placeholder="שומן" inputmode="decimal">
       </div>
-      <button id="labelBtn" class="wide" style="margin-top:9px">📄 צלם את טבלת הערכים — היא תיקרא לבד</button>
-      <input type="file" id="labelInput" accept="image/*" capture="environment" hidden>
-      <details id="ocrDetails" style="display:none; margin-top:8px">
-        <summary style="cursor:pointer; font-size:12px; color:var(--muted)">מה נקרא מהתמונה</summary>
-        <pre id="ocrRaw" style="font-size:11px; color:var(--muted); white-space:pre-wrap; margin-top:6px; max-height:140px; overflow-y:auto"></pre>
-      </details>
     </div>
 
     <div class="field">
-      <label id="gramsLbl" for="grams">כמה גרם אכלת?</label>
+      <label id="gramsLbl">כמה אכלת?</label>
+      <div id="portionList"></div>
       <div class="qtyrow">
-        <input type="number" id="grams" placeholder="גרם" inputmode="decimal">
-        <div class="segtog" id="unitTog">
-          <button type="button" id="modeG" class="on">גרם</button>
-          <button type="button" id="modeU">יחידות</button>
-        </div>
+        <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
+        <span id="qtyUnit" class="qtyunit">גרם</span>
       </div>
-      <div class="unitset">🍽️ <span>משקל יחידה אחת:</span>
-        <input type="number" id="unitG" inputmode="decimal" placeholder="גרם"> <span>ג׳</span>
-      </div>
+      <div id="portionAdmin"></div>
     </div>
 
-    <div id="calcPreview">הזן כמות כדי לחשב</div>
+    <div id="calcPreview">בחר מנה או שקול בגרמים</div>
 
     <div class="row">
       <button id="addBtn" class="primary">➕ הוסף לרשימה</button>
       <button id="cancelBtn">ביטול</button>
     </div>
     <div class="msg" id="entryMsg"></div>
+   </div>
   </div>
 
   <div class="card" id="ecard">
@@ -829,7 +833,17 @@ const I18N = {
   "מה נקרא מהתמונה": "What was read from the photo",
   "כמה גרם אכלת?": "How many grams did you eat?",
   "כמה יחידות אכלת?": "How many units did you eat?",
+  "כמה אכלת?": "How much did you eat?",
   "יחידות": "units",
+  "יחידה": "unit",
+  "מנה": "portion",
+  "שקילה בגרמים": "weigh in grams",
+  "כמות": "amount",
+  "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
+  "הוסף מנה (שם + גרמים)": "Add a portion (name + grams)",
+  "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "Portion name then its weight in grams, e.g. unit 50",
+  "כתוב שם ואז מספר, למשל: יחידה 50": "Write a name then a number, e.g. unit 50",
+  "(ערכים מאומתים — נעולים)": "(verified values — locked)",
   "משקל יחידה אחת:": "One unit weighs:",
   "הזן כמות כדי לחשב": "Enter an amount to calculate",
   "חסרה כמות": "Amount is missing",
@@ -1675,7 +1689,7 @@ if (!CATALOG || typeof CATALOG.codes !== "object") CATALOG = { v: "", codes: {} 
 function catalogGet(code) {
   const p = code && CATALOG.codes && CATALOG.codes[code];
   if (!p || !p.n) return null;
-  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "", unit: +p.u || 0 };
+  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "", unit: +p.u || 0, portions: Array.isArray(p.pt) ? p.pt : [] };
 }
 
 async function catalogText() {
@@ -1754,24 +1768,24 @@ async function contribFlush() {
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
   const photo = (p.photo || "").startsWith("http") ? p.photo : "";
-  const unit = +p.unit || 0;
+  const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
+  const ptStr = portions.length ? JSON.stringify(portions) : "";
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
-  // Already in the catalog with the same values? Then the cloud already has it
-  // (this device sent it, or it arrived in a pull) - do NOT send again. This is
-  // what caps app->Make writes at one per never-before-seen product, no matter
-  // how many times the barcode is re-scanned. A newly-learned unit weight also
-  // counts as a change worth sending.
-  const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0) && (+ex.u || 0) === unit;
+  // Already in the catalog with the same values (name, kcal, portions)? Then the
+  // cloud already has it - do NOT send again. This caps app->Make writes at one
+  // per real change, no matter how often the barcode is re-scanned.
+  const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0)
+    && JSON.stringify(ex.pt || []) === JSON.stringify(portions);
   try {
     CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
-    if (unit > 0) CATALOG.codes[code].u = unit;
+    if (portions.length) CATALOG.codes[code].pt = portions;
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
   if (already) return;
   // queue for the cloud (durable + retried) and flush now
   contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, unit, src: p.src || "app" });
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app" });
   contribFlush();
 }
 
@@ -2361,7 +2375,7 @@ function localMatches(q) {
   const res = [];
   for (const [code, pr] of Object.entries(PRODUCTS))
     if ((pr.name || "").includes(q))
-      res.push({ name: pr.name, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", unit: pr.unit || 0, src: "שלי" });
+      res.push({ name: pr.name, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", unit: pr.unit || 0, portions: pr.portions || [], src: "שלי" });
   for (const g of GENERIC)
     if (g.n.includes(q) || (g.a || []).some(x => x.includes(q)))
       res.push({ name: g.n, k: g.k, p: g.p, c: g.c, f: g.f, src: "מאגר" });
@@ -2557,7 +2571,7 @@ function applyMissPick(r) {
   $("p100pro").value = r.p;
   $("p100carb").value = r.c;
   $("p100fat").value = r.f;
-  setEntryUnit(+r.unit || 0);
+  setEntryProduct(r.portions, r.unit);
   if (!shotSrc() && r.photo) setShot(r.photo);
   $("foundTag").textContent = T("✓ התאמה: ") + r.name + " " + T("— ייזכר תחת הברקוד שנסרק");
   $("foundTag").className = "foundtag known";
@@ -2595,7 +2609,7 @@ function openProduct(r) {
   $("p100fat").value = r.f;
   setShot(r.photo || "");
   $("grams").value = "";
-  setEntryUnit(+r.unit || 0);
+  setEntryProduct(r.portions, r.unit);
   $("calcPreview").textContent = T("הזן כמות כדי לחשב");
   $("entry").classList.add("on");
   msg("scanMsg", ""); msg("entryMsg", "");
@@ -3061,8 +3075,9 @@ async function onBarcode(code, photo) {
   // is never the automatic thumbnail any more.
   setShot((known && known.photo) || "");
   $("grams").value = "";
-  setEntryUnit((known && known.unit) || 0);
-  $("calcPreview").textContent = T("הזן כמות כדי לחשב");
+  setEntryProduct(known && known.portions, known && known.unit);
+  document.body.style.overflow = "hidden";
+  $("calcPreview").textContent = T("בחר מנה או שקול בגרמים");
   $("entry").classList.add("on");
   msg("scanMsg", code ? "" : T("לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה."), code ? "" : "err");
   msg("entryMsg", "");
@@ -3079,7 +3094,7 @@ async function onBarcode(code, photo) {
       if (!$("p100pro").value && cat.pro) $("p100pro").value = cat.pro;
       if (!$("p100carb").value && cat.carb) $("p100carb").value = cat.carb;
       if (!$("p100fat").value && cat.fat) $("p100fat").value = cat.fat;
-      if (cat.unit && !entryUnitG()) setEntryUnit(cat.unit);
+      setEntryProduct(cat.portions, cat.unit);
       if (!shotSrc() && cat.photo) setShot(cat.photo);
       PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
       store.set(LS_PROD, PRODUCTS);
@@ -3128,36 +3143,68 @@ async function onBarcode(code, photo) {
   }
 }
 
-/* ---------------- portion in grams OR whole units ----------------
-   Ido, 2026-09-04: many products come in pieces (a 50g popsicle, a 35g egg
-   white). A product can carry a "grams per unit"; when it does, the entry
-   screen offers a grams/units toggle and everything downstream still works in
-   grams - the unit weight is just a multiplier, remembered with the product
-   and shared through the catalog. */
-let entryMode = "g";
-function entryUnitG() { return num($("unitG").value) || 0; }
+/* ---------------- portions: named presets + weigh in grams ----------------
+   Ido, 2026-09-04: "how much did you eat" is a list - e.g. 1 unit (50g), whole
+   pack (300g), or weigh in grams. Each product carries a portions array
+   [{n,g}]; the admin (Ido) defines them and the per-100g values, everyone else
+   just picks a portion and logs. effGrams = quantity x the chosen portion's
+   grams (weigh = 1g per "unit"). */
+let entryPortions = [];   // [{n, g}]
+let selPortion = -1;      // index into entryPortions, or -1 = weigh in grams
+
+const ADMIN_EMAIL = "mr.guru.fit@gmail.com";
+function isAdmin() { return isSignedIn() && (cloudUser.email || "").toLowerCase() === ADMIN_EMAIL; }
+
+function curPortionG() { return (selPortion >= 0 && entryPortions[selPortion]) ? (+entryPortions[selPortion].g || 0) : 1; }
 function effGrams() {
   const v = num($("grams").value);
-  return entryMode === "u" ? Math.round(v * entryUnitG()) : v;
+  return selPortion >= 0 ? Math.round(v * curPortionG()) : Math.round(v);
 }
-function syncUnitUI() {
-  const has = entryUnitG() > 0;
-  $("unitTog").classList.toggle("show", has);
-  if (!has) entryMode = "g";
-  $("modeG").classList.toggle("on", entryMode === "g");
-  $("modeU").classList.toggle("on", entryMode === "u");
-  $("gramsLbl").textContent = entryMode === "u" ? T("כמה יחידות אכלת?") : T("כמה גרם אכלת?");
-  $("grams").placeholder = entryMode === "u" ? T("יחידות") : T("גרם");
+function renderPortions() {
+  const admin = isAdmin();
+  let html = entryPortions.map((p, i) =>
+    `<button type="button" class="pchip${i === selPortion ? " on" : ""}" data-pi="${i}">${esc(p.n)} (${p.g} ${T("ג׳")})`
+    + (admin ? ` <span class="pdel" data-pdel="${i}">✕</span>` : "") + "</button>").join("");
+  html += `<button type="button" class="pchip${selPortion < 0 ? " on" : ""}" data-pi="-1">⚖️ ${T("שקילה בגרמים")}</button>`;
+  $("portionList").innerHTML = html;
+  $("qtyUnit").textContent = selPortion >= 0 ? T("יחידות") : T("גרם");
+  $("grams").placeholder = selPortion >= 0 ? T("כמות") : T("גרם");
+  $("portionAdmin").innerHTML = admin
+    ? `<button type="button" class="padd" id="paddBtn">➕ ${T("הוסף מנה (שם + גרמים)")}</button>` : "";
+  const ab = $("paddBtn"); if (ab) ab.onclick = addPortion;
 }
-// called whenever a product populates the entry form - prefill its unit weight
-function setEntryUnit(u) { $("unitG").value = (+u > 0) ? +u : ""; entryMode = "g"; syncUnitUI(); }
+function addPortion() {
+  const raw = prompt(T("שם המנה ואז המשקל בגרמים, למשל: יחידה 50"));
+  if (!raw) return;
+  const m = String(raw).trim().match(/^(.*?)[\s,:]+(\d+(?:\.\d+)?)\s*$/);
+  if (!m) { alert(T("כתוב שם ואז מספר, למשל: יחידה 50")); return; }
+  entryPortions.push({ n: m[1].trim() || T("מנה"), g: +m[2] });
+  selPortion = entryPortions.length - 1;
+  renderPortions(); preview();
+}
+// load a product's portions into the entry (migrates a legacy single unit)
+function setEntryProduct(portions, legacyUnit) {
+  entryPortions = Array.isArray(portions) ? portions.filter(p => p && +p.g > 0).map(p => ({ n: p.n || T("מנה"), g: +p.g })) : [];
+  if (!entryPortions.length && +legacyUnit > 0) entryPortions = [{ n: T("יחידה"), g: +legacyUnit }];
+  selPortion = entryPortions.length ? 0 : -1;
+  document.body.style.overflow = "hidden";
+  applyAdminLock();
+  renderPortions();
+}
+function applyAdminLock() {
+  const admin = isAdmin();
+  ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !admin; });
+  $("pName").readOnly = !admin;
+  $("per100Field").classList.toggle("locked", !admin);
+  $("per100Hint").textContent = admin ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(ערכים מאומתים — נעולים)");
+}
 
 function preview() {
   const g = effGrams();
-  if (!g) { $("calcPreview").textContent = T("הזן כמות כדי לחשב"); return; }
+  if (!g) { $("calcPreview").textContent = T("בחר מנה או שקול בגרמים"); return; }
   const f = g / 100;
-  const pre = entryMode === "u"
-    ? `${num($("grams").value) || 0} × ${entryUnitG()}${T("ג׳")} = <b>${g}</b> ${T("ג׳ · ")}` : "";
+  const pre = (selPortion >= 0 && entryPortions[selPortion])
+    ? `${num($("grams").value) || 0} × ${esc(entryPortions[selPortion].n)} = <b>${g}</b> ${T("ג׳ · ")}` : "";
   $("calcPreview").innerHTML = pre +
     `<b>${Math.round(num($("p100kcal").value) * f)}</b> ${T("קק״ל ·")} ` +
     `${T("חלבון")} ${(num($("p100pro").value) * f).toFixed(1)} · ` +
@@ -3168,7 +3215,6 @@ function preview() {
 function addEntry() {
   const name = $("pName").value.trim();
   const grams = effGrams();
-  const unitG = entryUnitG();
   const k100 = num($("p100kcal").value);
   if (!name) { msg("entryMsg", T("חסר שם למוצר"), "err"); $("pName").focus(); return; }
   if (!grams) { msg("entryMsg", T("חסרה כמות"), "err"); $("grams").focus(); return; }
@@ -3184,25 +3230,25 @@ function addEntry() {
     k100, pro100: num($("p100pro").value), carb100: num($("p100carb").value), fat100: num($("p100fat").value),
     photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "",
   };
-  if (unitG > 0 && entryMode === "u") e.units = num($("grams").value);   // for the log line
+  if (selPortion >= 0 && entryPortions[selPortion]) { e.portion = entryPortions[selPortion].n; e.qty = num($("grams").value); }
   LOG.push(e);
   save();
   hcWriteEntry(e);
 
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
-    if (unitG > 0) PRODUCTS[e.barcode].unit = unitG;
+    if (entryPortions.length) PRODUCTS[e.barcode].portions = entryPortions.slice();
     store.set(LS_PROD, PRODUCTS);
-    /* Contribute to the cloud ONLY a genuinely new product - a real barcode the
-       catalog and OFF did not already have. A name key is this phone's own
-       shorthand, and a product that came from the catalog or a complete OFF hit
-       is already shared, so re-sending either would just burn a Make operation.
-       This keeps app->Make writes down to one per never-before-seen product. */
+    /* The admin (Ido) curates the shared catalog - his edits and portions always
+       propagate; everyone else only sends a genuinely-new product (a catalog or
+       complete-OFF hit is already shared). sharedContribute dedups on values so
+       an unchanged re-add never costs a Make operation. */
     const fromDB = pending && pending.fromDB;
-    if (/^\d{6,}$/.test(e.barcode) && !fromDB) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    if (/^\d{6,}$/.test(e.barcode) && (isAdmin() || !fromDB)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
+  document.body.style.overflow = "";
   pending = null;
   renderLog();
   msg("scanMsg", `${T("נוסף:")} ${name} · ${grams} ${T("ג׳")}`, "ok");
@@ -3244,14 +3290,21 @@ $("manualBtn").addEventListener("click", () => {
   if (code === null) return;
   onBarcode(code.trim(), "");
 });
-$("labelBtn").addEventListener("click", () => $("labelInput").click());
-$("labelInput").addEventListener("change", e => { if (e.target.files[0]) readLabel(e.target.files[0]); e.target.value = ""; });
-$("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); });
+function closeEntry() { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); document.body.style.overflow = ""; }
+$("cancelBtn").addEventListener("click", closeEntry);
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
-$("unitG").addEventListener("input", () => { syncUnitUI(); preview(); });
-$("modeG").addEventListener("click", () => { entryMode = "g"; syncUnitUI(); preview(); });
-$("modeU").addEventListener("click", () => { if (entryUnitG() > 0) { entryMode = "u"; syncUnitUI(); preview(); } });
+$("portionList").addEventListener("click", e => {
+  const del = e.target.closest("[data-pdel]");
+  if (del) {
+    entryPortions.splice(+del.dataset.pdel, 1);
+    if (selPortion >= entryPortions.length) selPortion = entryPortions.length ? 0 : -1;
+    renderPortions(); preview(); return;
+  }
+  const chip = e.target.closest("[data-pi]");
+  if (chip) { selPortion = +chip.dataset.pi; renderPortions(); preview(); }
+});
+$("entryClose").addEventListener("click", closeEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("setBtn").addEventListener("click", () => {
   ovPush();
