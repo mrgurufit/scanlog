@@ -348,27 +348,27 @@ document.querySelectorAll(".lang button").forEach(b => {
 
 /* Episodes. One line per day; the nightly task appends the newest at the end. */
 const EPISODES = [
-  { d: 1, yt: "LhUtdpYMyo0", kg: 111.5, en: "Day one. 111.5 kg, and a camera pointed at all of it.", he: "יום ראשון. 111.5 ק\"ג, ומצלמה על הכל." },
-  { d: 2, yt: "olY7rEAQlMk", kg: 109.8, en: "The routine, unedited.", he: "השגרה, בלי עריכה." },
-  { d: 3, yt: "W6ZnToeD6h8", kg: 108.6, en: "Training, and every gram weighed.", he: "אימון, וכל גרם על המשקל." },
-  { d: 4, yt: "OIvXY7OA68c", kg: 108.1, en: "Same plan. This is what building a habit looks like.", he: "אותה תוכנית. ככה בונים הרגל." },
-  { d: 5, yt: "6ZrEZnc1o6w", kg: 107.3, en: "The day the algorithm ignored me. Posted anyway.", he: "היום שהאלגוריתם התעלם ממני. העליתי בכל זאת." },
-  { d: 6, yt: "QGZ8HE61xos", kg: 107.6, en: "Uploaded late. Still uploaded.", he: "עלה באיחור. אבל עלה." },
-  { d: 7, yt: "D5B5iSaJL1U", kg: 108.0, en: "One week in.", he: "שבוע בפנים." },
-  { d: 8, yt: "S4yWKQ9sLYY", kg: 106.7, en: "Chest day, 50 kg dumbbells, and a scream you can hear.", he: "אימון חזה, משקולות 50 קילו, וצעקה ששומעים." },
-  { d: 9, yt: "_Hadwj3cDck", kg: 107.1, en: "The scale went up. Here is why that is normal.", he: "המשקל עלה. הנה למה זה נורמלי." },
-  { d: 10, yt: "CH5cXyjt3hM", kg: 107.3, en: "Double digits. 10% done.", he: "דו־ספרתי. 10 אחוז מאחורינו." },
-  { d: 11, yt: "_8ZnnU5-lN8", kg: 106.4, en: "Three mornings up, then the drop. Patience paid.", he: "שלושה בקרים למעלה, ואז הירידה. הסבלנות השתלמה." },
-  { d: 12, yt: "QL4fAePJKGo", kg: 106.2, en: "New low. The zigzag pays back.", he: "שפל חדש. הזיגזג מחזיר את שלו." },
-  { d: 13, yt: "gjttLdvwBrE", kg: 105.3, en: "Second new low in a row. Abs day.", he: "שפל שני ברצף. יום בטן." },
-  { d: 14, yt: "YH4T9pQjBHY", kg: 107.5, en: "The night I messed up. Up 2.2, mostly water, trained anyway.", he: "הלילה שבו פישלתי. עליתי 2.2, רובם מים, והתאמנתי בכל זאת." },
-  { d: 15, yt: "h2_mgndNxw4", kg: 105.5, en: "I said it was water. Two kilos back off in one day.", he: "אמרתי שזה מים. שני קילו ירדו ביום אחד." },
-  { d: 16, yt: "PG9_0Xo_vQw", kg: 104.7, en: "Lowest number of the challenge. 40 kg shoulder press, and you can hear it.", he: "המספר הכי נמוך של האתגר. לחיצת כתפיים 40 קילו, ושומעים את זה." },
-  { d: 17, yt: "1CCLc3f4Y-Y", kg: 105.6, en: "No gym today. Office until midnight, and I filmed it anyway.", he: "בלי חדר כושר היום. משרד עד חצות, וצילמתי בכל זאת." },
-  { d: 18, yt: "KF-2UhwNoDk", kg: null, en: "I said I would go hard. I did. The scale read 107.4, but at midday, not my usual morning weigh-in.", he: "אמרתי שאלך חזק, והלכתי. המאזניים הראו 107.4 — אבל בצהריים, לא בשקילת הבוקר הרגילה." },
-  { d: 19, yt: "QprPRjUdeGw", kg: 106.5, en: "Leg day, and you can hear it. The real morning weigh-in is back: 106.5, empty stomach.", he: "יום רגליים, ושומעים את זה. שקילת הבוקר האמיתית חזרה: 106.5, על בטן ריקה." },
-  { d: 20, yt: "i3QU-SIQzeQ", kg: 106.8, en: "One fifth of the way. Twenty days, twenty videos, not one skipped. Chest day.", he: "חמישית מהדרך. עשרים ימים, עשרים סרטונים, אף אחד לא דולג. יום חזה." },
-  { d: 21, yt: "GMztpt-G3tc", kg: 106.5, en: "Three weeks, five kilos. Back day. The scale went up on four of these 21 days and I posted all four.", he: "שלושה שבועות, חמישה קילו. יום גב. המשקל עלה בארבעה מתוך 21 הימים האלה, ופרסמתי את כולם." }
+  { d: 1, yt: "LhUtdpYMyo0", thumb: 1, kg: 111.5, en: "Day one. 111.5 kg, and a camera pointed at all of it.", he: "יום ראשון. 111.5 ק\"ג, ומצלמה על הכל." },
+  { d: 2, yt: "olY7rEAQlMk", thumb: 1, kg: 109.8, en: "The routine, unedited.", he: "השגרה, בלי עריכה." },
+  { d: 3, yt: "W6ZnToeD6h8", thumb: 1, kg: 108.6, en: "Training, and every gram weighed.", he: "אימון, וכל גרם על המשקל." },
+  { d: 4, yt: "OIvXY7OA68c", thumb: 1, kg: 108.1, en: "Same plan. This is what building a habit looks like.", he: "אותה תוכנית. ככה בונים הרגל." },
+  { d: 5, yt: "6ZrEZnc1o6w", thumb: 1, kg: 107.3, en: "The day the algorithm ignored me. Posted anyway.", he: "היום שהאלגוריתם התעלם ממני. העליתי בכל זאת." },
+  { d: 6, yt: "QGZ8HE61xos", thumb: 1, kg: 107.6, en: "Uploaded late. Still uploaded.", he: "עלה באיחור. אבל עלה." },
+  { d: 7, yt: "D5B5iSaJL1U", thumb: 1, kg: 108.0, en: "One week in.", he: "שבוע בפנים." },
+  { d: 8, yt: "S4yWKQ9sLYY", thumb: 1, kg: 106.7, en: "Chest day, 50 kg dumbbells, and a scream you can hear.", he: "אימון חזה, משקולות 50 קילו, וצעקה ששומעים." },
+  { d: 9, yt: "_Hadwj3cDck", thumb: 1, kg: 107.1, en: "The scale went up. Here is why that is normal.", he: "המשקל עלה. הנה למה זה נורמלי." },
+  { d: 10, yt: "CH5cXyjt3hM", thumb: 1, kg: 107.3, en: "Double digits. 10% done.", he: "דו־ספרתי. 10 אחוז מאחורינו." },
+  { d: 11, yt: "_8ZnnU5-lN8", thumb: 1, kg: 106.4, en: "Three mornings up, then the drop. Patience paid.", he: "שלושה בקרים למעלה, ואז הירידה. הסבלנות השתלמה." },
+  { d: 12, yt: "QL4fAePJKGo", thumb: 1, kg: 106.2, en: "New low. The zigzag pays back.", he: "שפל חדש. הזיגזג מחזיר את שלו." },
+  { d: 13, yt: "gjttLdvwBrE", thumb: 1, kg: 105.3, en: "Second new low in a row. Abs day.", he: "שפל שני ברצף. יום בטן." },
+  { d: 14, yt: "YH4T9pQjBHY", thumb: 1, kg: 107.5, en: "The night I messed up. Up 2.2, mostly water, trained anyway.", he: "הלילה שבו פישלתי. עליתי 2.2, רובם מים, והתאמנתי בכל זאת." },
+  { d: 15, yt: "h2_mgndNxw4", thumb: 1, kg: 105.5, en: "I said it was water. Two kilos back off in one day.", he: "אמרתי שזה מים. שני קילו ירדו ביום אחד." },
+  { d: 16, yt: "PG9_0Xo_vQw", thumb: 1, kg: 104.7, en: "Lowest number of the challenge. 40 kg shoulder press, and you can hear it.", he: "המספר הכי נמוך של האתגר. לחיצת כתפיים 40 קילו, ושומעים את זה." },
+  { d: 17, yt: "1CCLc3f4Y-Y", thumb: 1, kg: 105.6, en: "No gym today. Office until midnight, and I filmed it anyway.", he: "בלי חדר כושר היום. משרד עד חצות, וצילמתי בכל זאת." },
+  { d: 18, yt: "KF-2UhwNoDk", thumb: 1, kg: null, en: "I said I would go hard. I did. The scale read 107.4, but at midday, not my usual morning weigh-in.", he: "אמרתי שאלך חזק, והלכתי. המאזניים הראו 107.4 — אבל בצהריים, לא בשקילת הבוקר הרגילה." },
+  { d: 19, yt: "QprPRjUdeGw", thumb: 1, kg: 106.5, en: "Leg day, and you can hear it. The real morning weigh-in is back: 106.5, empty stomach.", he: "יום רגליים, ושומעים את זה. שקילת הבוקר האמיתית חזרה: 106.5, על בטן ריקה." },
+  { d: 20, yt: "i3QU-SIQzeQ", thumb: 1, kg: 106.8, en: "One fifth of the way. Twenty days, twenty videos, not one skipped. Chest day.", he: "חמישית מהדרך. עשרים ימים, עשרים סרטונים, אף אחד לא דולג. יום חזה." },
+  { d: 21, yt: "GMztpt-G3tc", thumb: 1, kg: 106.5, en: "Three weeks, five kilos. Back day. The scale went up on four of these 21 days and I posted all four.", he: "שלושה שבועות, חמישה קילו. יום גב. המשקל עלה בארבעה מתוך 21 הימים האלה, ופרסמתי את כולם." }
 ];
 
 /* Our own thumbnail when the day has one, YouTube's otherwise. YouTube serves
