@@ -1641,7 +1641,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.61";
+const APP_BUILD = "2026.09.04.62";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2810,16 +2810,30 @@ async function wikiImage(term) {
   return "";
 }
 
+/* A branded product ("גלידל פרי בטעם פירות טרופיים", "מעדן שטראוס") is NOT a
+   Wikipedia article, so a free-text Wikipedia search on its name returns
+   whatever fruit/word matched - that is how the tropical-fruit gelato got a
+   DURIAN photo. So Wikipedia is used ONLY for real generic foods (a staple we
+   already recognise); a branded/scanned product gets an image only from its
+   real photo or Open Food Facts, never from a guessed search. */
+function isGenericName(name) {
+  for (const k of nameKeys(name)) {
+    if (PINNED[k]) return true;
+    for (const g of GENERIC) if (g.n === k || (g.a || []).includes(k)) return true;
+  }
+  return false;
+}
+
 async function autoImage(name) {
   if (!name || shotSrc()) return;
   const token = ++imgToken;
   const clean = stripPrep(name);
   let src = pinned(clean) || pinned(name);
-  if (!src) {
+  if (!src && isGenericName(name)) {
     try { src = await wikiImage(clean || name); } catch {}
-  }
-  if (!src && clean && clean !== name) {
-    try { src = await wikiImage(name); } catch {}
+    if (!src && clean && clean !== name) {
+      try { src = await wikiImage(name); } catch {}
+    }
   }
   if (token === imgToken && src && !shotSrc()) setShot(src);
 }
