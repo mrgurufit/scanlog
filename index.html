@@ -371,12 +371,20 @@ const EPISODES = [
   { d: 21, yt: "GMztpt-G3tc", kg: 106.5, en: "Three weeks, five kilos. Back day. The scale went up on four of these 21 days and I posted all four.", he: "שלושה שבועות, חמישה קילו. יום גב. המשקל עלה בארבעה מתוך 21 הימים האלה, ופרסמתי את כולם." }
 ];
 
+/* Our own thumbnail when the day has one, YouTube's otherwise. YouTube serves
+   a 16:9 crop of a vertical Short, so the auto image is always a letterboxed
+   frame nobody picked. */
+function thumbFor(e) {
+  return e.thumb ? "thumbs/day" + e.d + ".jpg"
+                 : "https://i.ytimg.com/vi/" + e.yt + "/hqdefault.jpg";
+}
+
 function epCard(e, big) {
   const kg = e.kg ? '<span class="kg">' + e.kg + ' kg</span>' : "";
   const dayWord = L === "he" ? "יום " : "DAY ";
   return '<article class="ep' + (big ? " big" : "") + '">' +
     '<button class="thumb" data-yt="' + e.yt + '" aria-label="' + dayWord + e.d + '">' +
-      '<img loading="lazy" src="https://i.ytimg.com/vi/' + e.yt + '/hqdefault.jpg" alt="' + dayWord + e.d + '">' +
+      '<img loading="lazy" src="' + thumbFor(e) + '" alt="' + dayWord + e.d + '">' +
       '<span class="play">&#9654;</span>' +
     '</button>' +
     '<div class="meta"><div class="row1"><b>' + dayWord + e.d + '</b>' + kg + '</div>' +
