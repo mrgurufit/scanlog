@@ -45,7 +45,8 @@ jobs:
                           f: ((.fat  // 0) | tonumber? // 0),
                           img: ((.photo // "") | if type=="string" and startswith("http") then . else "" end)
                         }
-                        + ( ((.unit // 0) | tonumber? // 0) as $u | if $u > 0 then {u: $u} else {} end )
+                        + ( ((.pt // "") | if (type=="string" and (.|length)>0) then (fromjson? // null) else null end)
+                            as $pt | if ($pt|type)=="array" and ($pt|length)>0 then {pt: $pt} else {} end )
                       )
                     })
                   | from_entries
