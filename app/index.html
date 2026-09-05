@@ -213,10 +213,20 @@
     box-shadow:0 6px 20px rgba(0,0,0,.55);
   }
   #fab:active { transform:scale(.93); }
-  #video {
-    width:100%; aspect-ratio:4/3; object-fit:cover; background:#000;
-    border-radius:12px; border:2px solid var(--accent); display:block;
-  }
+  .vidwrap { position:relative; width:100%; aspect-ratio:4/3; border-radius:12px; overflow:hidden;
+             border:2px solid var(--accent); background:#000; transition:aspect-ratio .25s ease; }
+  #video { width:100%; height:100%; object-fit:cover; display:block; }
+  /* a scanning line sweeps up and down while the live camera is on */
+  .scanline { position:absolute; left:7%; right:7%; height:2px; top:10%; opacity:0;
+              background:linear-gradient(90deg,transparent,var(--accent),transparent);
+              box-shadow:0 0 12px 2px var(--accent); }
+  .vidwrap.live .scanline { opacity:.95; animation:scan 2.2s ease-in-out infinite; }
+  @keyframes scan { 0%{top:10%} 50%{top:88%} 100%{top:10%} }
+  .scanframe { position:absolute; inset:12% 15%; border-radius:10px; pointer-events:none; opacity:0;
+               box-shadow:0 0 0 2px rgba(255,210,30,.35) inset; transition:opacity .2s; }
+  .vidwrap.live .scanframe { opacity:1; }
+  /* tapping the name search shrinks the camera ~20% so the results list shows below */
+  .campanel.searching .vidwrap { aspect-ratio:5/3; }
   #camHint { text-align:center; color:var(--muted); font-size:12.5px; margin:9px 0; }
   #camBar { display:flex; gap:8px; }
   #camBar > * { flex:1; }
@@ -497,7 +507,11 @@
   <div id="cam">
     <div class="campanel">
       <button id="stopBtn" aria-label="סגור">✕</button>
-      <video id="video" playsinline muted autoplay></video>
+      <div class="vidwrap" id="vidwrap">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="scanline"></div>
+        <div class="scanframe"></div>
+      </div>
       <div id="camHint">כוון את הברקוד למרכז — הזיהוי אוטומטי</div>
       <div id="camBar">
         <button id="torchBtn">🔦 פנס</button>
@@ -840,6 +854,10 @@ const I18N = {
   "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
   "הוסף מנה (שם + גרמים)": "Add a portion (name + grams)",
   "הוסף מנה": "Add a portion",
+  "עריכת רישום": "Edit entry",
+  "💾 עדכן": "💾 Update",
+  "➕ הוסף לרשימה": "➕ Add to the log",
+  "עודכן": "Updated",
   "מחק מנה זו": "Delete this portion",
   "כמה גרם?": "How many grams?",
   "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "Portion name then its weight in grams, e.g. unit 50",
@@ -1615,7 +1633,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.58";
+const APP_BUILD = "2026.09.04.59";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2144,6 +2162,7 @@ async function startScan() {
   });
   $("video").srcObject = stream;
   $("video").classList.remove("off");
+  $("vidwrap").classList.add("live");
   $("camHint").textContent = T("כוון את הברקוד למרכז — הזיהוי אוטומטי");
   lockCode = null; lockHits = 0;
   scanning = true;
@@ -2191,6 +2210,7 @@ async function toggleTorch() {
 function camFallback(why) {
   document.querySelector(".camfb").style.display = "flex";
   $("video").classList.add("off");
+  $("vidwrap").classList.remove("live");
   $("camHint").textContent = why + " " + T("אפשר לצלם תמונה, להקליד ברקוד — או לחפש בשם למטה.");
   $("diag").textContent = camDiagnosis();
 }
@@ -2245,6 +2265,8 @@ function stopScan() {
   torchOn = false;
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   $("cam").classList.remove("on");
+  $("vidwrap").classList.remove("live");
+  document.querySelector(".campanel").classList.remove("searching");
   $("torchBtn").className = "";
   document.body.style.overflow = "";
 }
@@ -3185,6 +3207,7 @@ function delPortion() {
   if (selPortion < 0 || !entryPortions[selPortion]) return;
   entryPortions.splice(selPortion, 1);
   selPortion = entryPortions.length ? 0 : -1;
+  persistPortions();
   renderPortions(); preview();
 }
 function addPortion() {
@@ -3194,7 +3217,24 @@ function addPortion() {
   if (!m) { alert(T("כתוב שם ואז מספר, למשל: יחידה 50")); return; }
   entryPortions.push({ n: m[1].trim() || T("מנה"), g: +m[2] });
   selPortion = entryPortions.length - 1;
+  persistPortions();
   renderPortions(); preview();
+}
+/* Save the portions to the product right away, so an admin who defines them
+   without logging food does not lose them (Ido, 2026-09-04). Needs a real
+   barcode plus at least a name and kcal to store a product. */
+function persistPortions() {
+  const code = pending && pending.barcode;
+  if (!/^\d{6,}$/.test(code || "")) return;
+  const name = $("pName").value.trim(), k = num($("p100kcal").value);
+  if (!name || !k) return;
+  PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, {
+    name, kcal: k, pro: num($("p100pro").value), carb: num($("p100carb").value), fat: num($("p100fat").value),
+    photo: (PRODUCTS[code] && PRODUCTS[code].photo) || (/^(data:|https:)/.test(shotSrc()) ? shotSrc() : ""),
+    portions: entryPortions.slice(),
+  });
+  store.set(LS_PROD, PRODUCTS);
+  if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
 }
 // load a product's portions into the entry (migrates a legacy single unit)
 function setEntryProduct(portions, legacyUnit) {
@@ -3204,6 +3244,38 @@ function setEntryProduct(portions, legacyUnit) {
   document.body.style.overflow = "hidden";
   applyAdminLock();
   renderPortions();
+}
+
+/* Tapping a log row opens THIS popup to change how much was eaten (Ido,
+   2026-09-04) - pre-filled with the product and the amount, and addEntry
+   updates that row instead of adding a new one. */
+let editEntryId = null;
+function openEntryForEdit(e) {
+  stopScan();
+  editEntryId = e.id;
+  pending = { barcode: e.barcode || "", photo: "" };
+  $("pName").value = e.name;
+  $("p100kcal").value = e.k100;
+  $("p100pro").value = e.pro100;
+  $("p100carb").value = e.carb100;
+  $("p100fat").value = e.fat100;
+  setShot(e.photo || "");
+  const pr = e.barcode && PRODUCTS[e.barcode];
+  setEntryProduct(pr && pr.portions, pr && pr.unit);
+  if (e.portion) {
+    const i = entryPortions.findIndex(p => p.n === e.portion);
+    if (i >= 0) { selPortion = i; $("grams").value = e.qty || Math.round(e.grams / (entryPortions[i].g || 1)); }
+    else { selPortion = -1; $("grams").value = e.grams; }
+  } else { selPortion = -1; $("grams").value = e.grams; }
+  renderPortions();
+  $("foundTag").textContent = T("עריכת רישום");
+  $("foundTag").className = "foundtag known";
+  $("addBtn").textContent = T("💾 עדכן");
+  $("entry").classList.add("on");
+  document.body.style.overflow = "hidden";
+  preview();
+  msg("entryMsg", ""); msg("scanMsg", "");
+  $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function applyAdminLock() {
   const admin = isAdmin();
@@ -3233,6 +3305,29 @@ function addEntry() {
   if (!name) { msg("entryMsg", T("חסר שם למוצר"), "err"); $("pName").focus(); return; }
   if (!grams) { msg("entryMsg", T("חסרה כמות"), "err"); $("grams").focus(); return; }
   if (!k100) { msg("entryMsg", T("חסרות קלוריות ל-100 גרם"), "err"); $("p100kcal").focus(); return; }
+
+  // editing an existing log row: update it in place instead of adding a new one
+  if (editEntryId) {
+    const ex = LOG.find(x => x.id === editEntryId);
+    if (ex) {
+      ex.name = name; ex.grams = grams; ex.k100 = k100;
+      ex.pro100 = num($("p100pro").value); ex.carb100 = num($("p100carb").value); ex.fat100 = num($("p100fat").value);
+      if (selPortion >= 0 && entryPortions[selPortion]) { ex.portion = entryPortions[selPortion].n; ex.qty = num($("grams").value); }
+      else { delete ex.portion; delete ex.qty; }
+      if (/^\d{6,}$/.test(ex.barcode || "")) {
+        PRODUCTS[ex.barcode] = Object.assign(PRODUCTS[ex.barcode] || {}, { name, kcal: k100, pro: ex.pro100, carb: ex.carb100, fat: ex.fat100 });
+        if (entryPortions.length) PRODUCTS[ex.barcode].portions = entryPortions.slice();
+        store.set(LS_PROD, PRODUCTS);
+        if (isAdmin()) sharedContribute(ex.barcode, PRODUCTS[ex.barcode]);
+      }
+    }
+    store.set(LS_LOG, LOG);
+    editEntryId = null; $("addBtn").textContent = T("➕ הוסף לרשימה");
+    $("entry").classList.remove("on"); document.body.style.overflow = ""; pending = null;
+    renderLog();
+    msg("scanMsg", T("עודכן"), "ok");
+    return;
+  }
 
   const now = new Date();
   const e = {
@@ -3304,7 +3399,7 @@ $("manualBtn").addEventListener("click", () => {
   if (code === null) return;
   onBarcode(code.trim(), "");
 });
-function closeEntry() { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); document.body.style.overflow = ""; }
+function closeEntry() { $("entry").classList.remove("on"); pending = null; editEntryId = null; $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = ""; }
 $("cancelBtn").addEventListener("click", closeEntry);
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
@@ -3627,6 +3722,9 @@ $("searchIn").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => doSearch(e.target.value), 250);
 });
+// tapping the name search shrinks the camera so the results list shows below
+$("searchIn").addEventListener("focus", () => document.querySelector(".campanel").classList.add("searching"));
+$("searchIn").addEventListener("blur", () => { if (!$("searchIn").value.trim()) document.querySelector(".campanel").classList.remove("searching"); });
 $("searchRes").addEventListener("click", e => {
   const b = e.target.closest("[data-i]");
   if (b) openProduct(lastResults[+b.dataset.i]);
@@ -3662,11 +3760,13 @@ $("log").addEventListener("click", e => {
   // grams editor
   const pic = e.target.dataset && e.target.dataset.pic;
   if (pic) { picTarget = pic; $("picInput").click(); return; }
-  if (e.target.dataset && e.target.dataset.esave) { saveEditedGrams(); return; }
-  if (e.target.dataset && e.target.dataset.ecancel) { editId = null; renderLog(); return; }
   if (e.target.closest("input")) return;
+  // tapping a row opens the entry popup to change the amount / portion
   const row = e.target.closest(".item");
-  if (row && row.dataset.id && row.dataset.id !== editId) { editId = row.dataset.id; renderLog(); }
+  if (row && row.dataset.id) {
+    const it = LOG.find(x => x.id === row.dataset.id);
+    if (it) openEntryForEdit(it);
+  }
 });
 $("missRes").addEventListener("click", e => {
   const b = e.target.closest("[data-mi]");
