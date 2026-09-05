@@ -455,6 +455,33 @@
   .picchoose-sheet button.prim { background:var(--accent); color:#141005; border-color:var(--accent); font-weight:700; }
   .picchoose-sheet button.ghost { background:transparent; color:var(--muted); }
 
+  /* "כתוב לנו" - feedback for non-admin users */
+  .fbbtn { display:block; width:100%; margin:14px 0 2px; padding:11px; border-radius:11px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--muted); font-size:14px; cursor:pointer; }
+  .fbbtn:hover { color:var(--text); }
+  .fbmodal { position:fixed; inset:0; z-index:95; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.6); padding:16px; }
+  .fbmodal.on { display:flex; }
+  .fbpanel { width:100%; max-width:460px; max-height:90vh; overflow:auto; background:var(--panel);
+    border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:9px; }
+  .fbhead { display:flex; align-items:center; justify-content:space-between; }
+  .fbhead b { font-size:16px; }
+  .fbhead button { background:none; border:0; color:var(--muted); font-size:20px; cursor:pointer; }
+  .fblbl { font-size:12px; color:var(--muted); margin-top:4px; }
+  .fbsel, .fbtext { width:100%; padding:11px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font-size:15px; font-family:inherit; }
+  .fbtext { resize:vertical; min-height:96px; }
+  .fbshotrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .fbshotbtn { padding:10px 14px; border-radius:10px; border:1px dashed var(--line);
+    background:transparent; color:var(--text); font-size:14px; cursor:pointer; }
+  .fbshotwrap { position:relative; }
+  .fbshotwrap img { height:54px; border-radius:8px; border:1px solid var(--line); display:block; }
+  .fbshotwrap button { position:absolute; top:-8px; inset-inline-end:-8px; width:22px; height:22px; border-radius:50%;
+    border:0; background:#c0392b; color:#fff; font-size:12px; cursor:pointer; line-height:1; }
+  .fbsend { margin-top:6px; padding:14px; border-radius:11px; border:0; background:var(--accent);
+    color:#141005; font-weight:700; font-size:15px; cursor:pointer; }
+  .fbsend:disabled { opacity:.6; cursor:default; }
+
   /* log */
   .loghead { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
   .loghead h2 { font-size:15px; }
@@ -558,6 +585,30 @@
       <button type="button" id="picCamBtn" class="prim">📷 צלם את המוצר</button>
       <button type="button" id="picGalBtn">🖼️ בחר מהגלריה</button>
       <button type="button" id="picCancel" class="ghost">ביטול</button>
+    </div>
+  </div>
+
+  <div id="fbModal" class="fbmodal">
+    <div class="fbpanel">
+      <div class="fbhead"><b>✉️ כתוב לנו</b><button type="button" id="fbClose" aria-label="סגור">✕</button></div>
+      <label class="fblbl" for="fbSubject">נושא</label>
+      <select id="fbSubject" class="fbsel">
+        <option value="באג">🐞 באג / תקלה</option>
+        <option value="חסר מוצר">🔍 חסר מוצר</option>
+        <option value="הצעת ייעול">💡 הצעת ייעול</option>
+      </select>
+      <label class="fblbl" for="fbText">ההודעה</label>
+      <textarea id="fbText" class="fbtext" rows="5" placeholder="ספר לנו מה קרה / מה חסר / מה להוסיף…"></textarea>
+      <div class="fbshotrow">
+        <button type="button" id="fbShotBtn" class="fbshotbtn">📎 צרף צילום מסך</button>
+        <div id="fbShotWrap" class="fbshotwrap" style="display:none">
+          <img id="fbShotPrev" alt="">
+          <button type="button" id="fbShotClear" aria-label="הסר">✕</button>
+        </div>
+      </div>
+      <input type="file" id="fbShotIn" accept="image/*" hidden>
+      <button type="button" id="fbSend" class="fbsend">שליחה</button>
+      <div id="fbMsg" class="msg"></div>
     </div>
   </div>
 
@@ -781,6 +832,7 @@
     </div>
     <div id="log"></div>
     <div class="foot" id="foot"></div>
+    <button id="fbBtn" class="fbbtn" style="display:none">✉️ כתוב לנו</button>
     <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
     <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
   </div>
@@ -873,6 +925,21 @@ const I18N = {
   "📷 צלם את המוצר": "📷 Photograph the product",
   "🖼️ בחר מהגלריה": "🖼️ Choose from gallery",
   "ביטול": "Cancel",
+  "התמונה עודכנה בכל הרישומים של המוצר.": "Photo updated on every entry of this product.",
+  "✉️ כתוב לנו": "✉️ Contact us",
+  "נושא": "Subject",
+  "🐞 באג / תקלה": "🐞 Bug / problem",
+  "🔍 חסר מוצר": "🔍 Missing product",
+  "💡 הצעת ייעול": "💡 Suggestion",
+  "ההודעה": "Message",
+  "ספר לנו מה קרה / מה חסר / מה להוסיף…": "Tell us what happened / what's missing / what to add…",
+  "📎 צרף צילום מסך": "📎 Attach a screenshot",
+  "שליחה": "Send",
+  "שולח…": "Sending…",
+  "כתוב הודעה קצרה לפני שליחה.": "Write a short message before sending.",
+  "תודה! ההודעה נשלחה.": "Thanks! Your message was sent.",
+  "אין חיבור כרגע — יישלח כשתחזור לרשת.": "Offline — it will send when you're back online.",
+  "לא הצלחתי לקרוא את התמונה.": "Couldn't read that image.",
   "בחר תמונה למוצר": "Choose a product photo",
   "שם המוצר": "Product name",
   "למשל: קוטג׳ 5%": "e.g. cottage cheese 5%",
@@ -1671,7 +1738,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.64";
+const APP_BUILD = "2026.09.04.65";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1720,6 +1787,9 @@ async function showDbg() {
 // resolve from local -> the CDN catalog -> Open Food Facts, all with zero Make
 // operations, so the app stays cheap at world scale.
 const SHARED_PUT = "https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo";
+// "כתוב לנו" - user feedback goes here (bug / missing product / suggestion),
+// reaches Ido with who sent it and an optional screenshot
+const FEEDBACK_HOOK = "https://hook.us2.make.com/kwmm5bcpb3deisjydcpt4odyygdapqqd";
 
 /* ---------------- community catalog (bulk, on the phone) ----------------
    Ido, 2026-09-02: every product every user enters, on every phone. Each
@@ -1782,13 +1852,12 @@ async function catalogPull(force) {
     // hosted image. Adopt that hosted URL into this phone's own product memory
     // (and any log rows still showing the raw shot), so the professional picture
     // appears here too - and the app stops re-sending the raw one.
-    let touched = false;
     for (const [c, v] of Object.entries(CATALOG.codes)) {
       const url = v && v.img;
       if (!url || !/^https?:/.test(url)) continue;
-      if (PRODUCTS[c] && !/^https?:/.test(PRODUCTS[c].photo || "")) { PRODUCTS[c].photo = url; touched = true; }
+      const cur = PRODUCTS[c] && PRODUCTS[c].photo;
+      if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
     }
-    if (touched) store.set(LS_PROD, PRODUCTS);
   } catch { /* offline or malformed - keep whatever is already on the phone */ }
 }
 
@@ -2822,9 +2891,10 @@ const shotSrc = () => $("shot").getAttribute("src") || "";
 function setShot(u) {
   if (u) $("shot").setAttribute("src", u); else $("shot").removeAttribute("src");
   $("shot").classList.toggle("blank", !u);
-  // no picture yet -> turn the thumb into a "photograph the product" prompt
+  // no picture yet -> turn the thumb into a "photograph the product" prompt,
+  // but only for the admin, who is the one who can actually set it
   const w = $("shot").closest(".shotwrap");
-  if (w) w.classList.toggle("needpic", !u);
+  if (w) w.classList.toggle("needpic", !u && isAdmin());
   $("picBtn").textContent = u ? T("החלף") : T("📷 צלם");
 }
 
@@ -3358,6 +3428,8 @@ function applyAdminLock() {
   $("pName").readOnly = !admin;
   $("per100Field").classList.toggle("locked", !admin);
   $("per100Hint").textContent = admin ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(ערכים מאומתים — נעולים)");
+  // the picture is curated too: only the admin can set/replace a product photo
+  $("picBtn").style.display = admin ? "" : "none";
 }
 
 function preview() {
@@ -3389,6 +3461,8 @@ function addEntry() {
       ex.pro100 = num($("p100pro").value); ex.carb100 = num($("p100carb").value); ex.fat100 = num($("p100fat").value);
       if (selPortion >= 0 && entryPortions[selPortion]) { ex.portion = entryPortions[selPortion].n; ex.qty = num($("grams").value); }
       else { delete ex.portion; delete ex.qty; }
+      const ph = /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "";
+      if (ph) { ex.photo = ph; applyProductPhoto(ex.barcode, ex.name, ph); }
       if (/^\d{6,}$/.test(ex.barcode || "")) {
         PRODUCTS[ex.barcode] = Object.assign(PRODUCTS[ex.barcode] || {}, { name, kcal: k100, pro: ex.pro100, carb: ex.carb100, fat: ex.fat100 });
         if (entryPortions.length) PRODUCTS[ex.barcode].portions = entryPortions.slice();
@@ -3423,6 +3497,9 @@ function addEntry() {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
     if (entryPortions.length) PRODUCTS[e.barcode].portions = entryPortions.slice();
     store.set(LS_PROD, PRODUCTS);
+    // one product, one picture: bring every existing row of this product up to
+    // the picture just saved
+    applyProductPhoto(e.barcode, e.name, e.photo);
     /* The admin (Ido) curates the shared catalog - his edits and portions always
        propagate; everyone else only sends a genuinely-new product (a catalog or
        complete-OFF hit is already shared). sharedContribute dedups on values so
@@ -3841,7 +3918,9 @@ $("log").addEventListener("click", e => {
   // a tap on the thumbnail replaces that row's picture instead of opening the
   // grams editor
   const pic = e.target.dataset && e.target.dataset.pic;
-  if (pic) { openPicChoose(pic); return; }
+  // only the admin curates photos; for anyone else a thumbnail tap falls
+  // through to opening the amount editor like any other row tap
+  if (pic && isAdmin()) { openPicChoose(pic); return; }
   if (e.target.closest("input")) return;
   // tapping a row opens the entry popup to change the amount / portion
   const row = e.target.closest(".item");
@@ -4080,6 +4159,23 @@ function toThumb(file, px = 384, q = 0.82) {
   });
 }
 
+/* One product, one picture. A food shows up many times in the log (GOODIES 3x
+   today); replacing the photo on ANY row - or on the entry card - updates the
+   product memory AND every other row of the same product, so they never drift
+   apart. Matches by barcode, or by name for barcode-less staples. Only fills a
+   real picture (never blanks rows). */
+function applyProductPhoto(barcode, name, photo) {
+  if (!photo) return false;
+  let changed = false;
+  for (const row of LOG) {
+    const same = barcode ? row.barcode === barcode : (!row.barcode && row.name === name);
+    if (same && row.photo !== photo) { row.photo = photo; changed = true; }
+  }
+  if (barcode && PRODUCTS[barcode]) { PRODUCTS[barcode].photo = photo; store.set(LS_PROD, PRODUCTS); }
+  if (changed) store.set(LS_LOG, LOG);
+  return changed;
+}
+
 async function pickedPicture(file) {
   let data;
   try { data = await toThumb(file); }
@@ -4088,11 +4184,11 @@ async function pickedPicture(file) {
   const e = LOG.find(x => x.id === picTarget);
   if (!e) return;
   e.photo = data;
-  // teach the product memory too, so the next time he logs it the picture is there
-  if (e.barcode && PRODUCTS[e.barcode]) { PRODUCTS[e.barcode].photo = data; store.set(LS_PROD, PRODUCTS); }
+  // update the product memory AND every other log row of the same product
+  applyProductPhoto(e.barcode, e.name, data);
   store.set(LS_LOG, LOG);
   renderLog();
-  msg("scanMsg", T("התמונה הוחלפה."), "ok");
+  msg("scanMsg", T("התמונה עודכנה בכל הרישומים של המוצר."), "ok");
 }
 
 /* "החלף" / tapping a thumbnail no longer jumps straight to the OS file picker -
@@ -4147,14 +4243,89 @@ async function fillMissingImages() {
   if (changed) { store.set(LS_LOG, LOG); store.set(LS_PROD, PRODUCTS); renderLog(); warmImages(); }
 }
 
+/* ---------------- "כתוב לנו" feedback (users who are not the admin) ----------
+   A regular user has no way to change values or photos - the button gives them
+   a voice: pick a subject, write, optionally attach a screenshot. It reaches
+   Ido with WHO sent it (their signed-in account), the subject and the image. */
+const LS_FB = "fl_fb";
+let fbImage = "";
+function updateFbButton() { $("fbBtn").style.display = isAdmin() ? "none" : "block"; }
+
+function openFb() {
+  fbImage = "";
+  $("fbSubject").value = "באג";
+  $("fbText").value = "";
+  $("fbShotWrap").style.display = "none";
+  $("fbShotPrev").removeAttribute("src");
+  msg("fbMsg", "");
+  $("fbSend").disabled = false; $("fbSend").textContent = T("שליחה");
+  $("fbModal").classList.add("on");
+}
+function closeFb() { $("fbModal").classList.remove("on"); }
+
+$("fbBtn").addEventListener("click", openFb);
+$("fbClose").addEventListener("click", closeFb);
+$("fbModal").addEventListener("click", e => { if (e.target === $("fbModal")) closeFb(); });
+$("fbShotBtn").addEventListener("click", () => $("fbShotIn").click());
+$("fbShotIn").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try { fbImage = await toThumb(f, 1000, 0.75); $("fbShotPrev").src = fbImage; $("fbShotWrap").style.display = "block"; }
+  catch { msg("fbMsg", T("לא הצלחתי לקרוא את התמונה."), "err"); }
+});
+$("fbShotClear").addEventListener("click", () => {
+  fbImage = ""; $("fbShotWrap").style.display = "none"; $("fbShotPrev").removeAttribute("src");
+});
+
+function fbEnqueue(p) {
+  let q = []; try { q = JSON.parse(localStorage.getItem(LS_FB) || "[]"); } catch {}
+  q.push(p); if (q.length > 50) q = q.slice(-50);
+  localStorage.setItem(LS_FB, JSON.stringify(q));
+}
+async function fbPost(payload) {
+  const hb = HB();
+  if (hb && hb.httpPost) {
+    const r = await hb.httpPost({ url: FEEDBACK_HOOK, body: JSON.stringify(payload),
+      contentType: "application/json; charset=utf-8" });
+    return !!(r && r.ok);
+  }
+  await fetch(FEEDBACK_HOOK, { method: "POST", mode: "no-cors",
+    headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify(payload), keepalive: true });
+  return true;   // no-cors is opaque; a resolved fetch means it left the device
+}
+async function fbFlush() {
+  let q = []; try { q = JSON.parse(localStorage.getItem(LS_FB) || "[]"); } catch {}
+  if (!q.length) return;
+  const rest = [];
+  for (const p of q) { let ok = false; try { ok = await fbPost(p); } catch { ok = false; } if (!ok) rest.push(p); }
+  localStorage.setItem(LS_FB, JSON.stringify(rest));
+}
+$("fbSend").addEventListener("click", async () => {
+  const text = $("fbText").value.trim();
+  if (text.length < 3) { msg("fbMsg", T("כתוב הודעה קצרה לפני שליחה."), "err"); $("fbText").focus(); return; }
+  const payload = {
+    subject: $("fbSubject").value, text, image: fbImage || "",
+    user: (cloudUser && cloudUser.email) || "", name: (cloudUser && cloudUser.name) || "",
+    uid: (cloudUser && cloudUser.uid) || "", ver: APP_BUILD, device: navigator.userAgent,
+    at: new Date().toISOString(),
+  };
+  $("fbSend").disabled = true; $("fbSend").textContent = T("שולח…");
+  let ok = false; try { ok = await fbPost(payload); } catch { ok = false; }
+  if (ok) { msg("fbMsg", T("תודה! ההודעה נשלחה."), "ok"); setTimeout(closeFb, 1200); }
+  else { fbEnqueue(payload); msg("fbMsg", T("אין חיבור כרגע — יישלח כשתחזור לרשת."), "ok"); setTimeout(closeFb, 1600); }
+});
+
 scrubImages();
 renderLog();
+updateFbButton();
 // pull the shared catalog (once a day) and flush any queued contributions
 catalogPull();
 contribFlush();
+fbFlush();
 // cloud account: pick up the signed-in user and sync their data down+up
 (async () => {
   await cloudRefreshUser();
+  updateFbButton();
   if (isSignedIn()) await cloudMergeSync();
 })();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
