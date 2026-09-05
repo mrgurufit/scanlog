@@ -36,14 +36,17 @@ jobs:
                   $ok
                   | map({
                       key: (.barcode | tostring),
-                      value: {
-                        n: .name,
-                        k: ((.kcal // 0) | tonumber? // 0),
-                        p: ((.pro  // 0) | tonumber? // 0),
-                        c: ((.carb // 0) | tonumber? // 0),
-                        f: ((.fat  // 0) | tonumber? // 0),
-                        img: ((.photo // "") | if type=="string" and startswith("http") then . else "" end)
-                      }
+                      value: (
+                        {
+                          n: .name,
+                          k: ((.kcal // 0) | tonumber? // 0),
+                          p: ((.pro  // 0) | tonumber? // 0),
+                          c: ((.carb // 0) | tonumber? // 0),
+                          f: ((.fat  // 0) | tonumber? // 0),
+                          img: ((.photo // "") | if type=="string" and startswith("http") then . else "" end)
+                        }
+                        + ( ((.unit // 0) | tonumber? // 0) as $u | if $u > 0 then {u: $u} else {} end )
+                      )
                     })
                   | from_entries
                 )

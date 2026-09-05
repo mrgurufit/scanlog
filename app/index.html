@@ -256,6 +256,15 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+  .qtyrow { display:flex; gap:8px; align-items:stretch; }
+  .qtyrow #grams { flex:1; }
+  .segtog { display:none; border:1px solid var(--line); border-radius:10px; overflow:hidden; flex:0 0 auto; }
+  .segtog.show { display:flex; }
+  .segtog button { background:var(--panel2); color:var(--muted); border:0; padding:0 14px; font-size:13px;
+                   font-weight:700; font-family:inherit; cursor:pointer; }
+  .segtog button.on { background:var(--accent); color:#141005; }
+  .unitset { display:flex; align-items:center; gap:6px; margin-top:9px; font-size:12px; color:var(--muted); }
+  .unitset input { width:78px; padding:6px 8px; font-size:13px; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
   .acctin { font-size:13px; color:var(--text); }
@@ -666,11 +675,20 @@
     </div>
 
     <div class="field">
-      <label for="grams">כמה גרם אכלת?</label>
-      <input type="number" id="grams" placeholder="גרם" inputmode="decimal">
+      <label id="gramsLbl" for="grams">כמה גרם אכלת?</label>
+      <div class="qtyrow">
+        <input type="number" id="grams" placeholder="גרם" inputmode="decimal">
+        <div class="segtog" id="unitTog">
+          <button type="button" id="modeG" class="on">גרם</button>
+          <button type="button" id="modeU">יחידות</button>
+        </div>
+      </div>
+      <div class="unitset">🍽️ <span>משקל יחידה אחת:</span>
+        <input type="number" id="unitG" inputmode="decimal" placeholder="גרם"> <span>ג׳</span>
+      </div>
     </div>
 
-    <div id="calcPreview">הזן גרמים כדי לחשב</div>
+    <div id="calcPreview">הזן כמות כדי לחשב</div>
 
     <div class="row">
       <button id="addBtn" class="primary">➕ הוסף לרשימה</button>
@@ -810,6 +828,12 @@ const I18N = {
   "📄 צלם את טבלת הערכים — היא תיקרא לבד": "📄 Photograph the nutrition table and it reads itself",
   "מה נקרא מהתמונה": "What was read from the photo",
   "כמה גרם אכלת?": "How many grams did you eat?",
+  "כמה יחידות אכלת?": "How many units did you eat?",
+  "יחידות": "units",
+  "משקל יחידה אחת:": "One unit weighs:",
+  "הזן כמות כדי לחשב": "Enter an amount to calculate",
+  "חסרה כמות": "Amount is missing",
+  "ג׳ · ": "g · ",
   "הזן גרמים כדי לחשב": "Enter grams to calculate",
   "➕ הוסף לרשימה": "➕ Add to the log",
   "ביטול": "Cancel",
@@ -1576,7 +1600,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.03.55";
+const APP_BUILD = "2026.09.04.56";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1651,7 +1675,7 @@ if (!CATALOG || typeof CATALOG.codes !== "object") CATALOG = { v: "", codes: {} 
 function catalogGet(code) {
   const p = code && CATALOG.codes && CATALOG.codes[code];
   if (!p || !p.n) return null;
-  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "" };
+  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "", unit: +p.u || 0 };
 }
 
 async function catalogText() {
@@ -1730,21 +1754,24 @@ async function contribFlush() {
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
   const photo = (p.photo || "").startsWith("http") ? p.photo : "";
+  const unit = +p.unit || 0;
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
   // Already in the catalog with the same values? Then the cloud already has it
   // (this device sent it, or it arrived in a pull) - do NOT send again. This is
   // what caps app->Make writes at one per never-before-seen product, no matter
-  // how many times the barcode is re-scanned.
-  const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0);
+  // how many times the barcode is re-scanned. A newly-learned unit weight also
+  // counts as a change worth sending.
+  const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0) && (+ex.u || 0) === unit;
   try {
     CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
+    if (unit > 0) CATALOG.codes[code].u = unit;
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
   if (already) return;
   // queue for the cloud (durable + retried) and flush now
   contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, src: p.src || "app" });
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, unit, src: p.src || "app" });
   contribFlush();
 }
 
@@ -2334,7 +2361,7 @@ function localMatches(q) {
   const res = [];
   for (const [code, pr] of Object.entries(PRODUCTS))
     if ((pr.name || "").includes(q))
-      res.push({ name: pr.name, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", src: "שלי" });
+      res.push({ name: pr.name, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", unit: pr.unit || 0, src: "שלי" });
   for (const g of GENERIC)
     if (g.n.includes(q) || (g.a || []).some(x => x.includes(q)))
       res.push({ name: g.n, k: g.k, p: g.p, c: g.c, f: g.f, src: "מאגר" });
@@ -2530,6 +2557,7 @@ function applyMissPick(r) {
   $("p100pro").value = r.p;
   $("p100carb").value = r.c;
   $("p100fat").value = r.f;
+  setEntryUnit(+r.unit || 0);
   if (!shotSrc() && r.photo) setShot(r.photo);
   $("foundTag").textContent = T("✓ התאמה: ") + r.name + " " + T("— ייזכר תחת הברקוד שנסרק");
   $("foundTag").className = "foundtag known";
@@ -2567,7 +2595,8 @@ function openProduct(r) {
   $("p100fat").value = r.f;
   setShot(r.photo || "");
   $("grams").value = "";
-  $("calcPreview").textContent = T("הזן גרמים כדי לחשב");
+  setEntryUnit(+r.unit || 0);
+  $("calcPreview").textContent = T("הזן כמות כדי לחשב");
   $("entry").classList.add("on");
   msg("scanMsg", ""); msg("entryMsg", "");
   /* A world-database hit was paid for with a Make operation. Keep it here so
@@ -3032,7 +3061,8 @@ async function onBarcode(code, photo) {
   // is never the automatic thumbnail any more.
   setShot((known && known.photo) || "");
   $("grams").value = "";
-  $("calcPreview").textContent = T("הזן גרמים כדי לחשב");
+  setEntryUnit((known && known.unit) || 0);
+  $("calcPreview").textContent = T("הזן כמות כדי לחשב");
   $("entry").classList.add("on");
   msg("scanMsg", code ? "" : T("לא זוהה ברקוד בתמונה — צלם קרוב יותר וישר, או פשוט מלא את הפרטים ידנית למטה."), code ? "" : "err");
   msg("entryMsg", "");
@@ -3049,6 +3079,7 @@ async function onBarcode(code, photo) {
       if (!$("p100pro").value && cat.pro) $("p100pro").value = cat.pro;
       if (!$("p100carb").value && cat.carb) $("p100carb").value = cat.carb;
       if (!$("p100fat").value && cat.fat) $("p100fat").value = cat.fat;
+      if (cat.unit && !entryUnitG()) setEntryUnit(cat.unit);
       if (!shotSrc() && cat.photo) setShot(cat.photo);
       PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
       store.set(LS_PROD, PRODUCTS);
@@ -3097,11 +3128,37 @@ async function onBarcode(code, photo) {
   }
 }
 
+/* ---------------- portion in grams OR whole units ----------------
+   Ido, 2026-09-04: many products come in pieces (a 50g popsicle, a 35g egg
+   white). A product can carry a "grams per unit"; when it does, the entry
+   screen offers a grams/units toggle and everything downstream still works in
+   grams - the unit weight is just a multiplier, remembered with the product
+   and shared through the catalog. */
+let entryMode = "g";
+function entryUnitG() { return num($("unitG").value) || 0; }
+function effGrams() {
+  const v = num($("grams").value);
+  return entryMode === "u" ? Math.round(v * entryUnitG()) : v;
+}
+function syncUnitUI() {
+  const has = entryUnitG() > 0;
+  $("unitTog").classList.toggle("show", has);
+  if (!has) entryMode = "g";
+  $("modeG").classList.toggle("on", entryMode === "g");
+  $("modeU").classList.toggle("on", entryMode === "u");
+  $("gramsLbl").textContent = entryMode === "u" ? T("כמה יחידות אכלת?") : T("כמה גרם אכלת?");
+  $("grams").placeholder = entryMode === "u" ? T("יחידות") : T("גרם");
+}
+// called whenever a product populates the entry form - prefill its unit weight
+function setEntryUnit(u) { $("unitG").value = (+u > 0) ? +u : ""; entryMode = "g"; syncUnitUI(); }
+
 function preview() {
-  const g = num($("grams").value);
-  if (!g) { $("calcPreview").textContent = T("הזן גרמים כדי לחשב"); return; }
+  const g = effGrams();
+  if (!g) { $("calcPreview").textContent = T("הזן כמות כדי לחשב"); return; }
   const f = g / 100;
-  $("calcPreview").innerHTML =
+  const pre = entryMode === "u"
+    ? `${num($("grams").value) || 0} × ${entryUnitG()}${T("ג׳")} = <b>${g}</b> ${T("ג׳ · ")}` : "";
+  $("calcPreview").innerHTML = pre +
     `<b>${Math.round(num($("p100kcal").value) * f)}</b> ${T("קק״ל ·")} ` +
     `${T("חלבון")} ${(num($("p100pro").value) * f).toFixed(1)} · ` +
     `${T("פחמימה")} ${(num($("p100carb").value) * f).toFixed(1)} · ` +
@@ -3110,10 +3167,11 @@ function preview() {
 
 function addEntry() {
   const name = $("pName").value.trim();
-  const grams = num($("grams").value);
+  const grams = effGrams();
+  const unitG = entryUnitG();
   const k100 = num($("p100kcal").value);
   if (!name) { msg("entryMsg", T("חסר שם למוצר"), "err"); $("pName").focus(); return; }
-  if (!grams) { msg("entryMsg", T("חסר משקל בגרמים"), "err"); $("grams").focus(); return; }
+  if (!grams) { msg("entryMsg", T("חסרה כמות"), "err"); $("grams").focus(); return; }
   if (!k100) { msg("entryMsg", T("חסרות קלוריות ל-100 גרם"), "err"); $("p100kcal").focus(); return; }
 
   const now = new Date();
@@ -3126,12 +3184,14 @@ function addEntry() {
     k100, pro100: num($("p100pro").value), carb100: num($("p100carb").value), fat100: num($("p100fat").value),
     photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "",
   };
+  if (unitG > 0 && entryMode === "u") e.units = num($("grams").value);   // for the log line
   LOG.push(e);
   save();
   hcWriteEntry(e);
 
   if (e.barcode) {
     PRODUCTS[e.barcode] = { name, kcal: k100, pro: e.pro100, carb: e.carb100, fat: e.fat100, photo: e.photo };
+    if (unitG > 0) PRODUCTS[e.barcode].unit = unitG;
     store.set(LS_PROD, PRODUCTS);
     /* Contribute to the cloud ONLY a genuinely new product - a real barcode the
        catalog and OFF did not already have. A name key is this phone's own
@@ -3189,6 +3249,9 @@ $("labelInput").addEventListener("change", e => { if (e.target.files[0]) readLab
 $("cancelBtn").addEventListener("click", () => { $("entry").classList.remove("on"); pending = null; msg("scanMsg", ""); });
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
+$("unitG").addEventListener("input", () => { syncUnitUI(); preview(); });
+$("modeG").addEventListener("click", () => { entryMode = "g"; syncUnitUI(); preview(); });
+$("modeU").addEventListener("click", () => { if (entryUnitG() > 0) { entryMode = "u"; syncUnitUI(); preview(); } });
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 $("setBtn").addEventListener("click", () => {
   ovPush();
