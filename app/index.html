@@ -1671,7 +1671,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.63";
+const APP_BUILD = "2026.09.04.64";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1778,6 +1778,17 @@ async function catalogPull(force) {
     CATALOG = { v: data.v || "", codes: Object.assign({}, CATALOG.codes, data.codes) };
     store.set(LS_CAT, CATALOG);
     localStorage.setItem(LS_CAT_AT, String(Date.now()));
+    // The pipeline replaces a raw camera photo with a clean, background-removed
+    // hosted image. Adopt that hosted URL into this phone's own product memory
+    // (and any log rows still showing the raw shot), so the professional picture
+    // appears here too - and the app stops re-sending the raw one.
+    let touched = false;
+    for (const [c, v] of Object.entries(CATALOG.codes)) {
+      const url = v && v.img;
+      if (!url || !/^https?:/.test(url)) continue;
+      if (PRODUCTS[c] && !/^https?:/.test(PRODUCTS[c].photo || "")) { PRODUCTS[c].photo = url; touched = true; }
+    }
+    if (touched) store.set(LS_PROD, PRODUCTS);
   } catch { /* offline or malformed - keep whatever is already on the phone */ }
 }
 
@@ -1824,16 +1835,21 @@ async function contribFlush() {
 
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
-  const photo = (p.photo || "").startsWith("http") ? p.photo : "";
+  // A camera/gallery photo is a data: URL. It USED to be dropped here (only http
+  // was kept), so captured product photos never reached the cloud. Now it is
+  // sent too - the compile pipeline removes its background, hosts it, and swaps
+  // the record's photo for that clean hosted URL, so everyone gets the picture.
+  const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
   const ptStr = portions.length ? JSON.stringify(portions) : "";
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
-  // Already in the catalog with the same values (name, kcal, portions)? Then the
-  // cloud already has it - do NOT send again. This caps app->Make writes at one
-  // per real change, no matter how often the barcode is re-scanned.
+  // Already in the catalog with the same values (name, kcal, portions, picture)?
+  // Then the cloud already has it - do NOT send again. Including the picture here
+  // means ADDING or CHANGING a photo counts as a real change and gets sent.
   const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0)
-    && JSON.stringify(ex.pt || []) === JSON.stringify(portions);
+    && JSON.stringify(ex.pt || []) === JSON.stringify(portions)
+    && (ex.img || "") === photo;
   try {
     CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
     if (portions.length) CATALOG.codes[code].pt = portions;

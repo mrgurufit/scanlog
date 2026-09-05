@@ -22,48 +22,164 @@ jobs:
         run: |
           set -euo pipefail
           curl -sSf "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg" > export.json
-          echo "records: $(jq 'length' export.json)"
+          python3 -c "import json;print('records:',len(json.load(open('export.json'))))"
+
+      # A camera/gallery product photo arrives as a data: URL. Count the ones we
+      # have not turned into a hosted, background-removed image yet - the heavy
+      # rembg install only runs when there is at least one.
+      - name: Count photos needing background removal
+        id: pending
+        run: |
+          set -euo pipefail
+          count=$(python3 -c "
+          import json, os
+          d=json.load(open('export.json'))
+          n=sum(1 for r in d
+                if str(r.get('barcode','') or '').strip()
+                and (r.get('photo','') or '').startswith('data:image')
+                and not os.path.exists('app/img/'+str(r.get('barcode')).strip()+'.jpg'))
+          print(n)
+          ")
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "photos needing background removal: $count"
+
+      - name: Set up Python
+        if: steps.pending.outputs.count != '0'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache the rembg model
+        if: steps.pending.outputs.count != '0'
+        uses: actions/cache@v4
+        with:
+          path: ~/.u2net
+          key: u2net-model-v1
+
+      - name: Remove backgrounds, host clean photos, write the URLs back
+        if: steps.pending.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          pip install --quiet "rembg[cpu]" pillow
+          python3 - <<'PY'
+          import json, os, io, base64, urllib.request
+          from PIL import Image
+          from rembg import remove, new_session
+
+          CONTRIB = 'https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo'
+          os.makedirs('app/img', exist_ok=True)
+          data = json.load(open('export.json'))
+          sess = new_session('u2net')
+          done = []
+
+          for r in data:
+              bc = str(r.get('barcode','') or '').strip()
+              ph = r.get('photo','') or ''
+              if not bc or not ph.startswith('data:image'):
+                  continue
+              out = f'app/img/{bc}.jpg'
+              if os.path.exists(out):
+                  continue
+              try:
+                  raw = base64.b64decode(ph.split(',', 1)[1])
+                  img = Image.open(io.BytesIO(raw)).convert('RGBA')
+                  cut = remove(img, session=sess)              # RGBA, background transparent
+                  white = Image.new('RGBA', cut.size, (255, 255, 255, 255))
+                  comp = Image.alpha_composite(white, cut).convert('RGB')
+                  bbox = cut.split()[-1].getbbox()             # crop to the product itself
+                  if bbox:
+                      x0, y0, x1, y1 = bbox
+                      pad = int(0.05 * max(x1 - x0, y1 - y0))
+                      x0 = max(0, x0 - pad); y0 = max(0, y0 - pad)
+                      x1 = min(comp.width, x1 + pad); y1 = min(comp.height, y1 + pad)
+                      comp = comp.crop((x0, y0, x1, y1))
+                  comp.thumbnail((320, 320))
+                  comp.save(out, 'JPEG', quality=85)
+                  done.append((bc, r))
+                  print('cut background ->', out)
+              except Exception as e:
+                  print('skip', bc, repr(e))
+
+          # Replace the raw base64 in the shared store with the hosted URL, so the
+          # next export is lean and this photo is never processed twice.
+          def num(x):
+              try: return float(x)
+              except Exception: return 0
+          for bc, r in done:
+              body = json.dumps({
+                  'barcode': bc,
+                  'name': r.get('name', '') or '',
+                  'kcal': num(r.get('kcal', 0)), 'pro': num(r.get('pro', 0)),
+                  'carb': num(r.get('carb', 0)), 'fat': num(r.get('fat', 0)),
+                  'photo': f'https://mrgurufit.com/app/img/{bc}.jpg',
+                  'pt': r.get('pt', '') or '', 'src': r.get('src', 'app') or 'app',
+              }, ensure_ascii=False).encode('utf-8')
+              try:
+                  req = urllib.request.Request(CONTRIB, data=body,
+                      headers={'Content-Type': 'application/json; charset=utf-8'})
+                  urllib.request.urlopen(req, timeout=30).read()
+                  print('wrote back hosted URL for', bc)
+              except Exception as e:
+                  print('write-back failed', bc, repr(e))
+          PY
 
       - name: Build catalog.json
         run: |
           set -euo pipefail
-          jq -c '
-            ( map(select(.barcode != null and .barcode != "" and .name != null and .name != "")) ) as $ok
-            | {
-                v: (now | strftime("%Y-%m-%d")),
-                count: ($ok | length),
-                codes: (
-                  $ok
-                  | map({
-                      key: (.barcode | tostring),
-                      value: (
-                        {
-                          n: .name,
-                          k: ((.kcal // 0) | tonumber? // 0),
-                          p: ((.pro  // 0) | tonumber? // 0),
-                          c: ((.carb // 0) | tonumber? // 0),
-                          f: ((.fat  // 0) | tonumber? // 0),
-                          img: ((.photo // "") | if type=="string" and startswith("http") then . else "" end)
-                        }
-                        + ( ((.pt // "") | if (type=="string" and (.|length)>0) then (fromjson? // null) else null end)
-                            as $pt | if ($pt|type)=="array" and ($pt|length)>0 then {pt: $pt} else {} end )
-                      )
-                    })
-                  | from_entries
-                )
-              }' export.json > catalog.new
+          python3 - <<'PY'
+          import json, os, datetime
+          data = json.load(open('export.json'))
 
-      - name: Commit only if the products changed
+          def num(x):
+              try: return float(x)
+              except Exception: return 0
+
+          codes = {}
+          for r in data:
+              bc = str(r.get('barcode', '') or '').strip()
+              nm = r.get('name', '')
+              if not bc or not nm:
+                  continue
+              local = f'app/img/{bc}.jpg'
+              ph = r.get('photo', '') or ''
+              if os.path.exists(local):
+                  img = f'https://mrgurufit.com/app/img/{bc}.jpg'   # our hosted, bg-removed photo wins
+              elif ph.startswith('http'):
+                  img = ph
+              else:
+                  img = ''
+              code = {'n': nm, 'k': num(r.get('kcal', 0)), 'p': num(r.get('pro', 0)),
+                      'c': num(r.get('carb', 0)), 'f': num(r.get('fat', 0)), 'img': img}
+              pt = r.get('pt', '')
+              if isinstance(pt, str) and pt.strip():
+                  try:
+                      arr = json.loads(pt)
+                      if isinstance(arr, list) and arr:
+                          code['pt'] = arr
+                  except Exception:
+                      pass
+              elif isinstance(pt, list) and pt:
+                  code['pt'] = pt
+              codes[bc] = code
+
+          out = {'v': datetime.date.today().isoformat(), 'count': len(codes), 'codes': codes}
+          json.dump(out, open('catalog.new', 'w'), ensure_ascii=False, separators=(',', ':'))
+          print('built catalog with', len(codes), 'codes')
+          PY
+
+      - name: Commit only if the products or photos changed
         run: |
           set -euo pipefail
-          old="$(jq -cS '.codes // {}' app/catalog.json 2>/dev/null || echo '{}')"
-          new="$(jq -cS '.codes // {}' catalog.new)"
+          old="$(python3 -c "import json; print(json.dumps(json.load(open('app/catalog.json')).get('codes',{}),sort_keys=True,ensure_ascii=False))" 2>/dev/null || echo '{}')"
+          new="$(python3 -c "import json; print(json.dumps(json.load(open('catalog.new')).get('codes',{}),sort_keys=True,ensure_ascii=False))")"
           if [ "$old" = "$new" ]; then
-            echo "catalog unchanged — nothing to publish"; exit 0
+            echo "catalog unchanged - nothing to publish"
+            exit 0
           fi
           mv catalog.new app/catalog.json
           git config user.name "catalog-bot"
           git config user.email "actions@users.noreply.github.com"
           git add app/catalog.json
-          git commit -m "Catalog: republish community products ($(jq -r '.count' app/catalog.json) items)"
+          [ -d app/img ] && git add app/img || true
+          git commit -m "Catalog: republish community products ($(python3 -c "import json;print(json.load(open('app/catalog.json'))['count'])") items)"
           git push
