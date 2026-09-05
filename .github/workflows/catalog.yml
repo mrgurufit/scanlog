@@ -2,7 +2,7 @@ name: Compile community catalog
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch: {}
 
 permissions:
