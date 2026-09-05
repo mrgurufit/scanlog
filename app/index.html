@@ -942,6 +942,7 @@ const I18N = {
   "אין חיבור כרגע — יישלח כשתחזור לרשת.": "Offline — it will send when you're back online.",
   "לא הצלחתי לקרוא את התמונה.": "Couldn't read that image.",
   "בחר תמונה למוצר": "Choose a product photo",
+  "(מהמדבקה — יתווסף למאגר המשותף)": "(from the label — added to the shared database)",
   "שם המוצר": "Product name",
   "למשל: קוטג׳ 5%": "e.g. cottage cheese 5%",
   "ערכים ל-100 גרם": "Values per 100 g",
@@ -1739,7 +1740,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.67";
+const APP_BUILD = "2026.09.04.68";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2893,9 +2894,9 @@ function setShot(u) {
   if (u) $("shot").setAttribute("src", u); else $("shot").removeAttribute("src");
   $("shot").classList.toggle("blank", !u);
   // no picture yet -> turn the thumb into a "photograph the product" prompt,
-  // but only for the admin, who is the one who can actually set it
+  // for anyone who is allowed to set it (admin, or any user adding a new product)
   const w = $("shot").closest(".shotwrap");
-  if (w) w.classList.toggle("needpic", !u && isAdmin());
+  if (w) w.classList.toggle("needpic", !u && entryEditable());
   $("picBtn").textContent = u ? T("החלף") : T("📷 צלם");
 }
 
@@ -3268,6 +3269,7 @@ async function onBarcode(code, photo) {
       PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
       store.set(LS_PROD, PRODUCTS);
       if (pending) pending.fromDB = true;   // already shared - do not re-contribute
+      applyAdminLock();                      // curated hit -> lock for non-admins
       $("foundTag").textContent = T("✓ זוהה:") + " " + cat.name;
       $("foundTag").className = "foundtag known";
       preview();
@@ -3297,6 +3299,7 @@ async function onBarcode(code, photo) {
       // everyone for free, so storing it in Make would only burn an operation.
       // A partial hit is treated as new: if he completes it, it IS worth sharing.
       if (pending) pending.fromDB = complete;
+      applyAdminLock();                      // a complete OFF hit locks; a partial stays editable
       $("foundTag").textContent = complete
         ? T("✓ זוהה:") + " " + off.name
         : T("זוהה חלקית:") + " " + (off.name || code) + " " + T("— השלם מהמדבקה");
@@ -3423,14 +3426,22 @@ function openEntryForEdit(e) {
   msg("entryMsg", ""); msg("scanMsg", "");
   $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+// A product that came from the shared catalog or a COMPLETE Open Food Facts hit
+// is verified data - locked for everyone but the admin. A NEW / unknown / partial
+// product (pending.fromDB is false) is editable by ANYONE, so any user can fill
+// it from the label and it flows into the shared catalog for the whole world.
+function entryEditable() { return isAdmin() || !(pending && pending.fromDB); }
+
 function applyAdminLock() {
-  const admin = isAdmin();
-  ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !admin; });
-  $("pName").readOnly = !admin;
-  $("per100Field").classList.toggle("locked", !admin);
-  $("per100Hint").textContent = admin ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(ערכים מאומתים — נעולים)");
-  // the picture is curated too: only the admin can set/replace a product photo
-  $("picBtn").style.display = admin ? "" : "none";
+  const editable = entryEditable();
+  ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !editable; });
+  $("pName").readOnly = !editable;
+  $("per100Field").classList.toggle("locked", !editable);
+  $("per100Hint").textContent = !editable ? T("(ערכים מאומתים — נעולים)")
+    : (isAdmin() ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(מהמדבקה — יתווסף למאגר המשותף)"));
+  // a new product can get a photo from anyone (it is crowdsourced); a curated
+  // product's photo stays admin-only
+  $("picBtn").style.display = editable ? "" : "none";
 }
 
 function preview() {
