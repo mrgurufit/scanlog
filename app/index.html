@@ -12,21 +12,37 @@
 <meta name="apple-mobile-web-app-title" content="Scan & Log">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<!-- set the saved light theme before paint so there is no dark flash -->
+<script>try{if(localStorage.getItem('fl_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 <style>
   :root {
     --bg:#0d0f14; --panel:#161a22; --panel2:#1d2330; --line:#2a3242;
-    --text:#f2f4f8; --muted:#8a93a6; --accent:#ffd400; --green:#2ecc71;
+    --text:#f2f4f8; --muted:#8a93a6; --accent:#ffd400; --accentText:#ffd400; --green:#2ecc71;
     --red:#ff5c5c; --blue:#5aa9ff;
     --sans: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", Consolas, monospace;
   }
+  /* LIGHT theme: the yellow FILL stays bright (buttons), but accent TEXT darkens
+     to a readable gold, and the chrome flips to light surfaces. */
+  :root[data-theme="light"] {
+    --bg:#eef1f6; --panel:#ffffff; --panel2:#f3f5f9; --line:#dde2ea;
+    --text:#141a24; --muted:#5c6675; --accent:#ffd400; --accentText:#8a6a00; --green:#12934a;
+    --red:#d63b3b; --blue:#2f6fe0;
+  }
+  :root[data-theme="light"] .cd.sel { background:#fff6da; }
+  :root[data-theme="light"] .foundtag.known { background:#e4f6ec; color:#0f7a3d; border-color:#bfe6cf; }
+  :root[data-theme="light"] .foundtag.newp  { background:#fff6da; color:#8a6a00; border-color:#e6d48a; }
+  :root[data-theme="light"] #scaleLive { background:#efe9fb; border-color:#c9bdf0; color:#4a3a7a; }
+  :root[data-theme="light"] #scaleLive b { color:#241b3a; }
+  :root[data-theme="light"] #scaleLive.stable { background:#e4f6ec; border-color:#bfe6cf; color:#0f7a3d; }
+  :root[data-theme="light"] .item img.blank, :root[data-theme="light"] #shot.blank { filter:none; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html, body { background:var(--bg); color:var(--text); font-family:var(--sans); }
   body { padding:14px 12px 92px; }
   .wrap { max-width:620px; margin:0 auto; }
 
   h1 { font-size:19px; letter-spacing:.2px; margin-bottom:2px; }
-  h1 span { color:var(--accent); }
+  h1 span { color:var(--accentText); }
   .sub { color:var(--muted); font-size:12.5px; margin-bottom:14px; }
 
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
@@ -58,7 +74,7 @@
     background:#1c2836; color:var(--blue); border:1px solid #2b3f55; white-space:nowrap;
   }
   .sr .srs.mine { background:#12301f; color:var(--green); border-color:#1d5c39; }
-  .sr .srs.gen  { background:#2a2410; color:var(--accent); border-color:#6b5a12; }
+  .sr .srs.gen  { background:#2a2410; color:var(--accentText); border-color:#6b5a12; }
   .sr.dim { color:var(--muted); font-size:12.5px; justify-content:center; }
 
   /* header + streak */
@@ -69,7 +85,7 @@
     background:#241a0e; border:1px solid #6b4d16; border-radius:999px;
     font-size:17px; flex:0 0 auto;
   }
-  #streak span { font-size:15px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+  #streak span { font-size:15px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
   #streakToast {
     display:none; background:var(--panel); border:1px solid var(--accent); color:var(--text);
     border-radius:12px; padding:11px 14px; font-size:14px; font-weight:700;
@@ -141,8 +157,8 @@
   .cd:disabled { opacity:.35; cursor:default; }
   .cd .cl { font-size:11px; font-weight:800; color:var(--muted); }
   .cd .cn { font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .cd.today .cl { color:var(--accent); }
-  .cd.sel { border-color:var(--accent); background:#241f0e; }
+  .cd.today .cl { color:var(--accentText); }
+  .cd.sel { border-color:var(--accentText); background:#241f0e; }
   .cd .dot { width:5px; height:5px; border-radius:50%; background:var(--green); }
   .cd .dot.off { background:transparent; }
 
@@ -165,11 +181,11 @@
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
   .chkrow { display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px; cursor:pointer; }
-  .chkrow input { width:17px; height:17px; accent-color:var(--accent); }
+  .chkrow input { width:17px; height:17px; accent-color:var(--accentText); }
   .tot { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:5px 4px; text-align:center; }
   .tot .v { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
   .tot .l { font-size:9.5px; color:var(--muted); font-weight:700; margin-top:1px; }
-  .tot.kcal .v { color:var(--accent); }
+  .tot.kcal .v { color:var(--accentText); }
 
   button, .btn {
     font-family:inherit; font-size:15px; font-weight:700; border:0; border-radius:11px;
@@ -178,7 +194,7 @@
   }
   button:active { transform:scale(.985); }
   button:disabled { opacity:.5; }
-  .primary { background:var(--accent); color:#000; border-color:var(--accent); }
+  .primary { background:var(--accent); color:#000; border-color:var(--accentText); }
   .danger  { background:transparent; color:var(--red); border-color:#5a2a2a; }
   .wide { width:100%; }
   .row { display:flex; gap:8px; }
@@ -201,7 +217,7 @@
     max-height:92vh; overflow-y:auto;
   }
   #video.off { display:none; }
-  #searchToggle.on { background:var(--accent); color:#141005; border-color:var(--accent); }
+  #searchToggle.on { background:var(--accent); color:#141005; border-color:var(--accentText); }
   #searchArea { margin-top:10px; }
   .camsearch { margin-top:0; }
   .camfb { display:flex; gap:8px; margin-top:8px; }
@@ -276,7 +292,7 @@
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
   .acctin { font-size:13px; color:var(--text); }
   .acctin b { color:var(--green); }
-  #manState { font-size:11.5px; color:var(--accent); margin-top:3px; }
+  #manState { font-size:11.5px; color:var(--accentText); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
   #manRow { display:none; gap:6px; margin-top:6px; align-items:center; }
@@ -307,7 +323,7 @@
     padding:7px 16px; border-radius:999px; font-size:13px; font-weight:700; font-family:inherit;
     background:var(--panel2); border:1px solid var(--line); color:var(--muted);
   }
-  .oblangb.on { background:#241a0e; border-color:var(--accent); color:var(--accent); }
+  .oblangb.on { background:#241a0e; border-color:var(--accentText); color:var(--accentText); }
   .obback {
     width:100%; margin-top:8px; padding:11px; border:0; border-radius:12px;
     background:var(--panel2); color:var(--muted); font-size:13.5px; font-family:inherit;
@@ -328,7 +344,12 @@
     flex:1; padding:12px; border-radius:12px; font-size:14px; font-weight:700; font-family:inherit;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
-  .obsexb.on { background:#241a0e; border-color:var(--accent); color:var(--accent); }
+  .obsexb.on { background:#241a0e; border-color:var(--accentText); color:var(--accentText); }
+  /* theme segmented control (own class - the .obsexb click handler is for sex) */
+  .segb { flex:1; padding:10px 4px; border-radius:11px; font-size:13px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text); cursor:pointer; }
+  .segb.on { background:#241a0e; border-color:var(--accentText); color:var(--accentText); }
+  :root[data-theme="light"] .segb.on, :root[data-theme="light"] .obsexb.on { background:#fff6da; }
   .obgrid { display:flex; flex-direction:column; gap:9px; }
   .obgrid label { font-size:12.5px; color:var(--muted); display:flex; flex-direction:column; gap:5px; }
   .obgrid input {
@@ -338,7 +359,7 @@
   .oberr { color:#ff8f8f; font-size:12.5px; min-height:16px; margin-top:7px; }
   .obkg { display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0 10px; }
   .obkg > div { text-align:center; min-width:110px; }
-  .obkg span { font-size:40px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .obkg span { font-size:40px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
   .obkg small { display:block; font-size:12px; color:var(--muted); }
   .obkgb {
     width:52px; height:52px; border-radius:50%; font-size:26px; font-weight:800; font-family:inherit;
@@ -384,7 +405,7 @@
   }
   #torchBtn { display:none; }
   #torchBtn.avail { display:block; }
-  #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accent); }
+  #torchBtn.on { background:var(--accent); color:#000; border-color:var(--accentText); }
   .camhint { text-align:center; color:var(--muted); font-size:12.5px; margin:8px 0; }
 
   /* form */
@@ -425,12 +446,12 @@
     border-radius:999px; margin-bottom:10px;
   }
   .foundtag.known { background:#12301f; color:var(--green); border:1px solid #1d5c39; }
-  .foundtag.newp  { background:#2a2410; color:var(--accent); border:1px solid #6b5a12; }
+  .foundtag.newp  { background:#2a2410; color:var(--accentText); border:1px solid #6b5a12; }
   #calcPreview {
     background:var(--panel2); border:1px solid var(--line); border-radius:10px;
     padding:11px; margin:11px 0; font-size:14px; text-align:center; font-variant-numeric:tabular-nums;
   }
-  #calcPreview b { color:var(--accent); font-size:17px; }
+  #calcPreview b { color:var(--accentText); font-size:17px; }
   #shot { width:64px; height:64px; border-radius:9px; object-fit:cover; border:1px solid var(--line); background:var(--panel2); }
   /* an <img> with no src draws the browser's broken-image glyph - show a calm
      plate icon instead, in the entry card and in every log row */
@@ -452,7 +473,7 @@
   .picchoose-title { font-size:15px; font-weight:700; text-align:center; margin-bottom:4px; }
   .picchoose-sheet button { padding:14px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
     color:var(--text); font-size:15px; cursor:pointer; }
-  .picchoose-sheet button.prim { background:var(--accent); color:#141005; border-color:var(--accent); font-weight:700; }
+  .picchoose-sheet button.prim { background:var(--accent); color:#141005; border-color:var(--accentText); font-weight:700; }
   .picchoose-sheet button.ghost { background:transparent; color:var(--muted); }
 
   /* "כתוב לנו" - feedback for non-admin users */
@@ -483,11 +504,11 @@
   .fbsend:disabled { opacity:.6; cursor:default; }
 
   /* wireless scale */
-  .scalelive { font-size:40px; font-weight:800; text-align:center; margin:10px 0; font-variant-numeric:tabular-nums; color:var(--accent); }
+  .scalelive { font-size:40px; font-weight:800; text-align:center; margin:10px 0; font-variant-numeric:tabular-nums; color:var(--accentText); }
   .scalelist { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:230px; overflow:auto; }
   .scaledev { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:11px 12px;
     border-radius:10px; border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer; font-size:14px; text-align:right; }
-  .scaledev.match { border-color:var(--accent); }
+  .scaledev.match { border-color:var(--accentText); }
   .scaledev small { color:var(--muted); font-size:11px; }
   #scaleLive { margin-top:8px; padding:10px 12px; border-radius:10px; text-align:center; font-size:15px;
     background:#241b3a; border:1px solid #4a3a7a; color:#e6dcff; font-variant-numeric:tabular-nums; }
@@ -505,7 +526,7 @@
   .item .nm { font-weight:700; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .item .meta { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; margin-top:2px; }
   .item .kc { font-weight:800; font-variant-numeric:tabular-nums; text-align:center; flex:0 0 auto; }
-  .item .kc b { color:var(--accent); font-size:16px; display:block; }
+  .item .kc b { color:var(--accentText); font-size:16px; display:block; }
   .item .kc small { color:var(--muted); font-size:10px; }
   .item .x { background:transparent; border:0; color:var(--muted); font-size:19px; padding:6px 4px; flex:0 0 auto; }
   .item { cursor:pointer; }
@@ -523,7 +544,7 @@
   .empty { color:var(--muted); font-size:13.5px; text-align:center; padding:18px 0; line-height:1.7; }
 
   .msg { font-size:12.5px; margin-top:9px; min-height:16px; line-height:1.6; }
-  .msg.err { color:var(--red); } .msg.ok { color:var(--green); } .msg.pend { color:var(--accent); }
+  .msg.err { color:var(--red); } .msg.ok { color:var(--green); } .msg.pend { color:var(--accentText); }
   .diag { font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-top:6px; direction:ltr; text-align:left; }
   .offbar { display:none; margin-top:8px; padding:8px 11px; border-radius:9px; background:#3a2a12; color:#ffcf87; font-size:12.5px; line-height:1.5; }
   body.off .offbar { display:block; }
@@ -885,6 +906,17 @@
         <div id="scaleRow" style="display:none;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
           <button id="scaleBtn" type="button" style="background:#3a2d5c;color:#e6dcff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚖️ חבר משקל דיגיטלי (בטא)</button>
           <span id="scaleRowState" style="font-size:12px;color:#9aa3b2"></span>
+        </div>
+        <div class="erow" style="margin-top:12px">
+          <div class="efield">
+            <label>מראה</label>
+            <div class="obsex" style="margin:6px 0 0">
+              <button type="button" class="segb" data-theme-opt="dark">🌙 כהה</button>
+              <button type="button" class="segb" data-theme-opt="light">☀️ בהיר</button>
+              <button type="button" class="segb" data-theme-opt="auto">🔄 אוטומטי</button>
+            </div>
+            <div class="ehint" id="themeHint" style="margin-top:4px"></div>
+          </div>
         </div>
         <div class="erow" style="margin-top:12px">
           <div class="efield">
@@ -1772,7 +1804,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.70";
+const APP_BUILD = "2026.09.04.71";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4514,6 +4546,57 @@ $("scaleScanBtn").addEventListener("click", scaleScan);
 $("scaleDiscBtn").addEventListener("click", async () => { const hb = HB(); try { await hb.scaleDisconnect(); } catch (e) {} localStorage.removeItem(LS_SCALE); });
 $("scaleList").addEventListener("click", e => { const b = e.target.closest("[data-addr]"); if (b) scaleConnectTo(b.dataset.addr); });
 $("scaleDbgChk").addEventListener("change", () => { $("scaleDbg").style.display = $("scaleDbgChk").checked ? "block" : "none"; });
+
+/* ---------------- appearance: dark / light / auto ----------------
+   "auto" uses the phone's AMBIENT-LIGHT sensor (native) - bright surroundings ->
+   light, dark -> dark, with a dead-zone so it doesn't flap. In a plain browser
+   (no native sensor) it falls back to the OS light/dark setting. */
+const LS_THEME = "fl_theme";
+let themeMode = localStorage.getItem(LS_THEME) || "dark";
+let lightSensorOn = false, lightListenerAdded = false, autoMedia = null;
+
+function setDoc(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", theme === "light" ? "#ffffff" : "#0d0f14");
+}
+function markThemeBtns() {
+  document.querySelectorAll("[data-theme-opt]").forEach(b => b.classList.toggle("on", b.dataset.themeOpt === themeMode));
+  const h = $("themeHint");
+  if (h) h.textContent = themeMode === "auto" ? T("מתחלף לפי חיישן האור של הטלפון — בהיר במקום מואר, כהה בחושך.") : "";
+}
+function autoApplyLux(lux) {
+  const cur = document.documentElement.getAttribute("data-theme");
+  if (lux < 25 && cur !== "dark") setDoc("dark");
+  else if (lux > 70 && cur !== "light") setDoc("light");
+}
+function onLightSensor(ev) { if (themeMode === "auto") autoApplyLux(+ev.lux); }
+function onSysScheme(e) { if (themeMode === "auto") setDoc(e.matches ? "dark" : "light"); }
+function ensureLightListener() { const hb = HB(); if (!hb || lightListenerAdded) return; try { hb.addListener("lightSensor", onLightSensor); lightListenerAdded = true; } catch (e) {} }
+function sysScheme() {
+  try { autoMedia = window.matchMedia("(prefers-color-scheme: dark)"); setDoc(autoMedia.matches ? "dark" : "light"); autoMedia.addEventListener("change", onSysScheme); }
+  catch (e) { setDoc("dark"); }
+}
+function stopAuto() {
+  if (autoMedia) { try { autoMedia.removeEventListener("change", onSysScheme); } catch (e) {} autoMedia = null; }
+  const hb = HB(); if (lightSensorOn && hb && hb.lightStop) { try { hb.lightStop(); } catch (e) {} }
+  lightSensorOn = false;
+}
+function startAuto() {
+  const hb = HB();
+  if (hb && hb.lightStart) { ensureLightListener(); try { hb.lightStart(); lightSensorOn = true; } catch (e) { sysScheme(); } }
+  else sysScheme();
+}
+function applyTheme() {
+  stopAuto();
+  if (themeMode === "light") setDoc("light");
+  else if (themeMode === "auto") startAuto();
+  else setDoc("dark");
+  markThemeBtns();
+}
+function setThemeMode(m) { themeMode = m; localStorage.setItem(LS_THEME, m); applyTheme(); }
+document.querySelectorAll("[data-theme-opt]").forEach(b => b.addEventListener("click", () => setThemeMode(b.dataset.themeOpt)));
+applyTheme();
 
 scrubImages();
 renderLog();
