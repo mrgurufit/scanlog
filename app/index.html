@@ -482,6 +482,18 @@
     color:#141005; font-weight:700; font-size:15px; cursor:pointer; }
   .fbsend:disabled { opacity:.6; cursor:default; }
 
+  /* wireless scale */
+  .scalelive { font-size:40px; font-weight:800; text-align:center; margin:10px 0; font-variant-numeric:tabular-nums; color:var(--accent); }
+  .scalelist { display:flex; flex-direction:column; gap:6px; margin-top:8px; max-height:230px; overflow:auto; }
+  .scaledev { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:11px 12px;
+    border-radius:10px; border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer; font-size:14px; text-align:right; }
+  .scaledev.match { border-color:var(--accent); }
+  .scaledev small { color:var(--muted); font-size:11px; }
+  #scaleLive { margin-top:8px; padding:10px 12px; border-radius:10px; text-align:center; font-size:15px;
+    background:#241b3a; border:1px solid #4a3a7a; color:#e6dcff; font-variant-numeric:tabular-nums; }
+  #scaleLive b { font-size:20px; color:#fff; }
+  #scaleLive.stable { background:#12301f; border-color:#1d5c39; color:var(--green); }
+
   /* log */
   .loghead { display:flex; align-items:baseline; gap:8px; margin-bottom:10px; }
   .loghead h2 { font-size:15px; }
@@ -609,6 +621,21 @@
       <input type="file" id="fbShotIn" accept="image/*" hidden>
       <button type="button" id="fbSend" class="fbsend">שליחה</button>
       <div id="fbMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <div id="scaleModal" class="fbmodal">
+    <div class="fbpanel">
+      <div class="fbhead"><b>⚖️ משקל דיגיטלי (בטא)</b><button type="button" id="scaleClose" aria-label="סגור">✕</button></div>
+      <div id="scaleStatus" class="msg" style="margin:0">הקש "סרוק" והנח את המשקל דלוק לידך.</div>
+      <div class="scalelive" id="scaleBig">—</div>
+      <div class="row" style="gap:8px">
+        <button type="button" id="scaleScanBtn" class="primary wide">🔍 סרוק משקלים</button>
+        <button type="button" id="scaleDiscBtn" class="wide" style="display:none">🔌 נתק</button>
+      </div>
+      <div id="scaleList" class="scalelist"></div>
+      <label class="chkrow" style="margin-top:6px"><input type="checkbox" id="scaleDbgChk"> הצג נתונים גולמיים (לפענוח)</label>
+      <pre id="scaleDbg" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.5;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin:6px 0 0;direction:ltr;text-align:left;max-height:200px;overflow:auto"></pre>
     </div>
   </div>
 
@@ -783,6 +810,7 @@
         <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
         <span id="qtyUnit" class="qtyunit">גרם</span>
       </div>
+      <div id="scaleLive" style="display:none">⚖️ <b id="scaleLiveG">0</b> גרם <span id="scaleLiveHint">— הנח על המשקל…</span></div>
       <div id="portionAdmin"></div>
     </div>
 
@@ -853,6 +881,10 @@
         <div id="skRow" style="display:none;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
           <button id="skBtn" type="button" style="background:#26304a;color:#cfe0ff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚡ פתיחה מהירה מהלחצן הצידי</button>
           <span id="skState" style="font-size:12px;color:#9aa3b2"></span>
+        </div>
+        <div id="scaleRow" style="display:none;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button id="scaleBtn" type="button" style="background:#3a2d5c;color:#e6dcff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">⚖️ חבר משקל דיגיטלי (בטא)</button>
+          <span id="scaleRowState" style="font-size:12px;color:#9aa3b2"></span>
         </div>
         <div class="erow" style="margin-top:12px">
           <div class="efield">
@@ -1740,7 +1772,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.68";
+const APP_BUILD = "2026.09.04.69";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3563,7 +3595,7 @@ $("manualBtn").addEventListener("click", () => {
   if (code === null) return;
   onBarcode(code.trim(), "");
 });
-function closeEntry() { $("entry").classList.remove("on"); pending = null; editEntryId = null; $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = ""; }
+function closeEntry() { $("entry").classList.remove("on"); pending = null; editEntryId = null; $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = ""; if (typeof scaleLast === "object") { scaleLast.filled = false; } if ($("scaleLive")) $("scaleLive").style.display = "none"; }
 $("cancelBtn").addEventListener("click", closeEntry);
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
@@ -4340,6 +4372,142 @@ $("fbSend").addEventListener("click", async () => {
   else { fbEnqueue(payload); msg("fbMsg", T("אין חיבור כרגע — יישלח כשתחזור לרשת."), "ok"); setTimeout(closeFb, 1600); }
 });
 
+/* ---------------- wireless kitchen scale (BLE) — admin-only beta ----------------
+   The native HealthBridge scans/connects and streams RAW notification bytes; we
+   decode them HERE, so the parser is tunable through a content update with no new
+   APK. Stability is detected client-side (weight unchanged ~1s), which works for
+   any scale regardless of its stable-flag byte. */
+const LS_SCALE = "fl_scale_addr";
+let scaleConn = false, scaleListenersOn = false;
+let scaleLast = { g: null, at: 0, filled: false };
+const scaleDevs = {};
+const SCALE_SVCS = ["ffb0", "fff0", "1910"];
+
+function scaleSupported() { const hb = HB(); return !!(hb && hb.scaleStart && hb.addListener); }
+function updateScaleRow() {
+  const show = isAdmin() && scaleSupported();
+  $("scaleRow").style.display = show ? "flex" : "none";
+  $("scaleRowState").textContent = scaleConn ? T("מחובר ✓") : "";
+}
+
+// decode a raw BLE notification into grams (auto-detect the known scale families)
+function parseScaleHex(hex) {
+  const b = []; for (let i = 0; i + 1 < hex.length; i += 2) b.push(parseInt(hex.substr(i, 2), 16));
+  if (b.length < 4) return null;
+  if (b[0] === 0xCA && b[1] === 0x10 && b.length >= 7) {         // Chipsea SmartChef
+    const attr = b[3], dec = (attr >> 1) & 3, neg = (attr & 0x80) !== 0;
+    let v = ((b[5] << 8) | b[6]) / Math.pow(10, dec); if (neg) v = -v;
+    return { g: v, stableFlag: (attr & 1) === 1 };
+  }
+  if (b[0] === 0xAC && b[1] === 0x40 && b.length >= 7) {         // Nutridays AC40 (KP2048B family) - 24-bit BE mg
+    return { g: ((b[4] << 16) | (b[5] << 8) | b[6]) / 1000, stableFlag: null };
+  }
+  if (b[0] === 0xD0 && b.length >= 5) {                          // Etekcity ESN00
+    const sign = b[1] === 1 ? -1 : 1;
+    return { g: sign * ((b[2] << 8) | b[3]), stableFlag: b[4] === 1 };
+  }
+  return null;
+}
+
+function scaleShowLive(g, done) {
+  const open = $("entry").classList.contains("on");
+  $("scaleLive").style.display = (scaleConn && open) ? "block" : "none";
+  if (!(scaleConn && open)) return;
+  $("scaleLiveG").textContent = Math.round(g);
+  $("scaleLive").classList.toggle("stable", !!done);
+  $("scaleLiveHint").textContent = done ? T("— מולא אוטומטית ✓") : T("— הנח על המשקל…");
+}
+
+function onScaleData(ev) {
+  if ($("scaleDbgChk") && $("scaleDbgChk").checked) {
+    const el = $("scaleDbg"); el.style.display = "block";
+    el.textContent = ((ev.char || "") + "  " + (ev.hex || "") + "\n" + el.textContent).slice(0, 1500);
+  }
+  const p = parseScaleHex(ev.hex || "");
+  if (!p || !isFinite(p.g)) return;
+  const g = p.g;
+  if ($("scaleBig")) $("scaleBig").textContent = Math.round(g) + " g";
+  const now = Date.now();
+  if (scaleLast.g === null || Math.abs(g - scaleLast.g) > 1) {   // moving - reset the settle timer
+    scaleLast = { g, at: now, filled: false };
+    scaleShowLive(g, false);
+    return;
+  }
+  const settled = (now - scaleLast.at) >= 900 && g >= 2;
+  if (settled && !scaleLast.filled && $("entry").classList.contains("on")) {
+    selPortion = -1; renderPortions();                            // weigh mode
+    $("grams").value = Math.round(g);
+    scaleLast.filled = true;
+    preview();
+    if (navigator.vibrate) { try { navigator.vibrate(40); } catch {} }
+  }
+  scaleShowLive(g, scaleLast.filled);
+}
+
+function renderScaleList() {
+  const items = Object.values(scaleDevs).sort((a, b) => (b.match ? 1 : 0) - (a.match ? 1 : 0) || (b.rssi || -999) - (a.rssi || -999));
+  $("scaleList").innerHTML = items.map(d =>
+    `<button class="scaledev${d.match ? " match" : ""}" data-addr="${d.address}">
+       <span>${esc(d.name || T("מכשיר לא מזוהה"))}${d.match ? " ⚖️" : ""}<br><small>${d.address} · ${d.rssi}dBm</small></span><span>➜</span></button>`
+  ).join("") || `<div class="msg">${T("סורק…")}</div>`;
+}
+function onScaleDevice(d) {
+  if (!d.address) return;
+  const svc = (d.services || []).map(s => (s || "").toLowerCase());
+  const match = svc.some(s => SCALE_SVCS.some(k => s.indexOf("0000" + k + "-") === 0 || s === k)) ||
+    /scale|chef|nutri|kitchen|chipsea|welland|kp20/i.test(d.name || "");
+  scaleDevs[d.address] = { address: d.address, name: d.name, rssi: d.rssi, match };
+  renderScaleList();
+}
+function onScaleStatus(s) {
+  if (s.state === "connected") $("scaleStatus").textContent = T("מחובר — מגלה שירותים…");
+  else if (s.state === "ready") {
+    scaleConn = true;
+    $("scaleStatus").textContent = T("מחובר ✓ — הנח מוצר על המשקל");
+    $("scaleScanBtn").style.display = "none"; $("scaleDiscBtn").style.display = "block";
+    updateScaleRow();
+  } else if (s.state === "disconnected") {
+    scaleConn = false;
+    $("scaleStatus").textContent = T("נותק. הקש 'סרוק' לחיבור מחדש.");
+    $("scaleScanBtn").style.display = "block"; $("scaleDiscBtn").style.display = "none";
+    $("scaleLive").style.display = "none";
+    updateScaleRow();
+  }
+}
+function scaleListen() {
+  const hb = HB(); if (!hb || scaleListenersOn) return;
+  scaleListenersOn = true;
+  try { hb.addListener("scaleDevice", onScaleDevice); hb.addListener("scaleData", onScaleData); hb.addListener("scaleStatus", onScaleStatus); } catch (e) {}
+}
+async function scaleScan() {
+  const hb = HB(); if (!hb) return;
+  scaleListen();
+  for (const k in scaleDevs) delete scaleDevs[k];
+  renderScaleList();
+  $("scaleStatus").textContent = T("סורק… הקש על המשקל שלך ברשימה");
+  try { await hb.scaleStart(); }
+  catch (e) {
+    const m = String((e && e.message) || e);
+    if (m.indexOf("need_bt_permission") >= 0) $("scaleStatus").textContent = T("אשר הרשאת Bluetooth ואז הקש 'סרוק' שוב.");
+    else if (m.indexOf("bluetooth_off") >= 0) $("scaleStatus").textContent = T("ה-Bluetooth כבוי — הדלק אותו ונסה שוב.");
+    else $("scaleStatus").textContent = T("שגיאה: ") + m;
+  }
+}
+async function scaleConnectTo(addr) {
+  const hb = HB(); if (!hb) return;
+  $("scaleStatus").textContent = T("מתחבר…");
+  try { await hb.scaleStopScan(); } catch (e) {}
+  try { await hb.scaleConnect({ address: addr }); localStorage.setItem(LS_SCALE, addr); }
+  catch (e) { $("scaleStatus").textContent = T("החיבור נכשל: ") + String((e && e.message) || e); }
+}
+$("scaleBtn").addEventListener("click", () => { $("scaleModal").classList.add("on"); scaleListen(); if (!scaleConn) scaleScan(); });
+$("scaleClose").addEventListener("click", () => $("scaleModal").classList.remove("on"));
+$("scaleModal").addEventListener("click", e => { if (e.target === $("scaleModal")) $("scaleModal").classList.remove("on"); });
+$("scaleScanBtn").addEventListener("click", scaleScan);
+$("scaleDiscBtn").addEventListener("click", async () => { const hb = HB(); try { await hb.scaleDisconnect(); } catch (e) {} localStorage.removeItem(LS_SCALE); });
+$("scaleList").addEventListener("click", e => { const b = e.target.closest("[data-addr]"); if (b) scaleConnectTo(b.dataset.addr); });
+$("scaleDbgChk").addEventListener("change", () => { $("scaleDbg").style.display = $("scaleDbgChk").checked ? "block" : "none"; });
+
 scrubImages();
 renderLog();
 updateFbButton();
@@ -4351,6 +4519,11 @@ fbFlush();
 (async () => {
   await cloudRefreshUser();
   updateFbButton();
+  updateScaleRow();
+  // admin-only: silently reconnect a paired scale so weighing "just works"
+  if (isAdmin() && scaleSupported() && localStorage.getItem(LS_SCALE)) {
+    scaleListen(); scaleConnectTo(localStorage.getItem(LS_SCALE));
+  }
   if (isSignedIn()) await cloudMergeSync();
 })();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
