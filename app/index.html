@@ -631,7 +631,7 @@
       <div class="scalelive" id="scaleBig">—</div>
       <div class="row" style="gap:8px">
         <button type="button" id="scaleScanBtn" class="primary wide">🔍 סרוק משקלים</button>
-        <button type="button" id="scaleDiscBtn" class="wide" style="display:none">🔌 נתק</button>
+        <button type="button" id="scaleDiscBtn" class="wide" style="display:none">🔌 נתק ושכח משקל</button>
       </div>
       <div id="scaleList" class="scalelist"></div>
       <label class="chkrow" style="margin-top:6px"><input type="checkbox" id="scaleDbgChk"> הצג נתונים גולמיים (לפענוח)</label>
@@ -1772,7 +1772,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.69";
+const APP_BUILD = "2026.09.04.70";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4387,7 +4387,8 @@ function scaleSupported() { const hb = HB(); return !!(hb && hb.scaleStart && hb
 function updateScaleRow() {
   const show = isAdmin() && scaleSupported();
   $("scaleRow").style.display = show ? "flex" : "none";
-  $("scaleRowState").textContent = scaleConn ? T("מחובר ✓") : "";
+  $("scaleRowState").textContent = scaleConn ? T("מחובר ✓")
+    : (localStorage.getItem(LS_SCALE) ? T("זכור — יתחבר בהדלקה") : "");
 }
 
 // decode a raw BLE notification into grams (auto-detect the known scale families)
@@ -4468,9 +4469,15 @@ function onScaleStatus(s) {
     updateScaleRow();
   } else if (s.state === "disconnected") {
     scaleConn = false;
-    $("scaleStatus").textContent = T("נותק. הקש 'סרוק' לחיבור מחדש.");
-    $("scaleScanBtn").style.display = "block"; $("scaleDiscBtn").style.display = "none";
     $("scaleLive").style.display = "none";
+    if (s.keep) {
+      // remembered scale: it reconnects by itself the moment it powers back on
+      $("scaleStatus").textContent = T("ממתין למשקל… הדלק אותו והוא יתחבר לבד.");
+      $("scaleScanBtn").style.display = "none"; $("scaleDiscBtn").style.display = "block";
+    } else {
+      $("scaleStatus").textContent = T("נותק. הקש 'סרוק' לחיבור מחדש.");
+      $("scaleScanBtn").style.display = "block"; $("scaleDiscBtn").style.display = "none";
+    }
     updateScaleRow();
   }
 }
