@@ -266,6 +266,21 @@
     background:var(--panel2); border:1px solid var(--line); border-radius:999px;
   }
   #setBtn:active { background:#222a38; }
+  /* admin-only header icons: 🍎 products to approve, 📬 messages/feedback */
+  .hdricon {
+    position:relative; flex:0 0 auto; width:41px; height:41px; padding:0; font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  }
+  .hdricon[hidden] { display:none; }
+  .hdricon:active { background:#222a38; }
+  .hbadge {
+    position:absolute; top:-4px; inset-inline-end:-4px; min-width:18px; height:18px; padding:0 4px;
+    background:#e5484d; color:#fff; font-size:10.5px; font-weight:800; line-height:1;
+    border-radius:999px; display:flex; align-items:center; justify-content:center;
+    border:2px solid var(--bg); font-variant-numeric:tabular-nums;
+  }
+  .hbadge[hidden] { display:none; }
   #setModal {
     display:none; position:fixed; inset:0; z-index:70;
     background:rgba(4,6,10,.72); backdrop-filter:blur(2px);
@@ -326,6 +341,7 @@
   .inboxSec:first-child { margin-top:2px; padding-top:0; }
   .inboxItem.fb { align-items:flex-start; }
   .inboxMsg { font-size:13px; color:var(--text); margin-top:2px; white-space:pre-wrap; word-break:break-word; }
+  .inboxFrom { font-size:11.5px; color:var(--accentText); margin-top:4px; font-weight:700; word-break:break-all; unicode-bidi:plaintext; }
   #manState { font-size:11.5px; color:var(--accentText); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
@@ -601,6 +617,8 @@
       <h1>SCAN <span>//</span> LOG</h1>
     </div>
     <button id="streak" title="רצף ימי תיעוד">🔥<span id="streakN">0</span></button>
+    <button id="approveBtn" class="hdricon" title="מוצרים לאישור" aria-label="מוצרים לאישור" hidden>🍎<span class="hbadge" id="approveBadge" hidden></span></button>
+    <button id="inboxBtn" class="hdricon" title="הודעות ופידבק" aria-label="הודעות ופידבק" hidden>📬<span class="hbadge" id="inboxBadge" hidden></span></button>
     <button id="setBtn" title="הגדרות" aria-label="הגדרות">⚙️</button>
   </div>
   <div id="streakToast"></div>
@@ -1036,6 +1054,8 @@ const I18N = {
   "לדחות את המוצר? הוא לא יגיע לאף אחד.": "Reject this product? It will not reach anyone.",
   "אושר ויתווסף לכולם בקרוב": "Approved — it will be added for everyone shortly",
   "תיבת האדמין": "Admin inbox",
+  "הודעות ופידבק": "Messages & feedback",
+  "אנונימי": "Anonymous",
   "פידבק ממשתמשים": "User feedback",
   "אין פידבק חדש": "No new feedback",
   "טופל": "Handled",
@@ -1853,7 +1873,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.76";
+const APP_BUILD = "2026.09.08.77";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4180,6 +4200,7 @@ function cloudPush() {   // debounced; called on every change to the user's data
   cloudTimer = setTimeout(cloudPushNow, 4000);
 }
 function renderAccount() {
+  if (typeof renderAdminIcons === "function") renderAdminIcons();   // header 🍎/📬 follow admin state
   const row = $("acctRow"); if (!row) return;
   const hb = HB();
   if (!hb || !hb.googleSignIn) { row.style.display = "none"; return; }  // web/PWA: no native auth
@@ -4187,16 +4208,9 @@ function renderAccount() {
   if (typeof renderVer === "function") renderVer();   // refresh the version line so the admin-only אבחון link follows sign-in/out
   if (isSignedIn()) {
     row.innerHTML = `<div class="acctin">☁️ ${T("מחובר:")} <b>${esc(cloudUser.email || cloudUser.name || "")}</b>`
-      + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u>`
-      + (isAdmin() ? ` <span id="inboxBtn" class="inboxbtn" title="${T("מוצרים לאישור")}">📬</span>` : "")
-      + `</div>`
+      + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u></div>`
       + `<div class="ehint">${T("הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.")}</div>`;
     const b = $("acctOut"); if (b) b.onclick = cloudSignOut;
-    if (isAdmin()) {
-      const ib = $("inboxBtn");
-      if (ib) ib.onclick = openInbox;
-      pendingFetch(false); feedbackFetch(false);   // refresh the badge (admin only)
-    }
   } else {
     row.innerHTML = `<button type="button" id="acctIn" class="gbtn">${T("התחבר עם Google (גיבוי בענן)")}</button>`
       + `<div class="ehint">${T("שמור את הנתונים שלך בענן כדי שיישרדו החלפת טלפון או מחיקת האפליקציה.")}</div>`;
@@ -4251,10 +4265,41 @@ async function pendingFetch(force) {
   } catch { /* offline - keep whatever we last had */ }
 }
 
+function setBadge(id, n) {
+  const el = $(id); if (!el) return;
+  if (n > 0) { el.textContent = n > 99 ? "99+" : String(n); el.hidden = false; }
+  else { el.textContent = ""; el.hidden = true; }
+}
 function updateInboxBadge() {
-  const b = $("inboxBtn"); if (!b) return;
-  const n = PENDING.length + FEEDBACK.length;
-  b.innerHTML = "📬" + (n ? ` <span class="ibadge">${n}</span>` : "");
+  setBadge("approveBadge", PENDING.length);   // 🍎 new products to approve
+  setBadge("inboxBadge", FEEDBACK.length);    // 📬 unread messages/feedback
+}
+
+// the two header icons live next to the gear; show them for the admin only,
+// wire each to its own view, and (once per session) push the admin's own
+// products into the community catalog.
+function renderAdminIcons() {
+  const admin = isAdmin();
+  const a = $("approveBtn"), i = $("inboxBtn");
+  if (a) { a.hidden = !admin; a.onclick = () => openInbox("products"); }
+  if (i) { i.hidden = !admin; i.onclick = () => openInbox("feedback"); }
+  if (admin) {
+    pendingFetch(false); feedbackFetch(false);   // refresh both badges
+    if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); }
+  }
+}
+
+// share EVERYTHING in the admin's own account into the community catalog, and
+// keep it synced. sharedContribute dedups against the catalog, so after the
+// first sync repeat runs cost ~0 Make ops. New/edited products are already
+// contributed the moment they are saved (addEntry / persistPortions).
+async function shareAllMine() {
+  if (!isAdmin()) return;
+  try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
+  for (const [code, p] of Object.entries(PRODUCTS || {})) {
+    if (!/^\d{6,}$/.test(code) || !p || !p.name) continue;
+    sharedContribute(code, p);   // skipped automatically if already in the catalog unchanged
+  }
 }
 
 // user feedback from the "כתוב לנו" Google Sheet (admin only). Read-only here;
@@ -4295,61 +4340,68 @@ function fbHandle(i) {
   FEEDBACK.splice(i, 1); updateInboxBadge(); renderInbox();
 }
 
-async function openInbox() {
+let inboxKind = "products";
+async function openInbox(kind) {
   if (!isAdmin()) return;
+  inboxKind = (kind === "feedback") ? "feedback" : "products";
   let ov = $("inboxOv");
   if (!ov) {
     ov = document.createElement("div");
     ov.id = "inboxOv"; ov.className = "inboxov";
-    ov.innerHTML = `<div class="inboxbox"><div class="inboxhd"><b>📬 ${T("תיבת האדמין")}</b>`
+    ov.innerHTML = `<div class="inboxbox"><div class="inboxhd"><b id="inboxTitle"></b>`
       + `<u id="inboxClose" style="cursor:pointer">✕</u></div><div id="inboxList" class="inboxlist"></div></div>`;
     document.body.appendChild(ov);
     const close = () => { ov.classList.remove("on"); document.body.style.overflow = ""; };
     $("inboxClose").onclick = close;
     ov.addEventListener("click", ev => { if (ev.target === ov) close(); });
   }
+  $("inboxTitle").textContent = inboxKind === "feedback" ? "📬 " + T("הודעות ופידבק") : "🍎 " + T("מוצרים לאישור");
   ov.classList.add("on"); document.body.style.overflow = "hidden";
   $("inboxList").innerHTML = `<div class="ehint">${T("טוען…")}</div>`;
-  await Promise.all([pendingFetch(true), feedbackFetch(true)]);
+  if (inboxKind === "feedback") await feedbackFetch(true);
+  else await pendingFetch(true);
   renderInbox();
 }
 
 const FB_ICON = { "באג": "🐞", "הצעת ייעול": "💡", "חסר מוצר": "🔍" };
 function renderInbox() {
   const list = $("inboxList"); if (!list) return;
-  let html = `<div class="inboxSec">${T("מוצרים לאישור")} (${PENDING.length})</div>`;
-  if (!PENDING.length) {
-    html += `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`;
+  let html = "";
+  if (inboxKind === "feedback") {
+    if (!FEEDBACK.length) {
+      html = `<div class="ehint">${T("אין פידבק חדש")}</div>`;
+    } else {
+      html = FEEDBACK.map((f, i) => {
+        const icon = FB_ICON[f.subject] || "✉️";
+        const img = /^https?:/.test(f.img || "") ? `<img class="inboxImg" src="${esc(f.img)}" alt="" loading="lazy">` : "";
+        return `<div class="inboxItem fb">${img}<div class="inboxInfo">`
+          + `<div class="inboxName">${icon} ${esc(f.subject || T("פידבק"))}</div>`
+          + `<div class="inboxMsg">${esc(f.text || "")}</div>`
+          + `<div class="inboxFrom">✉️ ${f.user ? esc(f.user) : T("אנונימי")}</div>`
+          + `<div class="inboxWhen">${timeAgo(f.at)}${f.ver ? " · " + esc(f.ver) : ""}</div>`
+          + `</div><div class="inboxAct"><button type="button" class="iok" data-fb="${i}">✓ ${T("טופל")}</button></div></div>`;
+      }).join("");
+    }
   } else {
-    html += PENDING.map((r, i) => {
-      const pt = ptSummary(r.pt);
-      const img = /^https?:/.test(r.photo || "")
-        ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
-        : `<div class="inboxImg noimg">📦</div>`;
-      return `<div class="inboxItem">${img}<div class="inboxInfo">`
-        + `<div class="inboxName">${esc(r.name || "")}</div>`
-        + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
-        + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
-        + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
-        + `</div><div class="inboxAct">`
-        + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
-        + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
-        + `</div></div>`;
-    }).join("");
-  }
-  html += `<div class="inboxSec">${T("פידבק ממשתמשים")} (${FEEDBACK.length})</div>`;
-  if (!FEEDBACK.length) {
-    html += `<div class="ehint">${T("אין פידבק חדש")}</div>`;
-  } else {
-    html += FEEDBACK.map((f, i) => {
-      const icon = FB_ICON[f.subject] || "✉️";
-      const img = /^https?:/.test(f.img || "") ? `<img class="inboxImg" src="${esc(f.img)}" alt="" loading="lazy">` : "";
-      return `<div class="inboxItem fb">${img}<div class="inboxInfo">`
-        + `<div class="inboxName">${icon} ${esc(f.subject || T("פידבק"))}</div>`
-        + `<div class="inboxMsg">${esc(f.text || "")}</div>`
-        + `<div class="inboxWhen">${f.user ? esc(f.user) + " · " : ""}${timeAgo(f.at)}${f.ver ? " · " + esc(f.ver) : ""}</div>`
-        + `</div><div class="inboxAct"><button type="button" class="iok" data-fb="${i}">✓ ${T("טופל")}</button></div></div>`;
-    }).join("");
+    if (!PENDING.length) {
+      html = `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`;
+    } else {
+      html = PENDING.map((r, i) => {
+        const pt = ptSummary(r.pt);
+        const img = /^https?:/.test(r.photo || "")
+          ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
+          : `<div class="inboxImg noimg">📦</div>`;
+        return `<div class="inboxItem">${img}<div class="inboxInfo">`
+          + `<div class="inboxName">${esc(r.name || "")}</div>`
+          + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
+          + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
+          + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
+          + `</div><div class="inboxAct">`
+          + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
+          + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
+          + `</div></div>`;
+      }).join("");
+    }
   }
   list.innerHTML = html;
   list.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => inboxApprove(+b.dataset.ok));
