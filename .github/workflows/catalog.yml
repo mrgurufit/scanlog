@@ -25,9 +25,8 @@ jobs:
           python3 -c "import json;print('records:',len(json.load(open('export.json'))))"
 
       # A camera/gallery product photo arrives as a data: URL. Count the ones we
-      # have not turned into a hosted, background-removed image yet - the heavy
-      # rembg install only runs when there is at least one.
-      - name: Count photos needing background removal
+      # have not hosted yet - we only spin up Python when there is at least one.
+      - name: Count photos to host
         id: pending
         run: |
           set -euo pipefail
@@ -41,7 +40,7 @@ jobs:
           print(n)
           ")
           echo "count=$count" >> "$GITHUB_OUTPUT"
-          echo "photos needing background removal: $count"
+          echo "photos to host: $count"
 
       - name: Set up Python
         if: steps.pending.outputs.count != '0'
@@ -49,27 +48,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Cache the rembg model
-        if: steps.pending.outputs.count != '0'
-        uses: actions/cache@v4
-        with:
-          path: ~/.u2net
-          key: u2net-model-v1
-
-      - name: Remove backgrounds, host clean photos, write the URLs back
+      - name: Host uploaded product photos, write the URLs back
         if: steps.pending.outputs.count != '0'
         run: |
           set -euo pipefail
-          pip install --quiet "rembg[cpu]" pillow
+          pip install --quiet pillow
           python3 - <<'PY'
           import json, os, io, base64, urllib.request
           from PIL import Image
-          from rembg import remove, new_session
 
           CONTRIB = 'https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo'
           os.makedirs('app/img', exist_ok=True)
           data = json.load(open('export.json'))
-          sess = new_session('u2net')
           done = []
 
           for r in data:
@@ -82,21 +72,11 @@ jobs:
                   continue
               try:
                   raw = base64.b64decode(ph.split(',', 1)[1])
-                  img = Image.open(io.BytesIO(raw)).convert('RGBA')
-                  cut = remove(img, session=sess)              # RGBA, background transparent
-                  white = Image.new('RGBA', cut.size, (255, 255, 255, 255))
-                  comp = Image.alpha_composite(white, cut).convert('RGB')
-                  bbox = cut.split()[-1].getbbox()             # crop to the product itself
-                  if bbox:
-                      x0, y0, x1, y1 = bbox
-                      pad = int(0.05 * max(x1 - x0, y1 - y0))
-                      x0 = max(0, x0 - pad); y0 = max(0, y0 - pad)
-                      x1 = min(comp.width, x1 + pad); y1 = min(comp.height, y1 + pad)
-                      comp = comp.crop((x0, y0, x1, y1))
-                  comp.thumbnail((320, 320))
-                  comp.save(out, 'JPEG', quality=85)
+                  img = Image.open(io.BytesIO(raw)).convert('RGB')   # keep the photo as-is - no background removal
+                  img.thumbnail((640, 640))                          # just resize for the web
+                  img.save(out, 'JPEG', quality=85)
                   done.append((bc, r))
-                  print('cut background ->', out)
+                  print('hosted photo ->', out)
               except Exception as e:
                   print('skip', bc, repr(e))
 
