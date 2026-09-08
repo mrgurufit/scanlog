@@ -164,7 +164,7 @@
   .cd .dot.off { background:transparent; }
 
   /* totals + energy balance */
-  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px; }
+  #totals { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:12px; }
   #ecard { padding:11px 12px; }
   .erow { display:flex; gap:8px; margin-top:10px; }
   .efield { flex:1; }
@@ -187,8 +187,21 @@
     background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 11px; font-size:12.5px; }
   .enStat > span { color:var(--muted); }
   .enStat b { font-variant-numeric:tabular-nums; font-size:14px; }
-  #enBalStat b.def { color:var(--green); }
-  #enBalStat b.sur { color:var(--red); }
+  /* "out" stat: label + sync/pencil controls + value, with a steps sub-line */
+  .enStat.enOut { flex-direction:column; align-items:stretch; gap:4px; }
+  .enOutHead { display:flex; align-items:center; gap:6px; }
+  .enOutLbl { flex:1; color:var(--muted); }
+  .enOutHead b { font-variant-numeric:tabular-nums; font-size:14px; margin-inline-start:4px; }
+  .enIcon { width:26px; height:26px; padding:0; font-size:13px; border-radius:7px; flex:0 0 auto;
+    background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  #hcMini.enIcon { background:#1d5c39; color:#d9ffe8; border:0; }
+  #hcMini.enIcon:disabled { opacity:.5; }
+  .enOutSub { font-size:10.5px; color:var(--muted); line-height:1.5; }
+  .enOutSub:empty { display:none; }
+  /* morning-weight stat holds the input in place of the old balance box */
+  .enStat.enWeight { flex-direction:column; align-items:stretch; gap:4px; padding:6px 10px; }
+  .enStat.enWeight label { color:var(--muted); font-size:12px; }
+  .enStat.enWeight input { width:100%; padding:6px 9px; font-size:14px; }
   .eprof { margin-top:9px; }
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
@@ -919,41 +932,36 @@
 
   <div class="card" id="ecard">
     <div id="enPanel">
+      <div id="enStats">
+        <div class="enStat"><span>🍽 נכנס</span><b id="enIn">0</b></div>
+        <div class="enStat enOut">
+          <div class="enOutHead">
+            <span class="enOutLbl">🔥 יצא · BMR+פעילות</span>
+            <button type="button" id="hcMini" class="enIcon" title="סנכרן פעילות">🔄</button>
+            <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית">✏️</button>
+            <b id="enOut">0</b>
+          </div>
+          <div class="enOutSub" id="enOutSub"></div>
+          <div id="manRow">
+            <input type="number" id="manIn" inputmode="numeric" placeholder='קק"ל'>
+            <button type="button" id="manOk">✓</button>
+            <button type="button" id="manCancel">✕</button>
+          </div>
+        </div>
+        <div class="enStat enWeight">
+          <label for="wIn">⚖️ משקל הבוקר (ק"ג)</label>
+          <input type="number" id="wIn" inputmode="decimal" step="0.1">
+        </div>
+      </div>
       <div id="enRing">
         <svg viewBox="0 0 120 120" aria-hidden="true">
           <circle class="enTrack" cx="60" cy="60" r="52"></circle>
           <circle class="enArc" id="enArc" cx="60" cy="60" r="52"></circle>
         </svg>
-        <div class="enCenter"><div class="enBig" id="enLeftN">0</div><div class="enLbl" id="enLeftL">נשאר לצרוך</div></div>
-      </div>
-      <div id="enStats">
-        <div class="enStat"><span>🍽 נכנס</span><b id="enIn">0</b></div>
-        <div class="enStat"><span>🔥 יצא · BMR+פעילות</span><b id="enOut">0</b></div>
-        <div class="enStat" id="enBalStat"><span>מאזן</span><b id="enBal">—</b></div>
-      </div>
-    </div>
-    <div class="erow">
-      <div class="efield">
-        <label for="wIn">משקל הבוקר (ק"ג)</label>
-        <input type="number" id="wIn" inputmode="decimal" step="0.1">
-      </div>
-      <div class="efield">
-        <label>נשרף היום</label>
-        <div id="stepsRow">
-          <div id="stepsHint"></div>
-          <button type="button" id="hcMini">🔄</button>
-        </div>
-        <div id="manState"></div>
-        <button type="button" id="manBtn">✏️ הזן קלוריות ידנית</button>
-        <div id="manRow">
-          <input type="number" id="manIn" inputmode="numeric" placeholder='קק"ל'>
-          <button type="button" id="manOk">✓</button>
-          <button type="button" id="manCancel">✕</button>
-        </div>
+        <div class="enCenter"><div class="enBig" id="enLeftN">0</div><div class="enLbl" id="enLeftL">גירעון היום</div></div>
       </div>
     </div>
     <div id="totals">
-      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
       <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
       <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
       <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
@@ -1091,6 +1099,11 @@ const I18N = {
   "אנונימי": "Anonymous",
   "נשאר לצרוך": "Left to eat",
   "מעל היעד": "Over target",
+  "גירעון היום": "Deficit today",
+  "עודף היום": "Surplus today",
+  "🍽 נכנס": "🍽 In",
+  "🔥 יצא · BMR+פעילות": "🔥 Out · BMR+activity",
+  "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Morning weight (kg)",
   "פידבק ממשתמשים": "User feedback",
   "אין פידבק חדש": "No new feedback",
   "טופל": "Handled",
@@ -1513,7 +1526,7 @@ function renderTotals() {
     const c = computed(e);
     a.kcal += c.kcal; a.pro += c.pro; a.carb += c.carb; a.fat += c.fat; return a;
   }, { kcal: 0, pro: 0, carb: 0, fat: 0 });
-  $("tKcal").textContent = Math.round(t.kcal).toLocaleString("he-IL");
+  const tk = $("tKcal"); if (tk) tk.textContent = Math.round(t.kcal).toLocaleString("he-IL");
   $("tPro").textContent = Math.round(t.pro);
   $("tCarb").textContent = Math.round(t.carb);
   $("tFat").textContent = Math.round(t.fat);
@@ -1564,15 +1577,21 @@ function renderEnergy(kcalIn) {
   const d = DAYDATA[viewDay] || {};
   $("wIn").value = d.weight || "";
   $("wIn").placeholder = weightFor(viewDay);
-  $("stepsHint").textContent = stepsHintText(d);
   const manual = !!d.activityManual;
-  $("manState").innerHTML = manual
-    ? "✍️ " + T("ידני:") + " " + Number(d.activity || 0).toLocaleString("he-IL") + " " + T("קק\"ל")
-      + ' · <u id="manClear" style="cursor:pointer">' + T("חזרה לסנכרון") + "</u>"
-    : "";
+  // "out" sub-line under the fire: the manual value or the synced burn, plus steps 👟
+  const parts = [];
+  if (manual) {
+    parts.push('✍️ ' + T("ידני:") + ' ' + Number(d.activity || 0).toLocaleString("he-IL") + ' ' + T("קק\"ל")
+      + ' · <u id="manClear" style="cursor:pointer">' + T("חזרה לסנכרון") + '</u>');
+  } else {
+    const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
+    if (s || w) parts.push('🔥 ' + T("מסונכרן") + ' ' + (s + w).toLocaleString("he-IL") + ' ' + T("קק\"ל")
+      + (w ? ' (' + T("צעדים") + ' ' + s + ' ' + T("+ אימון") + ' ' + w + ')' : ''));
+  }
+  if (d.steps) parts.push('👟 ' + Number(d.steps).toLocaleString("he-IL") + ' ' + T("צעדים"));
+  $("enOutSub").innerHTML = parts.join("<br>");
   const mc = document.getElementById("manClear");
   if (mc) mc.onclick = clearManual;
-  $("manBtn").textContent = manual ? T("✏️ ערוך") : T("✏️ הזן קלוריות ידנית");
   if (typeof hcMiniVis === "function") hcMiniVis();
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
@@ -1585,15 +1604,9 @@ function renderEnergy(kcalIn) {
   const arc = $("enArc"); if (arc) arc.style.strokeDashoffset = String(C * (1 - frac));
   const ring = $("enRing"); if (ring) ring.classList.toggle("over", over);
   $("enLeftN").textContent = Math.abs(remaining).toLocaleString("he-IL");
-  $("enLeftL").textContent = over ? T("מעל היעד") : T("נשאר לצרוך");
+  $("enLeftL").textContent = over ? T("עודף היום") : T("גירעון היום");
   $("enIn").textContent = e.in.toLocaleString("he-IL");
   $("enOut").textContent = e.out.toLocaleString("he-IL");
-  const bal = $("enBal");
-  if (bal) {
-    bal.className = over ? "sur" : "def";
-    bal.textContent = over ? T("עודף") + " " + e.bal.toLocaleString("he-IL")
-                           : T("גירעון") + " " + Math.abs(e.bal).toLocaleString("he-IL");
-  }
 }
 
 function saveDayData() {
@@ -1915,7 +1928,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.79";
+const APP_BUILD = "2026.09.08.80";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2185,7 +2198,7 @@ function hcConnectedUI() {
 function hcMiniVis() {
   const b = $("hcMini"); if (!b) return;
   const on = !!(HB() && localStorage.getItem("fl_hc"));
-  b.style.display = on ? "block" : "none";
+  b.style.display = on ? "flex" : "none";
   b.title = T("רענן מ-Health Connect");
 }
 
@@ -3828,7 +3841,7 @@ $("hcBtn").addEventListener("click", hcTap);
 $("hcMini").addEventListener("click", async () => {
   const b = $("hcMini");
   b.disabled = true;
-  $("stepsHint").textContent = T("מרענן…");
+  const sub = $("enOutSub"); if (sub) sub.textContent = T("מרענן…");
   try { await hcSync(true); }
   finally {
     b.disabled = false;
