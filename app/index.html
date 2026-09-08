@@ -1804,7 +1804,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.72";
+const APP_BUILD = "2026.09.08.73";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3576,12 +3576,15 @@ function addEntry() {
     // one product, one picture: bring every existing row of this product up to
     // the picture just saved
     applyProductPhoto(e.barcode, e.name, e.photo);
-    /* The admin (Ido) curates the shared catalog - his edits and portions always
-       propagate; everyone else only sends a genuinely-new product (a catalog or
-       complete-OFF hit is already shared). sharedContribute dedups on values so
-       an unchanged re-add never costs a Make operation. */
-    const fromDB = pending && pending.fromDB;
-    if (/^\d{6,}$/.test(e.barcode) && (isAdmin() || !fromDB)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    /* Grow the shared catalog from real use: the admin (Ido) always propagates
+       his curated edits and portions; everyone else contributes any product that
+       is NOT already in the shared catalog - INCLUDING a first-time OpenFoodFacts
+       hit - so it lands in our catalog and reaches everyone (and works offline
+       from then on). Once a product is in the catalog nobody re-sends it, and
+       sharedContribute + the per-device queue dedup, so this stays cheap on Make
+       operations. */
+    const inCatalog = !!(CATALOG && CATALOG.codes && CATALOG.codes[e.barcode]);
+    if (/^\d{6,}$/.test(e.barcode) && (isAdmin() || !inCatalog)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");

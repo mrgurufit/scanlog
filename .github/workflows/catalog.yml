@@ -114,7 +114,12 @@ jobs:
               try: return float(x)
               except Exception: return 0
 
-          codes = {}
+          # Additive: start from the catalog we already published so seeded and
+          # past products persist forever; the fresh Make export overlays on top.
+          try:
+              codes = json.load(open('app/catalog.json')).get('codes', {})
+          except Exception:
+              codes = {}
           for r in data:
               bc = str(r.get('barcode', '') or '').strip()
               nm = r.get('name', '')
@@ -123,7 +128,7 @@ jobs:
               local = f'app/img/{bc}.jpg'
               ph = r.get('photo', '') or ''
               if os.path.exists(local):
-                  img = f'https://mrgurufit.com/app/img/{bc}.jpg'   # our hosted, bg-removed photo wins
+                  img = f'https://mrgurufit.com/app/img/{bc}.jpg'   # our hosted photo wins
               elif ph.startswith('http'):
                   img = ph
               else:
