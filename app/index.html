@@ -292,6 +292,35 @@
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
   .acctin { font-size:13px; color:var(--text); }
   .acctin b { color:var(--green); }
+  /* admin inbox (📬) - products awaiting approval */
+  .inboxbtn { cursor:pointer; font-size:16px; padding:2px 4px; border-radius:8px; user-select:none;
+              display:inline-flex; align-items:center; gap:4px; vertical-align:middle; }
+  .ibadge { background:#e5484d; color:#fff; font-size:11px; font-weight:800; border-radius:999px;
+            min-width:18px; height:18px; padding:0 5px; display:inline-flex; align-items:center; justify-content:center; }
+  .inboxov { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55); display:none;
+             align-items:flex-end; justify-content:center; }
+  .inboxov.on { display:flex; }
+  .inboxbox { background:var(--panel); width:100%; max-width:560px; max-height:88vh; display:flex; flex-direction:column;
+              border-radius:18px 18px 0 0; border:1px solid var(--line); box-shadow:0 -8px 40px rgba(0,0,0,.35); }
+  @media (min-width:600px){ .inboxov { align-items:center; } .inboxbox { border-radius:18px; } }
+  .inboxhd { display:flex; align-items:center; justify-content:space-between; padding:15px 17px;
+             border-bottom:1px solid var(--line); font-size:16px; }
+  .inboxlist { overflow-y:auto; padding:10px 12px 16px; display:flex; flex-direction:column; gap:10px; }
+  .inboxItem { display:flex; gap:11px; align-items:center; background:var(--panel2); border:1px solid var(--line);
+               border-radius:14px; padding:10px; }
+  .inboxImg { width:52px; height:52px; border-radius:11px; object-fit:cover; flex:0 0 auto; background:var(--bg); }
+  .inboxImg.noimg { display:flex; align-items:center; justify-content:center; font-size:24px; }
+  .inboxInfo { flex:1; min-width:0; }
+  .inboxName { font-size:14px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .inboxMac { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .inboxMac b { color:var(--text); }
+  .inboxPt { font-size:11.5px; color:var(--accentText); margin-top:2px; }
+  .inboxWhen { font-size:10.5px; color:var(--muted); margin-top:3px; direction:ltr; text-align:right; }
+  .inboxAct { display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+  .inboxAct button { border:none; border-radius:9px; padding:7px 11px; font-size:12.5px; font-weight:700;
+                     font-family:inherit; cursor:pointer; white-space:nowrap; }
+  .iok { background:var(--green); color:#fff; }
+  .ino { background:var(--panel); color:#e5484d; border:1px solid var(--line) !important; }
   #manState { font-size:11.5px; color:var(--accentText); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
@@ -991,6 +1020,16 @@ const I18N = {
   "ביטול": "Cancel",
   "התמונה עודכנה בכל הרישומים של המוצר.": "Photo updated on every entry of this product.",
   "התמונה עודכנה ותשותף לכולם בקרוב.": "Photo saved. It will be shared with everyone shortly.",
+  "מוצרים לאישור": "Products to approve",
+  "טוען…": "Loading…",
+  "אין מוצרים שממתינים לאישור 🎉": "No products waiting for approval 🎉",
+  "דק׳ קודם": "min ago",
+  "שע׳ קודם": "h ago",
+  "ימים קודם": "days ago",
+  "אשר": "Approve",
+  "דחה": "Reject",
+  "לדחות את המוצר? הוא לא יגיע לאף אחד.": "Reject this product? It will not reach anyone.",
+  "אושר ויתווסף לכולם בקרוב": "Approved — it will be added for everyone shortly",
   "✉️ כתוב לנו": "✉️ Contact us",
   "נושא": "Subject",
   "🐞 באג / תקלה": "🐞 Bug / problem",
@@ -1804,7 +1843,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.73";
+const APP_BUILD = "2026.09.08.74";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1853,6 +1892,10 @@ async function showDbg() {
 // resolve from local -> the CDN catalog -> Open Food Facts, all with zero Make
 // operations, so the app stays cheap at world scale.
 const SHARED_PUT = "https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo";
+// the whole shared store, as a JSON array (barcode, macros, photo, pt, status,
+// at). The GitHub compile reads this to build catalog.json; the admin inbox
+// reads it live to list the products a user submitted that wait for approval.
+const SHARED_GET = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg";
 // "כתוב לנו" - user feedback goes here (bug / missing product / suggestion),
 // reaches Ido with who sent it and an optional screenshot
 const FEEDBACK_HOOK = "https://hook.us2.make.com/kwmm5bcpb3deisjydcpt4odyygdapqqd";
@@ -1991,9 +2034,28 @@ function sharedContribute(code, p) {
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
   if (already) return;
-  // queue for the cloud (durable + retried) and flush now
+  // queue for the cloud (durable + retried) and flush now. status:"approved"
+  // means it is published to everyone as soon as the next compile runs - this is
+  // the admin path and the trusted-external-data path (a complete OFF hit).
   contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app" });
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app", status: "approved" });
+  contribFlush();
+}
+
+/* MODERATION (Ido, 2026-09-08): a non-admin's hand-typed new product does NOT
+   go live. It is queued to the SAME shared store but marked "pending", so the
+   compile skips it and NO ONE sees it yet. It waits in Ido's in-app inbox; only
+   his approval re-sends it as "approved" and lets it reach everyone. The product
+   still lives on the contributor's own phone (it is already in PRODUCTS). This
+   keeps wrong/spam values out of the shared catalog. */
+function pendingSubmit(code, p) {
+  if (!code || !p || !p.name) return;
+  const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
+  const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
+  const ptStr = portions.length ? JSON.stringify(portions) : "";
+  // deliberately NOT written into the local shared catalog - it is not shared yet
+  contribEnqueue({ barcode: code, name: p.name,
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app", status: "pending" });
   contribFlush();
 }
 
@@ -3576,15 +3638,20 @@ function addEntry() {
     // one product, one picture: bring every existing row of this product up to
     // the picture just saved
     applyProductPhoto(e.barcode, e.name, e.photo);
-    /* Grow the shared catalog from real use: the admin (Ido) always propagates
-       his curated edits and portions; everyone else contributes any product that
-       is NOT already in the shared catalog - INCLUDING a first-time OpenFoodFacts
-       hit - so it lands in our catalog and reaches everyone (and works offline
-       from then on). Once a product is in the catalog nobody re-sends it, and
-       sharedContribute + the per-device queue dedup, so this stays cheap on Make
-       operations. */
+    /* MODERATION (Ido, 2026-09-08): only the admin publishes straight to the
+       shared catalog. Everyone else's new/edited product stays on THEIR phone
+       and is queued to the PENDING review queue - it reaches everyone only after
+       Ido approves it in the admin inbox, to keep wrong/spam data out of the
+       shared catalog. A product already in the catalog is never re-sent. */
     const inCatalog = !!(CATALOG && CATALOG.codes && CATALOG.codes[e.barcode]);
-    if (/^\d{6,}$/.test(e.barcode) && (isAdmin() || !inCatalog)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    if (/^\d{6,}$/.test(e.barcode) && !inCatalog) {
+      // Admin, or verified external data (a COMPLETE Open Food Facts hit, which
+      // is locked and not hand-typed) -> straight to the shared catalog so it
+      // keeps growing on its own. A non-admin's hand-typed NEW product -> the
+      // pending queue for Ido to approve, to keep wrong data out.
+      if (isAdmin() || (pending && pending.fromDB)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+      else pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
+    }
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
@@ -4109,14 +4176,131 @@ function renderAccount() {
   row.style.display = "block";
   if (isSignedIn()) {
     row.innerHTML = `<div class="acctin">☁️ ${T("מחובר:")} <b>${esc(cloudUser.email || cloudUser.name || "")}</b>`
-      + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u></div>`
+      + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u>`
+      + (isAdmin() ? ` <span id="inboxBtn" class="inboxbtn" title="${T("מוצרים לאישור")}">📬</span>` : "")
+      + `</div>`
       + `<div class="ehint">${T("הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.")}</div>`;
     const b = $("acctOut"); if (b) b.onclick = cloudSignOut;
+    if (isAdmin()) {
+      const ib = $("inboxBtn");
+      if (ib) ib.onclick = openInbox;
+      pendingFetch(false);   // refresh the badge (throttled, admin only)
+    }
   } else {
     row.innerHTML = `<button type="button" id="acctIn" class="gbtn">${T("התחבר עם Google (גיבוי בענן)")}</button>`
       + `<div class="ehint">${T("שמור את הנתונים שלך בענן כדי שיישרדו החלפת טלפון או מחיקת האפליקציה.")}</div>`;
     const b = $("acctIn"); if (b) b.onclick = cloudSignIn;
   }
+}
+
+/* ---------------- admin inbox: products awaiting approval ----------------
+   Ido, 2026-09-08: a mailbox for the admin only. Non-admins' hand-typed new
+   products sit in the shared store as "pending". Here Ido sees them online,
+   fixes a photo if needed, and approves (-> everyone) or rejects (-> nobody).
+   Everything is fetched from the shared store on demand, so it costs one Make
+   op when he opens the box and one per approve/reject - nothing on a timer. */
+let PENDING = [];
+let pendingAt = 0;
+
+function ptParse(s) {
+  if (Array.isArray(s)) return s;
+  try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+function ptSummary(s) {
+  return ptParse(s).filter(p => p && +p.g > 0).map(p => `${p.n || T("מנה")} (${+p.g} ${T("ג׳")})`).join(" · ");
+}
+function timeAgo(iso) {
+  const t = Date.parse(iso || ""); if (!t) return "";
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 60) return m + " " + T("דק׳ קודם");
+  const h = Math.round(m / 60);
+  if (h < 24) return h + " " + T("שע׳ קודם");
+  return Math.round(h / 24) + " " + T("ימים קודם");
+}
+
+async function pendingFetch(force) {
+  if (!isAdmin()) return;
+  if (!force && Date.now() - pendingAt < 600 * 1000) { updateInboxBadge(); return; }
+  try {
+    let text = null;
+    const hb = HB();
+    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [SHARED_GET] }); text = (r && r.body) || null; }
+    else { const r = await fetch(SHARED_GET, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
+    if (!text) return;
+    const arr = JSON.parse(text);
+    if (!Array.isArray(arr)) return;
+    PENDING = arr.filter(r => r && String(r.status || "").toLowerCase() === "pending" && r.barcode && r.name);
+    pendingAt = Date.now();
+    updateInboxBadge();
+  } catch { /* offline - keep whatever we last had */ }
+}
+
+function updateInboxBadge() {
+  const b = $("inboxBtn"); if (!b) return;
+  const n = PENDING.length;
+  b.innerHTML = "📬" + (n ? ` <span class="ibadge">${n}</span>` : "");
+}
+
+async function openInbox() {
+  if (!isAdmin()) return;
+  let ov = $("inboxOv");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "inboxOv"; ov.className = "inboxov";
+    ov.innerHTML = `<div class="inboxbox"><div class="inboxhd"><b>📬 ${T("מוצרים לאישור")}</b>`
+      + `<u id="inboxClose" style="cursor:pointer">✕</u></div><div id="inboxList" class="inboxlist"></div></div>`;
+    document.body.appendChild(ov);
+    const close = () => { ov.classList.remove("on"); document.body.style.overflow = ""; };
+    $("inboxClose").onclick = close;
+    ov.addEventListener("click", ev => { if (ev.target === ov) close(); });
+  }
+  ov.classList.add("on"); document.body.style.overflow = "hidden";
+  $("inboxList").innerHTML = `<div class="ehint">${T("טוען…")}</div>`;
+  await pendingFetch(true);
+  renderInbox();
+}
+
+function renderInbox() {
+  const list = $("inboxList"); if (!list) return;
+  if (!PENDING.length) { list.innerHTML = `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`; return; }
+  list.innerHTML = PENDING.map((r, i) => {
+    const pt = ptSummary(r.pt);
+    const img = /^https?:/.test(r.photo || "")
+      ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
+      : `<div class="inboxImg noimg">📦</div>`;
+    return `<div class="inboxItem">${img}<div class="inboxInfo">`
+      + `<div class="inboxName">${esc(r.name || "")}</div>`
+      + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
+      + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
+      + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
+      + `</div><div class="inboxAct">`
+      + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
+      + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
+      + `</div></div>`;
+  }).join("");
+  list.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => inboxApprove(+b.dataset.ok));
+  list.querySelectorAll("[data-no]").forEach(b => b.onclick = () => inboxReject(+b.dataset.no));
+}
+
+function inboxApprove(i) {
+  const r = PENDING[i]; if (!r) return;
+  // publish to the shared catalog (re-sent as "approved"), then drop from the box
+  sharedContribute(r.barcode, {
+    name: r.name, kcal: +r.kcal || 0, pro: +r.pro || 0, carb: +r.carb || 0, fat: +r.fat || 0,
+    photo: r.photo || "", portions: ptParse(r.pt), src: r.src || "app",
+  });
+  PENDING.splice(i, 1); updateInboxBadge(); renderInbox();
+  msg("setMsg", "✅ " + T("אושר ויתווסף לכולם בקרוב"), "ok");
+}
+
+function inboxReject(i) {
+  const r = PENDING[i]; if (!r) return;
+  if (!confirm(T("לדחות את המוצר? הוא לא יגיע לאף אחד."))) return;
+  // mark it "rejected" so the compile keeps skipping it for good
+  contribEnqueue({ barcode: r.barcode, name: r.name, kcal: +r.kcal || 0, pro: +r.pro || 0,
+    carb: +r.carb || 0, fat: +r.fat || 0, photo: r.photo || "", pt: r.pt || "", src: r.src || "app", status: "rejected" });
+  contribFlush();
+  PENDING.splice(i, 1); updateInboxBadge(); renderInbox();
 }
 
 $("expBtn").addEventListener("click", async () => {

@@ -35,6 +35,7 @@ jobs:
           d=json.load(open('export.json'))
           n=sum(1 for r in d
                 if str(r.get('barcode','') or '').strip()
+                and str(r.get('status','') or '').strip().lower() not in ('pending','rejected')
                 and (r.get('photo','') or '').startswith('data:image')
                 and not os.path.exists('app/img/'+str(r.get('barcode')).strip()+'.jpg'))
           print(n)
@@ -65,8 +66,9 @@ jobs:
           for r in data:
               bc = str(r.get('barcode','') or '').strip()
               ph = r.get('photo','') or ''
-              if not bc or not ph.startswith('data:image'):
-                  continue
+              st = str(r.get('status','') or '').strip().lower()
+              if not bc or not ph.startswith('data:image') or st in ('pending','rejected'):
+                  continue   # never host/process a photo that is not approved yet
               out = f'app/img/{bc}.jpg'
               if os.path.exists(out):
                   continue
@@ -123,7 +125,11 @@ jobs:
           for r in data:
               bc = str(r.get('barcode', '') or '').strip()
               nm = r.get('name', '')
-              if not bc or not nm:
+              st = str(r.get('status', '') or '').strip().lower()
+              # A non-admin's hand-typed product waits in the shared store as
+              # 'pending' until Ido approves it in the app; 'rejected' stays out
+              # for good. Neither ever reaches the public catalog.
+              if not bc or not nm or st in ('pending', 'rejected'):
                   continue
               local = f'app/img/{bc}.jpg'
               ph = r.get('photo', '') or ''
