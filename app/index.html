@@ -62,13 +62,14 @@
   #missRes .sr { border-top:1px solid var(--line); }
   #searchRes.on { display:block; }
   .sr {
-    display:flex; align-items:center; gap:10px; width:100%; text-align:start;
+    display:flex; align-items:flex-start; gap:10px; width:100%; text-align:start;
     background:var(--panel2); border:0; border-bottom:1px solid var(--line);
     border-radius:0; padding:10px 12px; font-size:14px;
   }
   .sr:last-child { border-bottom:0; }
-  .sr .srn { flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sr .srv { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  /* show the full product name - wrap instead of truncating with an ellipsis */
+  .sr .srn { flex:1; font-weight:700; white-space:normal; word-break:break-word; line-height:1.35; }
+  .sr .srv { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; padding-top:1px; }
   .sr .srs {
     font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px;
     background:#1c2836; color:var(--blue); border:1px solid #2b3f55; white-space:nowrap;
@@ -163,20 +164,31 @@
   .cd .dot.off { background:transparent; }
 
   /* totals + energy balance */
-  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  #totals { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px; }
   #ecard { padding:11px 12px; }
-  .erow { display:flex; gap:8px; margin-top:8px; }
+  .erow { display:flex; gap:8px; margin-top:10px; }
   .efield { flex:1; }
   .efield label { font-size:10.5px; margin-bottom:3px; }
   .efield input { padding:8px 10px; font-size:14px; }
-  #ebal {
-    margin-top:8px; background:var(--panel2); border:1px solid var(--line);
-    border-radius:9px; padding:6px 10px; font-size:12px; line-height:1.55;
-    font-variant-numeric:tabular-nums; text-align:center;
-  }
-  #ebal b.def { color:var(--green); }
-  #ebal b.sur { color:var(--red); }
-  #ebal .dim { color:var(--muted); }
+  /* energy hero: a ring of how much is left to eat today + in/out/balance */
+  #enPanel { display:flex; align-items:center; gap:14px; }
+  #enRing { position:relative; width:118px; height:118px; flex:0 0 auto; }
+  #enRing svg { width:100%; height:100%; transform:rotate(-90deg); }
+  #enRing .enTrack { fill:none; stroke:var(--panel2); stroke-width:11; }
+  #enRing .enArc { fill:none; stroke:var(--green); stroke-width:11; stroke-linecap:round;
+    stroke-dasharray:326.726; stroke-dashoffset:326.726; transition:stroke-dashoffset .5s ease, stroke .3s; }
+  #enRing.over .enArc { stroke:var(--red); }
+  .enCenter { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 8px; }
+  .enBig { font-size:23px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.05; color:var(--green); }
+  #enRing.over .enBig { color:var(--red); }
+  .enLbl { font-size:10px; color:var(--muted); font-weight:700; margin-top:2px; }
+  #enStats { flex:1; display:flex; flex-direction:column; gap:7px; min-width:0; }
+  .enStat { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 11px; font-size:12.5px; }
+  .enStat > span { color:var(--muted); }
+  .enStat b { font-variant-numeric:tabular-nums; font-size:14px; }
+  #enBalStat b.def { color:var(--green); }
+  #enBalStat b.sur { color:var(--red); }
   .eprof { margin-top:9px; }
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
@@ -223,14 +235,19 @@
   .camfb { display:flex; gap:8px; margin-top:8px; }
   .camfb > * { flex:1; }
   #fab {
-    position:fixed; bottom:20px; right:18px; z-index:40;
+    position:fixed; bottom:20px; right:18px; z-index:60;
     width:60px; height:60px; border-radius:50%;
     background:#ffd400; color:#000; border:0; cursor:pointer;
-    font-size:36px; font-weight:800; line-height:1; padding:0;
+    font-size:26px; font-weight:800; line-height:1; padding:0;
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 20px rgba(0,0,0,.55);
   }
   #fab:active { transform:scale(.93); }
+  /* one button toggles the scanner: camera when closed, ✕ (red) while scanning */
+  #fab .fabx { display:none; font-size:28px; }
+  #fab.scanon { background:#e5484d; color:#fff; }
+  #fab.scanon .fabcam { display:none; }
+  #fab.scanon .fabx { display:inline; }
   .vidwrap { position:relative; width:100%; aspect-ratio:4/3; border-radius:12px; overflow:hidden;
              border:2px solid var(--accent); background:#000; transition:aspect-ratio .25s ease; }
   #video { width:100%; height:100%; object-fit:cover; display:block; }
@@ -846,7 +863,10 @@
 </div>
 
   <div id="ptr">↓ משוך לרענון</div>
-  <button id="fab" aria-label="סריקה והוספת מזון">+</button>
+  <button id="fab" aria-label="סריקה והוספת מזון" title="פתח/סגור סורק">
+    <span class="fabcam" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+    <span class="fabx" aria-hidden="true">✕</span>
+  </button>
   <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
   <div class="offbar" id="offbar">אין חיבור לאינטרנט. הרישום, המוצרים השמורים, המאגר המובנה והחישובים עובדים רגיל. מה שיחזור עם החיבור: חיפוש מוצר חדש במאגר העולמי וקריאת טבלת ערכים בצילום.</div>
@@ -898,11 +918,19 @@
   </div>
 
   <div class="card" id="ecard">
-    <div id="totals">
-      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
-      <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
-      <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
-      <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
+    <div id="enPanel">
+      <div id="enRing">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="enTrack" cx="60" cy="60" r="52"></circle>
+          <circle class="enArc" id="enArc" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="enCenter"><div class="enBig" id="enLeftN">0</div><div class="enLbl" id="enLeftL">נשאר לצרוך</div></div>
+      </div>
+      <div id="enStats">
+        <div class="enStat"><span>🍽 נכנס</span><b id="enIn">0</b></div>
+        <div class="enStat"><span>🔥 יצא · BMR+פעילות</span><b id="enOut">0</b></div>
+        <div class="enStat" id="enBalStat"><span>מאזן</span><b id="enBal">—</b></div>
+      </div>
     </div>
     <div class="erow">
       <div class="efield">
@@ -924,7 +952,12 @@
         </div>
       </div>
     </div>
-    <div id="ebal"></div>
+    <div id="totals">
+      <div class="tot kcal"><div class="v" id="tKcal">0</div><div class="l">קלוריות</div></div>
+      <div class="tot"><div class="v" id="tPro">0</div><div class="l">חלבון ג׳</div></div>
+      <div class="tot"><div class="v" id="tCarb">0</div><div class="l">פחמימה ג׳</div></div>
+      <div class="tot"><div class="v" id="tFat">0</div><div class="l">שומן ג׳</div></div>
+    </div>
   </div>
 
   <div class="card">
@@ -933,7 +966,6 @@
     </div>
     <div id="log"></div>
     <div class="foot" id="foot"></div>
-    <button id="fbBtn" class="fbbtn" style="display:none">✉️ כתוב לנו</button>
     <div id="verLine" style="text-align:center;font-size:11px;color:#5b6474;margin-top:6px"></div>
     <pre id="dbgBox" style="display:none;white-space:pre-wrap;word-break:break-all;font-size:10px;line-height:1.45;color:#9aa3b2;background:#12161f;border:1px solid #232a38;border-radius:8px;padding:8px;margin-top:6px;direction:ltr;text-align:left;max-height:340px;overflow:auto"></pre>
   </div>
@@ -941,6 +973,7 @@
       <div id="setModal">
         <div class="setpanel">
         <div class="sethead"><b>⚙️ הגדרות</b><button id="setClose" aria-label="סגור">✕</button></div>
+        <button id="fbBtn" class="fbbtn" style="display:none;margin-top:6px">✉️ כתוב לנו</button>
         <div class="erow" style="margin-top:8px">
           <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
           <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
@@ -1056,6 +1089,8 @@ const I18N = {
   "תיבת האדמין": "Admin inbox",
   "הודעות ופידבק": "Messages & feedback",
   "אנונימי": "Anonymous",
+  "נשאר לצרוך": "Left to eat",
+  "מעל היעד": "Over target",
   "פידבק ממשתמשים": "User feedback",
   "אין פידבק חדש": "No new feedback",
   "טופל": "Handled",
@@ -1543,15 +1578,22 @@ function renderEnergy(kcalIn) {
   $("aIn").value = PROFILE.age;
   $("autoScanChk").checked = PROFILE.autoScan !== false;
   const e = dayEnergy(viewDay, kcalIn);
-  const balTxt = e.bal <= 0
-    ? `<b class="def">${T("גירעון")} ${Math.abs(e.bal).toLocaleString("he-IL")}</b>`
-    : `<b class="sur">${T("עודף")} ${e.bal.toLocaleString("he-IL")}</b>`;
-  $("ebal").innerHTML =
-    `<span class="dim">${T("יצא:")}</span> BMR ${e.bmr.toLocaleString("he-IL")}` +
-    (e.act ? ` + ${T("פעילות")} ${e.act.toLocaleString("he-IL")}` : "") +
-    ` = <b>${e.out.toLocaleString("he-IL")}</b>` +
-    ` &nbsp;·&nbsp; <span class="dim">${T("נכנס:")}</span> <b>${e.in.toLocaleString("he-IL")}</b>` +
-    ` &nbsp;·&nbsp; ${balTxt}`;
+  const remaining = e.out - e.in;          // >0 = still room to eat (deficit); <0 = over the target (surplus)
+  const over = remaining < 0;
+  const frac = e.out > 0 ? Math.min(1, Math.max(0, e.in / e.out)) : 0;
+  const C = 326.726;                       // 2*pi*52, the ring circumference
+  const arc = $("enArc"); if (arc) arc.style.strokeDashoffset = String(C * (1 - frac));
+  const ring = $("enRing"); if (ring) ring.classList.toggle("over", over);
+  $("enLeftN").textContent = Math.abs(remaining).toLocaleString("he-IL");
+  $("enLeftL").textContent = over ? T("מעל היעד") : T("נשאר לצרוך");
+  $("enIn").textContent = e.in.toLocaleString("he-IL");
+  $("enOut").textContent = e.out.toLocaleString("he-IL");
+  const bal = $("enBal");
+  if (bal) {
+    bal.className = over ? "sur" : "def";
+    bal.textContent = over ? T("עודף") + " " + e.bal.toLocaleString("he-IL")
+                           : T("גירעון") + " " + Math.abs(e.bal).toLocaleString("he-IL");
+  }
 }
 
 function saveDayData() {
@@ -1873,7 +1915,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.78";
+const APP_BUILD = "2026.09.08.79";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -2396,6 +2438,7 @@ async function startScan() {
   // the window opens regardless - if the camera fails, the name search and
   // the photo fallback are sitting right under it
   $("cam").classList.add("on");
+  $("fab").classList.add("scanon");   // the FAB now shows ✕ and closes the scanner on the next tap
   document.body.style.overflow = "hidden";
   $("video").classList.add("off");
   $("camHint").textContent = T("פותח מצלמה…");
@@ -2546,6 +2589,7 @@ function stopScan() {
   torchOn = false;
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   $("cam").classList.remove("on");
+  $("fab").classList.remove("scanon");   // back to the camera icon
   $("vidwrap").classList.remove("live");
   document.querySelector(".campanel").classList.remove("searching");
   $("searchArea").style.display = "none";
@@ -2677,6 +2721,9 @@ const USDA=[["APPLEBEE'S, 9 oz house sirloin steak",189,26.9,0.0,9.1],["APPLEBEE
 
 const SEARCH_PROXY = "https://hook.us2.make.com/wfvh3tmswu9cgl151p3ucab080okz9hb";
 let searchToken = 0, lastResults = [];
+// when the entry was opened by picking a manual-search result, remember the
+// query + list so closing the entry (✕) returns to that exact list (Ido req)
+let entryFromSearch = false, searchReturn = null;
 
 function localMatches(q) {
   const res = [];
@@ -2904,6 +2951,8 @@ function renderSearch(res, token, stillLoading) {
 }
 
 function openProduct(r) {
+  entryFromSearch = true;   // came from the name-search list; ✕ returns to it
+  searchReturn = { q: $("searchIn").value, results: lastResults.slice() };
   stopScan();
   $("missRes").className = ""; $("missRes").innerHTML = "";
   pending = { barcode: r.barcode || "", photo: "" };
@@ -3384,6 +3433,7 @@ async function readLabel(file) {
 
 /* ---------------- entry ---------------- */
 async function onBarcode(code, photo) {
+  entryFromSearch = false;   // opened from a real scan, not the search list
   stopScan();
   $("missRes").className = ""; $("missRes").innerHTML = "";
   if (navigator.vibrate) { try { navigator.vibrate(60); } catch {} }
@@ -3556,6 +3606,7 @@ function setEntryProduct(portions, legacyUnit) {
    updates that row instead of adding a new one. */
 let editEntryId = null;
 function openEntryForEdit(e) {
+  entryFromSearch = false;   // editing a logged row, not from the search list
   stopScan();
   editEntryId = e.id;
   pending = { barcode: e.barcode || "", photo: "" };
@@ -3712,7 +3763,12 @@ function report(day) {
 }
 
 /* ---------------- wiring ---------------- */
-$("fab").addEventListener("click", startScan);
+// one button toggles the scanner: tap to open, tap again to close
+function toggleScan() {
+  if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); }
+  else startScan();
+}
+$("fab").addEventListener("click", toggleScan);
 $("stopBtn").addEventListener("click", () => { stopScan(); msg("scanMsg", ""); });
 $("torchBtn").addEventListener("click", toggleTorch);
 $("cam").addEventListener("click", e => { if (e.target === $("cam")) { stopScan(); msg("scanMsg", ""); } });
@@ -3727,7 +3783,27 @@ $("manualBtn").addEventListener("click", () => {
   if (code === null) return;
   onBarcode(code.trim(), "");
 });
-function closeEntry() { $("entry").classList.remove("on"); pending = null; editEntryId = null; $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = ""; if (typeof scaleLast === "object") { scaleLast.filled = false; } if ($("scaleLive")) $("scaleLive").style.display = "none"; }
+function closeEntry() {
+  $("entry").classList.remove("on"); pending = null; editEntryId = null;
+  $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = "";
+  if (typeof scaleLast === "object") { scaleLast.filled = false; }
+  if ($("scaleLive")) $("scaleLive").style.display = "none";
+  if (entryFromSearch) { entryFromSearch = false; reopenSearch(); }   // ✕ from a search pick -> back to that list
+}
+// reopen the scanner in name-search mode and restore the exact list the user
+// picked from, so cancelling a product does not force a fresh manual search
+function reopenSearch() {
+  const ret = searchReturn; searchReturn = null;
+  startScan();
+  $("searchArea").style.display = "block";
+  $("searchToggle").classList.add("on");
+  const panel = document.querySelector(".campanel"); if (panel) panel.classList.add("searching");
+  if (ret) {
+    $("searchIn").value = ret.q || "";
+    if (ret.results && ret.results.length) renderSearch(ret.results, searchToken, false);
+    else doSearch(ret.q || "");
+  }
+}
 $("cancelBtn").addEventListener("click", closeEntry);
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
