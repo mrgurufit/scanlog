@@ -129,6 +129,36 @@
   .abtn.main .n { background:#141005; color:var(--accent); border:0; }
   .applinks { margin-top:11px; font-size:12.5px; color:var(--muted); }
   .applinks a { color:#8ab4f8; }
+  /* Floating beta-countdown banner */
+  #betaBan { position:fixed; bottom:14px; inset-inline-end:14px; z-index:60;
+             width:min(392px, calc(100vw - 28px));
+             background:linear-gradient(135deg, #1b2130 0%, #12151d 60%);
+             border:1px solid #4a3f14; border-radius:18px;
+             box-shadow:0 12px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,210,30,.18), 0 0 26px rgba(255,210,30,.10);
+             padding:14px 16px 14px; cursor:pointer;
+             transform:translateY(130%); transition:transform .5s cubic-bezier(.2,.9,.25,1.15); }
+  #betaBan.on { transform:translateY(0); }
+  #betaBan .bphone { position:absolute; inset-inline-end:10px; bottom:8px; width:88px;
+             border-radius:12px; border:3px solid #2a3244; box-shadow:0 8px 20px rgba(0,0,0,.6);
+             transform:rotate(-7deg); animation:bfloat 4s ease-in-out infinite; }
+  [dir="rtl"] #betaBan .bphone { transform:rotate(7deg); }
+  @keyframes bfloat { 0%,100% { translate:0 0 } 50% { translate:0 -6px } }
+  #betaBan .bx { position:absolute; top:6px; inset-inline-start:6px; width:26px; height:26px;
+             border:0; border-radius:50%; background:#232a38; color:#8b95a7; font-size:13px;
+             cursor:pointer; line-height:1; }
+  #betaBan .bhead { font-size:12px; font-weight:700; letter-spacing:.6px; color:var(--muted);
+             text-transform:uppercase; margin:0 0 6px; padding-inline-start:34px; }
+  #betaBan .btimer { display:flex; gap:7px; margin:2px 0 8px; direction:ltr; justify-content:flex-end; }
+  [dir="ltr"] #betaBan .btimer { justify-content:flex-start; }
+  #betaBan .btimer span { min-width:44px; text-align:center; background:#0d1017; border:1px solid #2a3244;
+             border-radius:9px; padding:6px 4px 7px; font-variant-numeric:tabular-nums; }
+  #betaBan .btimer b { display:block; font-size:19px; color:var(--accent); }
+  #betaBan .btimer small { font-size:9.5px; color:var(--muted); }
+  #betaBan .bmsg { font-size:13.5px; line-height:1.45; margin:0 0 6px; padding-inline-end:96px; }
+  #betaBan .bmsg b { color:var(--accent); }
+  #betaBan .bperks { font-size:11.5px; color:var(--muted); margin:0 0 9px; padding-inline-end:96px; }
+  #betaBan .bcta { display:inline-block; background:var(--accent); color:#141005; font-weight:800;
+             font-size:13.5px; border-radius:9px; padding:9px 16px; }
   .who { margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
   .who p { font-size:13.5px; color:var(--muted); margin:0; }
   .who a { color:#8ab4f8; }
@@ -198,7 +228,7 @@
     <div class="msg" id="msg" role="status"></div>
   </form>
 
-  <h2 data-t="apph2"></h2>
+  <h2 data-t="apph2" id="appsec"></h2>
   <div class="card appc">
     <div class="apphead">
       <img src="app/icon-192.png" alt="Scan &amp; Log">
@@ -208,6 +238,21 @@
     <a class="abtn" href="https://groups.google.com/g/scan-log-testers" target="_blank" rel="noopener"><span class="n">1</span><span data-t="appstep1"></span></a>
     <a class="abtn main" href="https://play.google.com/apps/testing/fit.mrguru.scanlog" target="_blank" rel="noopener"><span class="n">2</span><span data-t="appstep2"></span></a>
     <div class="applinks"><a href="app/download.html" data-t="appapk"></a> · <a href="app/" data-t="appweb"></a></div>
+  </div>
+
+  <div id="betaBan" role="button" tabindex="0" aria-live="off">
+    <button class="bx" id="banX" aria-label="close">✕</button>
+    <img class="bphone" src="brand/appshot.jpg" alt="Scan &amp; Log app" loading="lazy">
+    <div class="bhead" id="banHead"></div>
+    <div class="btimer" id="banTimer">
+      <span><b id="bd">0</b><small id="bdl"></small></span>
+      <span><b id="bh">0</b><small id="bhl"></small></span>
+      <span><b id="bm">0</b><small id="bml"></small></span>
+      <span><b id="bs">0</b><small id="bsl"></small></span>
+    </div>
+    <p class="bmsg" id="banMsg"></p>
+    <p class="bperks" id="banPerks"></p>
+    <span class="bcta" id="banCta"></span>
   </div>
 
   <footer>
@@ -364,7 +409,39 @@ const TXT = {
  "appweb": {
   "en": "iPhone or computer: the web version",
   "he": "אייפון או מחשב: גרסת הווב"
- }
+ },
+ "bnhead": {
+  "en": "Beta signup closes in",
+  "he": "ההצטרפות לבטא נסגרת בעוד"
+ },
+ "bnmsg": {
+  "en": "Join now and the app is yours <b>free for life</b> — every update and upgrade included.",
+  "he": "מצטרפים עכשיו והאפליקציה שלכם <b>חינם לכל החיים</b> — כולל כל העדכונים והשדרוגים."
+ },
+ "bnperks": {
+  "en": "Syncs with your smartwatch · App Store coming soon",
+  "he": "מתחבר לשעון החכם · App Store בקרוב"
+ },
+ "bncta": {
+  "en": "Count me in →",
+  "he": "אני בפנים ←"
+ },
+ "bnclosedh": {
+  "en": "The beta is closed",
+  "he": "הבטא נסגרה"
+ },
+ "bnclosedm": {
+  "en": "Beta spots are taken. Join the email list and be first in line for the full release.",
+  "he": "מקומות הבטא נתפסו. הירשמו למייל ותהיו ראשונים בתור לשחרור המלא."
+ },
+ "bnclosedc": {
+  "en": "Join the waitlist →",
+  "he": "לרשימת ההמתנה ←"
+ },
+ "bnd": { "en": "days", "he": "ימים" },
+ "bnh": { "en": "hrs", "he": "שעות" },
+ "bnm": { "en": "min", "he": "דקות" },
+ "bns": { "en": "sec", "he": "שניות" }
 };
 
 /* English is the default; the choice is remembered per visitor and flips the
@@ -831,6 +908,65 @@ window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(
   window.addEventListener("load", sync);
   document.addEventListener("visibilitychange", sync);
   if (window.ResizeObserver) new ResizeObserver(sync).observe(wrap);
+})();
+</script>
+<script>
+/* Floating beta-countdown banner. The deadline is REAL — Ido closes the testers
+   group when it hits zero (2026-09-30, end of day Israel time); the banner then
+   flips to the waitlist message on its own. Dismiss lasts for the session. */
+(function () {
+  const BETA_CLOSE = Date.parse("2026-09-30T23:59:59+03:00");
+  const ban = document.getElementById("betaBan");
+  try { if (sessionStorage.getItem("mgf_ban_x")) { ban.remove(); return; } } catch (e) {}
+
+  const $ = id => document.getElementById(id);
+  const closed = () => Date.now() >= BETA_CLOSE;
+
+  function paintBanner() {
+    if (closed()) {
+      $("banHead").textContent = TXT.bnclosedh[L];
+      $("banTimer").style.display = "none";
+      $("banMsg").textContent = TXT.bnclosedm[L];
+      $("banPerks").textContent = "";
+      $("banCta").textContent = TXT.bnclosedc[L];
+    } else {
+      $("banHead").textContent = TXT.bnhead[L];
+      $("banMsg").innerHTML = TXT.bnmsg[L];
+      $("banPerks").textContent = TXT.bnperks[L];
+      $("banCta").textContent = TXT.bncta[L];
+      $("bdl").textContent = TXT.bnd[L]; $("bhl").textContent = TXT.bnh[L];
+      $("bml").textContent = TXT.bnm[L]; $("bsl").textContent = TXT.bns[L];
+    }
+  }
+
+  let iv;
+  function tick() {
+    let left = BETA_CLOSE - Date.now();
+    if (left <= 0) { clearInterval(iv); paintBanner(); return; }
+    left = Math.floor(left / 1000);
+    $("bd").textContent = Math.floor(left / 86400);
+    $("bh").textContent = String(Math.floor(left % 86400 / 3600)).padStart(2, "0");
+    $("bm").textContent = String(Math.floor(left % 3600 / 60)).padStart(2, "0");
+    $("bs").textContent = String(left % 60).padStart(2, "0");
+  }
+
+  paintBanner();
+  if (!closed()) { tick(); iv = setInterval(tick, 1000); }
+  document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", paintBanner));
+
+  function go() {
+    const t = closed() ? document.getElementById("f") : document.getElementById("appsec");
+    if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  ban.addEventListener("click", go);
+  ban.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  document.getElementById("banX").addEventListener("click", e => {
+    e.stopPropagation();
+    ban.remove();
+    try { sessionStorage.setItem("mgf_ban_x", "1"); } catch (err) {}
+  });
+
+  setTimeout(() => ban.classList.add("on"), 900);
 })();
 </script>
 <script>
