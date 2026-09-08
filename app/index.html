@@ -321,6 +321,11 @@
                      font-family:inherit; cursor:pointer; white-space:nowrap; }
   .iok { background:var(--green); color:#fff; }
   .ino { background:var(--panel); color:#e5484d; border:1px solid var(--line) !important; }
+  .inboxSec { font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+              margin:14px 2px 2px; padding-top:8px; }
+  .inboxSec:first-child { margin-top:2px; padding-top:0; }
+  .inboxItem.fb { align-items:flex-start; }
+  .inboxMsg { font-size:13px; color:var(--text); margin-top:2px; white-space:pre-wrap; word-break:break-word; }
   #manState { font-size:11.5px; color:var(--accentText); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
@@ -1030,6 +1035,11 @@ const I18N = {
   "דחה": "Reject",
   "לדחות את המוצר? הוא לא יגיע לאף אחד.": "Reject this product? It will not reach anyone.",
   "אושר ויתווסף לכולם בקרוב": "Approved — it will be added for everyone shortly",
+  "תיבת האדמין": "Admin inbox",
+  "פידבק ממשתמשים": "User feedback",
+  "אין פידבק חדש": "No new feedback",
+  "טופל": "Handled",
+  "פידבק": "Feedback",
   "✉️ כתוב לנו": "✉️ Contact us",
   "נושא": "Subject",
   "🐞 באג / תקלה": "🐞 Bug / problem",
@@ -1843,7 +1853,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.75";
+const APP_BUILD = "2026.09.08.76";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4185,7 +4195,7 @@ function renderAccount() {
     if (isAdmin()) {
       const ib = $("inboxBtn");
       if (ib) ib.onclick = openInbox;
-      pendingFetch(false);   // refresh the badge (throttled, admin only)
+      pendingFetch(false); feedbackFetch(false);   // refresh the badge (admin only)
     }
   } else {
     row.innerHTML = `<button type="button" id="acctIn" class="gbtn">${T("התחבר עם Google (גיבוי בענן)")}</button>`
@@ -4202,6 +4212,11 @@ function renderAccount() {
    op when he opens the box and one per approve/reject - nothing on a timer. */
 let PENDING = [];
 let pendingAt = 0;
+// user feedback ("כתוב לנו") lands in a Google Sheet; FEEDBACK_GET reads it back
+// so the admin sees it in this same inbox. "Handled" is remembered per-device.
+const FEEDBACK_GET = "https://hook.us2.make.com/rpvafxffaxlvdr83mk1und5lwim6xynn";
+const LS_FB_DONE = "fl_fb_done";
+let FEEDBACK = [];
 
 function ptParse(s) {
   if (Array.isArray(s)) return s;
@@ -4238,8 +4253,46 @@ async function pendingFetch(force) {
 
 function updateInboxBadge() {
   const b = $("inboxBtn"); if (!b) return;
-  const n = PENDING.length;
+  const n = PENDING.length + FEEDBACK.length;
   b.innerHTML = "📬" + (n ? ` <span class="ibadge">${n}</span>` : "");
+}
+
+// user feedback from the "כתוב לנו" Google Sheet (admin only). Read-only here;
+// "handled" is stored per-device in localStorage (no write back to the sheet).
+function fbDoneSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(LS_FB_DONE) || "[]")); } catch { return new Set(); }
+}
+function fbMarkDone(id) {
+  const s = fbDoneSet(); s.add(id);
+  try { localStorage.setItem(LS_FB_DONE, JSON.stringify([...s].slice(-500))); } catch { /* full */ }
+}
+async function feedbackFetch(force) {
+  if (!isAdmin()) return;
+  try {
+    let text = null;
+    const hb = HB();
+    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [FEEDBACK_GET] }); text = (r && r.body) || null; }
+    else { const r = await fetch(FEEDBACK_GET, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
+    if (!text) return;
+    const d = JSON.parse(text);
+    const rows = (d && Array.isArray(d.values)) ? d.values : [];
+    const done = fbDoneSet();
+    const out = [];
+    for (const r of rows) {
+      const at = String((r && r[0]) || "").trim();
+      if (!/^\d{4}-\d\d-\d\dT/.test(at)) continue;   // skip the header row and anything not a timestamp
+      if (done.has(at)) continue;                    // already handled on this device
+      out.push({ id: at, at, user: r[1] || "", name: r[2] || "", subject: r[3] || "", text: r[4] || "", img: r[5] || "", ver: r[6] || "" });
+    }
+    out.reverse();   // newest first
+    FEEDBACK = out;
+    updateInboxBadge();
+  } catch { /* offline - keep whatever we last had */ }
+}
+function fbHandle(i) {
+  const f = FEEDBACK[i]; if (!f) return;
+  fbMarkDone(f.id);
+  FEEDBACK.splice(i, 1); updateInboxBadge(); renderInbox();
 }
 
 async function openInbox() {
@@ -4248,7 +4301,7 @@ async function openInbox() {
   if (!ov) {
     ov = document.createElement("div");
     ov.id = "inboxOv"; ov.className = "inboxov";
-    ov.innerHTML = `<div class="inboxbox"><div class="inboxhd"><b>📬 ${T("מוצרים לאישור")}</b>`
+    ov.innerHTML = `<div class="inboxbox"><div class="inboxhd"><b>📬 ${T("תיבת האדמין")}</b>`
       + `<u id="inboxClose" style="cursor:pointer">✕</u></div><div id="inboxList" class="inboxlist"></div></div>`;
     document.body.appendChild(ov);
     const close = () => { ov.classList.remove("on"); document.body.style.overflow = ""; };
@@ -4257,30 +4310,51 @@ async function openInbox() {
   }
   ov.classList.add("on"); document.body.style.overflow = "hidden";
   $("inboxList").innerHTML = `<div class="ehint">${T("טוען…")}</div>`;
-  await pendingFetch(true);
+  await Promise.all([pendingFetch(true), feedbackFetch(true)]);
   renderInbox();
 }
 
+const FB_ICON = { "באג": "🐞", "הצעת ייעול": "💡", "חסר מוצר": "🔍" };
 function renderInbox() {
   const list = $("inboxList"); if (!list) return;
-  if (!PENDING.length) { list.innerHTML = `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`; return; }
-  list.innerHTML = PENDING.map((r, i) => {
-    const pt = ptSummary(r.pt);
-    const img = /^https?:/.test(r.photo || "")
-      ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
-      : `<div class="inboxImg noimg">📦</div>`;
-    return `<div class="inboxItem">${img}<div class="inboxInfo">`
-      + `<div class="inboxName">${esc(r.name || "")}</div>`
-      + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
-      + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
-      + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
-      + `</div><div class="inboxAct">`
-      + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
-      + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
-      + `</div></div>`;
-  }).join("");
+  let html = `<div class="inboxSec">${T("מוצרים לאישור")} (${PENDING.length})</div>`;
+  if (!PENDING.length) {
+    html += `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`;
+  } else {
+    html += PENDING.map((r, i) => {
+      const pt = ptSummary(r.pt);
+      const img = /^https?:/.test(r.photo || "")
+        ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
+        : `<div class="inboxImg noimg">📦</div>`;
+      return `<div class="inboxItem">${img}<div class="inboxInfo">`
+        + `<div class="inboxName">${esc(r.name || "")}</div>`
+        + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
+        + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
+        + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
+        + `</div><div class="inboxAct">`
+        + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
+        + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
+        + `</div></div>`;
+    }).join("");
+  }
+  html += `<div class="inboxSec">${T("פידבק ממשתמשים")} (${FEEDBACK.length})</div>`;
+  if (!FEEDBACK.length) {
+    html += `<div class="ehint">${T("אין פידבק חדש")}</div>`;
+  } else {
+    html += FEEDBACK.map((f, i) => {
+      const icon = FB_ICON[f.subject] || "✉️";
+      const img = /^https?:/.test(f.img || "") ? `<img class="inboxImg" src="${esc(f.img)}" alt="" loading="lazy">` : "";
+      return `<div class="inboxItem fb">${img}<div class="inboxInfo">`
+        + `<div class="inboxName">${icon} ${esc(f.subject || T("פידבק"))}</div>`
+        + `<div class="inboxMsg">${esc(f.text || "")}</div>`
+        + `<div class="inboxWhen">${f.user ? esc(f.user) + " · " : ""}${timeAgo(f.at)}${f.ver ? " · " + esc(f.ver) : ""}</div>`
+        + `</div><div class="inboxAct"><button type="button" class="iok" data-fb="${i}">✓ ${T("טופל")}</button></div></div>`;
+    }).join("");
+  }
+  list.innerHTML = html;
   list.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => inboxApprove(+b.dataset.ok));
   list.querySelectorAll("[data-no]").forEach(b => b.onclick = () => inboxReject(+b.dataset.no));
+  list.querySelectorAll("[data-fb]").forEach(b => b.onclick = () => fbHandle(+b.dataset.fb));
 }
 
 function inboxApprove(i) {
