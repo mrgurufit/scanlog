@@ -990,7 +990,7 @@ const I18N = {
   "🖼️ בחר מהגלריה": "🖼️ Choose from gallery",
   "ביטול": "Cancel",
   "התמונה עודכנה בכל הרישומים של המוצר.": "Photo updated on every entry of this product.",
-  "התמונה עודכנה. הרקע ינוקה אוטומטית ותתעדכן נקייה לכולם בקרוב.": "Photo saved. Its background will be removed automatically and updated for everyone shortly.",
+  "התמונה עודכנה ותשותף לכולם בקרוב.": "Photo saved. It will be shared with everyone shortly.",
   "✉️ כתוב לנו": "✉️ Contact us",
   "נושא": "Subject",
   "🐞 באג / תקלה": "🐞 Bug / problem",
@@ -1804,7 +1804,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.04.71";
+const APP_BUILD = "2026.09.08.72";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -1914,10 +1914,10 @@ async function catalogPull(force) {
     CATALOG = { v: data.v || "", codes: Object.assign({}, CATALOG.codes, data.codes) };
     store.set(LS_CAT, CATALOG);
     localStorage.setItem(LS_CAT_AT, String(Date.now()));
-    // The pipeline replaces a raw camera photo with a clean, background-removed
-    // hosted image. Adopt that hosted URL into this phone's own product memory
-    // (and any log rows still showing the raw shot), so the professional picture
-    // appears here too - and the app stops re-sending the raw one.
+    // The pipeline hosts the uploaded camera photo as-is (no background removal)
+    // and returns its URL. Adopt that hosted URL into this phone's own product
+    // memory (and any log rows still showing the raw shot), so the hosted picture
+    // appears here too - and the app stops re-sending the raw base64 one.
     for (const [c, v] of Object.entries(CATALOG.codes)) {
       const url = v && v.img;
       if (!url || !/^https?:/.test(url)) continue;
@@ -1972,8 +1972,8 @@ function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
   // A camera/gallery photo is a data: URL. It USED to be dropped here (only http
   // was kept), so captured product photos never reached the cloud. Now it is
-  // sent too - the compile pipeline removes its background, hosts it, and swaps
-  // the record's photo for that clean hosted URL, so everyone gets the picture.
+  // sent too - the compile pipeline hosts it as-is (no background removal) and
+  // swaps the record's photo for that hosted URL, so everyone gets the picture.
   const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
   const ptStr = portions.length ? JSON.stringify(portions) : "";
@@ -4266,15 +4266,15 @@ async function pickedPicture(file) {
   applyProductPhoto(e.barcode, e.name, data);
   store.set(LS_LOG, LOG);
   renderLog();
-  // admin: push the photo to the shared catalog so it reaches everyone and the
-  // pipeline strips its background (this path used to only save locally)
-  let cleaning = false;
+  // admin: push the photo to the shared catalog so it reaches everyone
+  // (the pipeline hosts it as-is - no background removal)
+  let shared = false;
   if (isAdmin() && /^\d{6,}$/.test(e.barcode || "") && PRODUCTS[e.barcode]) {
     sharedContribute(e.barcode, PRODUCTS[e.barcode]);
-    cleaning = true;
+    shared = true;
   }
-  msg("scanMsg", cleaning
-    ? T("התמונה עודכנה. הרקע ינוקה אוטומטית ותתעדכן נקייה לכולם בקרוב.")
+  msg("scanMsg", shared
+    ? T("התמונה עודכנה ותשותף לכולם בקרוב.")
     : T("התמונה עודכנה בכל הרישומים של המוצר."), "ok");
 }
 
