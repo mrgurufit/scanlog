@@ -38,12 +38,24 @@
     <span>📷 סריקת ברקוד</span><span>🍎 מאגר מוצרים משותף</span><span>🔥 מעקב קלוריות</span><span>☁️ גיבוי בענן</span>
   </div>
 
-  <a class="dl" href="ScanLog.apk" download>⬇️ הורד לאנדרואיד<small>קובץ APK · גרסה 1.36</small></a>
+  <a class="dl" href="https://play.google.com/apps/testing/fit.mrguru.scanlog" target="_blank" rel="noopener">▶ דרך Google Play (מומלץ)<small>בטא פתוחה · מתעדכן אוטומטית</small></a>
 
   <div class="card">
-    <h2>איך מתקינים (30 שניות)</h2>
+    <h2>התקנה דרך Google Play (הדרך המומלצת)</h2>
     <ol>
-      <li>לחץ על <b>הורד לאנדרואיד</b> למעלה.</li>
+      <li>מצטרפים לקבוצת הטסטרים בלחיצה אחת: <a class="link" href="https://groups.google.com/g/scan-log-testers" target="_blank" rel="noopener">קבוצת scan-log-testers</a> (עם חשבון הגוגל שלך).</li>
+      <li>לוחצים על <b>דרך Google Play</b> למעלה ומאשרים הצטרפות לבדיקה.</li>
+      <li>מתקינים מגוגל פליי כרגיל. העדכונים מגיעים אוטומטית.</li>
+    </ol>
+    <div class="note">כל מצטרף לבטא מקרב אותנו לשחרור המלא בחנות — תודה 🙏</div>
+  </div>
+
+  <a class="dl" style="background:var(--panel2);color:var(--text);box-shadow:none;border:1px solid var(--line)" href="ScanLog.apk" download>⬇️ הורדה ישירה<small>קובץ APK · גרסה 1.36</small></a>
+
+  <div class="card">
+    <h2>התקנה ישירה (30 שניות)</h2>
+    <ol>
+      <li>לחץ על <b>הורדה ישירה</b> למעלה.</li>
       <li>פתח את הקובץ שירד (מגיע לתיקיית ההורדות).</li>
       <li>אם יופיע חלון "התקנה ממקור לא ידוע" — אשר <b>"אפשר מהמקור הזה"</b> ולחץ שוב.</li>
       <li>לחץ <b>התקן</b> → <b>פתח</b>. זהו!</li>
@@ -61,5 +73,24 @@
     לאייפון / דפדפן: <a class="link" href="./">פתח את גרסת הווב</a>
   </div>
 </div>
+<script>
+/* Counts a page view, and a visit only the first time in a browsing session,
+   same beacon as the front page. */
+(function () {
+  try {
+    var first = "0";
+    try {
+      if (!sessionStorage.getItem("mgf_seen")) {
+        sessionStorage.setItem("mgf_seen", "1");
+        first = "1";
+      }
+    } catch (e) { /* private mode: count the view, skip the visit */ }
+    var u = "https://hook.us2.make.com/iwafet153pkallo64gaqd7ryoutllx4x"
+          + "?s=" + first + "&p=" + encodeURIComponent(location.pathname);
+    if (navigator.sendBeacon) navigator.sendBeacon(u);
+    else fetch(u, { mode: "no-cors", keepalive: true }).catch(function () {});
+  } catch (e) { /* measurement must never break the page */ }
+})();
+</script>
 </body>
 </html>

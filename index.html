@@ -113,6 +113,22 @@
   .wtable td { padding:4px 6px; border-bottom:1px solid var(--line); }
   .wtable td.n { direction:ltr; text-align:start; }
   .wtable .dn { color:var(--green); } .wtable .up { color:#ff8f8f; }
+  .appc { margin-top:0; }
+  .apphead { display:flex; align-items:center; gap:13px; }
+  .apphead img { width:54px; height:54px; border-radius:13px; flex:0 0 auto; }
+  .apphead b { display:block; font-size:16.5px; letter-spacing:.3px; }
+  .apphead small { display:block; color:#b6c0cf; font-size:13px; margin-top:2px; }
+  .appbeta { margin:13px 0 9px; font-size:13px; color:var(--muted); }
+  .abtn { display:flex; align-items:center; gap:10px; padding:13px 14px; margin:8px 0;
+          border-radius:11px; text-decoration:none; font-weight:800; font-size:14.5px;
+          background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+  .abtn.main { background:var(--accent); border-color:var(--accent); color:#141005; }
+  .abtn .n { flex:0 0 auto; width:22px; height:22px; border-radius:50%; font-size:12px; font-weight:800;
+             display:flex; align-items:center; justify-content:center;
+             background:var(--panel); color:var(--accent); border:1px solid var(--line); }
+  .abtn.main .n { background:#141005; color:var(--accent); border:0; }
+  .applinks { margin-top:11px; font-size:12.5px; color:var(--muted); }
+  .applinks a { color:#8ab4f8; }
   .who { margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
   .who p { font-size:13.5px; color:var(--muted); margin:0; }
   .who a { color:#8ab4f8; }
@@ -181,6 +197,18 @@
     <button type="submit" id="go" data-t="btn"></button>
     <div class="msg" id="msg" role="status"></div>
   </form>
+
+  <h2 data-t="apph2"></h2>
+  <div class="card appc">
+    <div class="apphead">
+      <img src="app/icon-192.png" alt="Scan &amp; Log">
+      <div><b>Scan &amp; Log</b><small data-t="applede"></small></div>
+    </div>
+    <p class="appbeta" data-t="appbeta"></p>
+    <a class="abtn" href="https://groups.google.com/g/scan-log-testers" target="_blank" rel="noopener"><span class="n">1</span><span data-t="appstep1"></span></a>
+    <a class="abtn main" href="https://play.google.com/apps/testing/fit.mrguru.scanlog" target="_blank" rel="noopener"><span class="n">2</span><span data-t="appstep2"></span></a>
+    <div class="applinks"><a href="app/download.html" data-t="appapk"></a> · <a href="app/" data-t="appweb"></a></div>
+  </div>
 
   <footer>
     <a href="https://www.youtube.com/@mrgurufit">YouTube</a> ·
@@ -308,6 +336,34 @@ const TXT = {
  "wthch": {
   "en": "Change",
   "he": "שינוי"
+ },
+ "apph2": {
+  "en": "The app from the videos",
+  "he": "האפליקציה מהסרטונים"
+ },
+ "applede": {
+  "en": "Scan a barcode, see the calories, hold the deficit — every gram in these videos goes through it. Free.",
+  "he": "סורקים ברקוד, רואים קלוריות, שומרים על הגירעון — כל גרם בסרטונים עובר דרכה. חינם."
+ },
+ "appbeta": {
+  "en": "It is in open beta on Google Play, and beta testers are what gets it fully released — two quick steps with your Google account:",
+  "he": "היא בבטא פתוחה בגוגל פליי, והטסטרים הם מה שמוציא אותה לשחרור מלא — שני צעדים קצרים עם חשבון הגוגל שלך:"
+ },
+ "appstep1": {
+  "en": "Join the testers group",
+  "he": "מצטרפים לקבוצת הטסטרים"
+ },
+ "appstep2": {
+  "en": "Get it on Google Play",
+  "he": "מורידים מגוגל פליי"
+ },
+ "appapk": {
+  "en": "Prefer a direct download? Get the APK",
+  "he": "מעדיפים הורדה ישירה? קובץ APK"
+ },
+ "appweb": {
+  "en": "iPhone or computer: the web version",
+  "he": "אייפון או מחשב: גרסת הווב"
  }
 };
 
