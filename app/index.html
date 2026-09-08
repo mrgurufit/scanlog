@@ -945,7 +945,7 @@
           <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
           <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
         </div>
-        <label class="chkrow"><input type="checkbox" id="autoScanChk"> לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה</label>
+        <label class="chkrow"><input type="checkbox" id="autoScanChk"> סורק קופץ עם פתיחת אפליקציה (מומלץ)</label>
         <div class="ehint">BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.</div>
         <div id="hcRow" style="display:none;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button id="hcBtn" type="button" style="background:#1d5c39;color:#d9ffe8;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🩺 חבר ל-Health Connect</button>
@@ -1255,7 +1255,7 @@ const I18N = {
   "שבוע אחורה": "Previous week",
   "שבוע קדימה": "Next week",
   "סריקה והוספת מזון": "Scan and add food",
-  "לפתוח ישר עם חלונית הסריקה בכניסה לאפליקציה": "Open straight into the scanner when the app starts",
+  "סורק קופץ עם פתיחת אפליקציה (מומלץ)": "Scanner opens on app launch (recommended)",
   "BMR לפי נוסחת מיפלין-סנט ז'אור לגבר: 10×משקל + 6.25×גובה − 5×גיל + 5. המשקל נגרר מהיום האחרון שהזנת עד שתעדכן.": "BMR uses the Mifflin-St Jeor formula. Your weight carries over from the last day you entered until you update it.",
   "⚡ פתיחה מהירה מהלחצן הצידי": "⚡ Quick launch from the side key",
   "📋 העתק דוח": "📋 Copy report",
@@ -1873,7 +1873,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.77";
+const APP_BUILD = "2026.09.08.78";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
