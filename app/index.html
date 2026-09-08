@@ -198,10 +198,24 @@
   #hcMini.enIcon:disabled { opacity:.5; }
   .enOutSub { font-size:10.5px; color:var(--muted); line-height:1.5; }
   .enOutSub:empty { display:none; }
-  /* morning-weight stat holds the input in place of the old balance box */
-  .enStat.enWeight { flex-direction:column; align-items:stretch; gap:4px; padding:6px 10px; }
-  .enStat.enWeight label { color:var(--muted); font-size:12px; }
-  .enStat.enWeight input { width:100%; padding:6px 9px; font-size:14px; }
+  /* morning-weight stat: label and input on ONE row, in place of the old balance box */
+  .enStat.enWeight { align-items:center; gap:8px; }
+  .enStat.enWeight label { color:var(--muted); font-size:12.5px; white-space:nowrap; }
+  .enStat.enWeight input { flex:0 0 auto; width:84px; padding:5px 8px; font-size:14px; text-align:center; }
+  /* small "where does 'out' come from" info popup */
+  .outinfopop { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:18px; }
+  .outinfopop.on { display:flex; }
+  .outinfobox { background:var(--panel); width:100%; max-width:330px; border:1px solid var(--line); border-radius:16px; padding:14px 16px; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  .outinfohd { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; font-size:15px; }
+  .outinfohd button { background:none; border:0; font-size:16px; color:var(--muted); padding:2px 6px; cursor:pointer; }
+  .oiRows { display:flex; flex-direction:column; }
+  .oiRow { display:flex; align-items:center; justify-content:space-between; font-size:13.5px; padding:5px 0; }
+  .oiRow > span { color:var(--muted); }
+  .oiRow b { font-variant-numeric:tabular-nums; }
+  .oiRow.oiTot { border-top:1px solid var(--line); margin-top:4px; padding-top:9px; font-size:15px; font-weight:700; }
+  .oiRow.oiTot b { color:var(--accentText); }
+  .oiFoot { margin-top:12px; font-size:12px; color:var(--muted); line-height:1.8; }
+  .oiFoot u { cursor:pointer; color:var(--accentText); }
   .eprof { margin-top:9px; }
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
@@ -742,6 +756,13 @@
     </div>
   </div>
 
+  <div id="outInfoPop" class="outinfopop">
+    <div class="outinfobox">
+      <div class="outinfohd"><b>🔥 מאיפה מגיע היצא</b><button type="button" id="outInfoClose" aria-label="סגור">✕</button></div>
+      <div id="outInfoBody"></div>
+    </div>
+  </div>
+
 <div id="ob">
   <div class="obcard">
     <div class="obdots"><i></i><i></i><i></i><i></i></div>
@@ -936,12 +957,12 @@
         <div class="enStat"><span>🍽 נכנס</span><b id="enIn">0</b></div>
         <div class="enStat enOut">
           <div class="enOutHead">
-            <span class="enOutLbl">🔥 יצא · BMR+פעילות</span>
+            <span class="enOutLbl">🔥 יצא</span>
             <button type="button" id="hcMini" class="enIcon" title="סנכרן פעילות">🔄</button>
             <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית">✏️</button>
+            <button type="button" id="outInfo" class="enIcon" title="מאיפה מגיע היצא">ⓘ</button>
             <b id="enOut">0</b>
           </div>
-          <div class="enOutSub" id="enOutSub"></div>
           <div id="manRow">
             <input type="number" id="manIn" inputmode="numeric" placeholder='קק"ל'>
             <button type="button" id="manOk">✓</button>
@@ -1103,7 +1124,15 @@ const I18N = {
   "עודף היום": "Surplus today",
   "🍽 נכנס": "🍽 In",
   "🔥 יצא · BMR+פעילות": "🔥 Out · BMR+activity",
+  "🔥 יצא": "🔥 Out",
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Morning weight (kg)",
+  "🔥 מאיפה מגיע היצא": "🔥 Where 'out' comes from",
+  "פעילות (ידני)": "Activity (manual)",
+  "אימון": "Workout",
+  "סה\"כ יצא": "Total out",
+  "הוזן ידנית": "Entered manually",
+  "מסונכרן מ-Health Connect": "Synced from Health Connect",
+  "לא מסונכרן": "Not synced",
   "פידבק ממשתמשים": "User feedback",
   "אין פידבק חדש": "No new feedback",
   "טופל": "Handled",
@@ -1577,22 +1606,7 @@ function renderEnergy(kcalIn) {
   const d = DAYDATA[viewDay] || {};
   $("wIn").value = d.weight || "";
   $("wIn").placeholder = weightFor(viewDay);
-  const manual = !!d.activityManual;
-  // "out" sub-line under the fire: the manual value or the synced burn, plus steps 👟
-  const parts = [];
-  if (manual) {
-    parts.push('✍️ ' + T("ידני:") + ' ' + Number(d.activity || 0).toLocaleString("he-IL") + ' ' + T("קק\"ל")
-      + ' · <u id="manClear" style="cursor:pointer">' + T("חזרה לסנכרון") + '</u>');
-  } else {
-    const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
-    if (s || w) parts.push('🔥 ' + T("מסונכרן") + ' ' + (s + w).toLocaleString("he-IL") + ' ' + T("קק\"ל")
-      + (w ? ' (' + T("צעדים") + ' ' + s + ' ' + T("+ אימון") + ' ' + w + ')' : ''));
-  }
-  if (d.steps) parts.push('👟 ' + Number(d.steps).toLocaleString("he-IL") + ' ' + T("צעדים"));
-  $("enOutSub").innerHTML = parts.join("<br>");
-  const mc = document.getElementById("manClear");
-  if (mc) mc.onclick = clearManual;
-  if (typeof hcMiniVis === "function") hcMiniVis();
+  if (typeof hcMiniVis === "function") hcMiniVis();   // the synced/steps breakdown now lives in the ⓘ popup
   $("hIn").value = PROFILE.height;
   $("aIn").value = PROFILE.age;
   $("autoScanChk").checked = PROFILE.autoScan !== false;
@@ -1608,6 +1622,32 @@ function renderEnergy(kcalIn) {
   $("enIn").textContent = e.in.toLocaleString("he-IL");
   $("enOut").textContent = e.out.toLocaleString("he-IL");
 }
+
+// the ⓘ popup: a pure-information breakdown of the "out" number for the day
+function openOutInfo() {
+  const d = DAYDATA[viewDay] || {};
+  const e = dayEnergy(viewDay, 0);   // in-independent: bmr, act, out
+  const manual = !!d.activityManual;
+  const rows = [`<div class="oiRow"><span>BMR</span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`];
+  if (manual) {
+    rows.push(`<div class="oiRow"><span>✍️ ${T("פעילות (ידני)")}</span><b>${e.act.toLocaleString("he-IL")}</b></div>`);
+  } else {
+    const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
+    rows.push(`<div class="oiRow"><span>👟 ${T("צעדים")}</span><b>${s.toLocaleString("he-IL")}</b></div>`);
+    rows.push(`<div class="oiRow"><span>🏋️ ${T("אימון")}</span><b>${w.toLocaleString("he-IL")}</b></div>`);
+  }
+  rows.push(`<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b>${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`);
+  const foot = [];
+  if (d.steps) foot.push(`👟 ${Number(d.steps).toLocaleString("he-IL")} ${T("צעדים")}`);
+  foot.push(manual
+    ? '✍️ ' + T("הוזן ידנית") + ' · <u id="oiSync">' + T("חזרה לסנכרון") + '</u>'
+    : ((d.burnSteps || d.burnWork) ? '🔄 ' + T("מסונכרן מ-Health Connect") : '⚪ ' + T("לא מסונכרן")));
+  $("outInfoBody").innerHTML = `<div class="oiRows">${rows.join("")}</div><div class="oiFoot">${foot.join("<br>")}</div>`;
+  const sy = document.getElementById("oiSync");
+  if (sy) sy.onclick = () => { clearManual(); closeOutInfo(); };
+  $("outInfoPop").classList.add("on");
+}
+function closeOutInfo() { $("outInfoPop").classList.remove("on"); }
 
 function saveDayData() {
   scheduleAutoPush();
@@ -1928,7 +1968,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.08.80";
+const APP_BUILD = "2026.09.09.81";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3848,6 +3888,9 @@ $("hcMini").addEventListener("click", async () => {
     renderTotals();                       // repaints the hint from the day record
   }
 });
+$("outInfo").addEventListener("click", openOutInfo);
+$("outInfoClose").addEventListener("click", closeOutInfo);
+$("outInfoPop").addEventListener("click", e => { if (e.target === $("outInfoPop")) closeOutInfo(); });
 $("skBtn").addEventListener("click", skOpen);
 /* coming back from the Health Connect permission screen: pick up whatever he
    just granted without making him press anything */
