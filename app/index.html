@@ -206,9 +206,16 @@
      screens (Ido, 2026-09-09) */
   .enStat.enWeight label { color:var(--muted); font-size:12.5px; font-weight:400; white-space:nowrap;
     overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }   /* override the global bold label */
-  /* smaller and explicitly normal-weight, to match the plain (non-bold) look
-     of the rows above it instead of standing out (Ido, 2026-09-09) */
-  .enStat.enWeight input { flex:0 0 auto; width:84px; padding:5px 8px; font-size:12.5px; font-weight:400; text-align:center; }
+  /* the number and its "ק"ג" unit sit together in ONE box (Ido, 2026-09-09) -
+     the box keeps the background/border the bare input used to get from the
+     global input[type=number] rule; the input itself is borderless inside it */
+  .enStat.enWeight .enWeightBox { flex:0 0 auto; display:flex; align-items:center; gap:4px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; }
+  /* beats the global input[type=number] rule (same specificity, but that one
+     comes later in the file) on width/border/background/padding/font-size */
+  .enStat.enWeight .enWeightBox input { width:48px; padding:0; border:0; background:none; font-size:12.5px; font-weight:400; text-align:center; }
+  .enStat.enWeight .enWeightBox input:focus { outline:none; }
+  .enWeightUnit { font-size:11px; color:var(--muted); white-space:nowrap; }
   /* small "where does 'out' come from" info popup */
   .outinfopop { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:18px; }
   .outinfopop.on { display:flex; }
@@ -979,8 +986,11 @@
           </div>
         </div>
         <div class="enStat enWeight">
-          <label for="wIn">⚖️ משקל הבוקר (ק"ג)</label>
-          <input type="number" id="wIn" inputmode="decimal" step="0.1">
+          <label for="wIn">⚖️ משקל היום</label>
+          <div class="enWeightBox">
+            <input type="number" id="wIn" inputmode="decimal" step="0.1">
+            <span class="enWeightUnit">ק"ג</span>
+          </div>
         </div>
       </div>
       <div id="enRing">
@@ -1137,6 +1147,8 @@ const I18N_EN = {
   "🔥 יצא · BMR+פעילות": "🔥 Out · BMR+activity",
   "🔥 יצא": "🔥 Out",
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Morning weight (kg)",
+  "⚖️ משקל היום": "⚖️ Today's weight",
+  "ק\"ג": "kg",
   "🔥 מאיפה מגיע היצא": "🔥 Where 'out' comes from",
   "פעילות (ידני)": "Activity (manual)",
   "אימון": "Workout",
@@ -1568,6 +1580,8 @@ const I18N_AR = {
   "🔥 יצא · BMR+פעילות": "🔥 الصادر · BMR+نشاط",
   "🔥 יצא": "🔥 الصادر",
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ وزن الصباح (كغ)",
+  "⚖️ משקל היום": "⚖️ وزن اليوم",
+  "ק\"ג": "كغ",
   "🔥 מאיפה מגיע היצא": "🔥 من أين يأتي الصادر",
   "פעילות (ידני)": "نشاط (يدوي)",
   "אימון": "تمرين",
@@ -1971,6 +1985,8 @@ const I18N_RU = {
   "🔥 יצא · BMR+פעילות": "🔥 Потрачено · BMR+активность",
   "🔥 יצא": "🔥 Потрачено",
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Утренний вес (кг)",
+  "⚖️ משקל היום": "⚖️ Вес сегодня",
+  "ק\"ג": "кг",
   "🔥 מאיפה מגיע היצא": "🔥 Из чего складывается расход",
   "פעילות (ידני)": "Активность (вручную)",
   "אימון": "Тренировка",
@@ -2853,7 +2869,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.85";
+const APP_BUILD = "2026.09.09.86";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
