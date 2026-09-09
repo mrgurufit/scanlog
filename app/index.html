@@ -36,6 +36,9 @@
   :root[data-theme="light"] #scaleLive b { color:#241b3a; }
   :root[data-theme="light"] #scaleLive.stable { background:#e4f6ec; border-color:#bfe6cf; color:#0f7a3d; }
   :root[data-theme="light"] .item img.blank, :root[data-theme="light"] #shot.blank { filter:none; }
+  /* the streak flame pill was hardcoded dark - light theme now gets a warm
+     cream pill instead of a black one (Ido, 2026-09-09) */
+  :root[data-theme="light"] #streak { background:#fff6da; border-color:#e6d48a; }
   * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html, body { background:var(--bg); color:var(--text); font-family:var(--sans); }
   body { padding:14px 12px 92px; }
@@ -318,20 +321,21 @@
   }
   #stopBtn:active { background:#2a3242; }
   .campanel { position:relative; }
-  #setBtn {
-    flex:0 0 auto; width:41px; height:41px; padding:0; font-size:18px;
-    display:flex; align-items:center; justify-content:center;
-    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  /* hamburger menu button: the app's yellow, three black bars, a red dot
+     when the admin has something new waiting (Ido, 2026-09-09) */
+  #menuBtn {
+    position:relative; flex:0 0 auto; width:41px; height:41px; padding:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    background:var(--accent); border:0; border-radius:999px;
+    box-shadow:0 2px 6px rgba(0,0,0,.22);
   }
-  #setBtn:active { background:#222a38; }
-  /* admin-only header icons: 🍎 products to approve, 📬 messages/feedback */
-  .hdricon {
-    position:relative; flex:0 0 auto; width:41px; height:41px; padding:0; font-size:18px;
-    display:flex; align-items:center; justify-content:center;
-    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  #menuBtn:active { transform:scale(.93); }
+  #menuBtn .menuBar { display:block; width:18px; height:2.5px; border-radius:2px; background:#141005; }
+  #menuDot {
+    position:absolute; top:1px; inset-inline-end:1px; width:12px; height:12px; border-radius:50%;
+    background:#e5484d; border:2px solid var(--bg); display:none;
   }
-  .hdricon[hidden] { display:none; }
-  .hdricon:active { background:#222a38; }
+  #menuDot.on { display:block; }
   .hbadge {
     position:absolute; top:-4px; inset-inline-end:-4px; min-width:18px; height:18px; padding:0 4px;
     background:#e5484d; color:#fff; font-size:10.5px; font-weight:800; line-height:1;
@@ -359,6 +363,106 @@
     width:30px; height:30px; padding:0; border-radius:50%; font-size:15px;
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
+
+  /* ---------------- side drawer menu (Ido, 2026-09-09) ----------------
+     Slides in from whichever side the hamburger sits on - the "end" side of
+     the header - so it works unmirrored in both RTL (Hebrew/Arabic) and LTR
+     (English/Russian). html[dir] decides which physical edge that is. */
+  #drawerBackdrop {
+    display:none; position:fixed; inset:0; z-index:190; background:rgba(4,6,10,.6);
+    opacity:0; transition:opacity .25s ease;
+  }
+  #drawerBackdrop.on { display:block; opacity:1; }
+  #drawer {
+    position:fixed; top:0; bottom:0; z-index:191; width:min(84vw,336px);
+    background:var(--panel); box-shadow:0 0 44px rgba(0,0,0,.5);
+    display:flex; flex-direction:column; transition:transform .3s cubic-bezier(.22,.68,.32,1);
+  }
+  html[dir="ltr"] #drawer { right:0; transform:translateX(100%); }
+  html[dir="rtl"] #drawer { left:0; transform:translateX(-100%); }
+  /* higher specificity than the dir-scoped rules above (same html[dir] base
+     plus the .on class), so the open state always wins over the hidden one */
+  html[dir="ltr"] #drawer.on, html[dir="rtl"] #drawer.on { transform:translateX(0); }
+  .drawerHead {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:16px 16px 14px; border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  .drawerBrand { font-size:16px; font-weight:800; letter-spacing:.2px; }
+  .drawerBrand span { color:var(--accentText); }
+  #drawerClose {
+    width:32px; height:32px; padding:0; border-radius:50%; font-size:15px; flex:0 0 auto;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
+  .drawerBody { flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:3px; }
+  .drawerSec { display:flex; flex-direction:column; gap:3px; }
+  .drawerSec[hidden] { display:none; }   /* an author display:flex would otherwise beat the UA [hidden] rule */
+  .drawerItem {
+    display:flex; align-items:center; gap:12px; width:100%; text-align:start;
+    background:none; border:0; border-radius:12px; padding:12px 10px; font-size:14.5px;
+    font-weight:700; font-family:inherit; color:var(--text); cursor:pointer;
+  }
+  .drawerItem:active { background:var(--panel2); }
+  .drawerIco { font-size:19px; flex:0 0 auto; width:24px; text-align:center; }
+  .drawerLbl { flex:1; }
+  .drawerArrow { color:var(--muted); font-size:16px; flex:0 0 auto; transform:scaleX(-1); }
+  html[dir="ltr"] .drawerArrow { transform:none; }
+  .drawerBadge {
+    background:#e5484d; color:#fff; font-size:11px; font-weight:800; line-height:1;
+    min-width:19px; height:19px; padding:0 5px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; flex:0 0 auto;
+  }
+  .drawerBadge[hidden] { display:none; }
+  .drawerDiv { height:1px; background:var(--line); margin:8px 4px; flex:0 0 auto; }
+  .drawerLangSec { padding:6px 10px 4px; }
+  .drawerSecTitle { font-size:11.5px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
+  .drawerLangGrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .drawerLangBtn {
+    padding:10px 6px; border-radius:10px; font-size:13px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text); cursor:pointer;
+  }
+  .drawerLangBtn.on { background:#241a0e; border-color:var(--accentText); color:var(--accentText); }
+  :root[data-theme="light"] .drawerLangBtn.on { background:#fff6da; }
+  .drawerFoot { flex:0 0 auto; border-top:1px solid var(--line); padding:6px 12px calc(6px + env(safe-area-inset-bottom)); }
+
+  /* ---------------- progress page (Ido, 2026-09-09) ---------------- */
+  #progressPage { display:none; position:fixed; inset:0; z-index:150; background:var(--bg); flex-direction:column; }
+  #progressPage.on { display:flex; }
+  .progHead {
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex:0 0 auto;
+    padding:14px 16px; border-bottom:1px solid var(--line); font-size:15.5px;
+  }
+  .progHead button {
+    width:34px; height:34px; padding:0; border-radius:50%; font-size:15px;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  }
+  .progBody { flex:1; overflow-y:auto; padding:16px 14px calc(20px + env(safe-area-inset-bottom)); max-width:620px; margin:0 auto; width:100%; }
+  .progStats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+  .progStat { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:13px 10px; text-align:center; }
+  .progStat .v { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
+  .progStat .v.down { color:var(--green); }
+  .progStat .v.up { color:var(--red); }
+  .progStat .l { font-size:10.5px; color:var(--muted); font-weight:700; margin-top:3px; }
+  .progCard { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:15px; margin-bottom:14px; }
+  .progCardTitle { font-size:13.5px; font-weight:800; margin-bottom:2px; }
+  /* a "oldest -> newest" date range must stay in that logical order even in
+     RTL, same reasoning as .diag/.enOutSub elsewhere in the app */
+  .progCardSub { font-size:11.5px; color:var(--muted); margin-bottom:12px; direction:ltr; text-align:center; }
+  /* time-series charts stay chronological left-to-right regardless of UI
+     language - flipping a trend line reads as backwards even in RTL apps */
+  .progSvgWrap { direction:ltr; }
+  .progSvgWrap svg { display:block; width:100%; height:auto; overflow:visible; }
+  .progEmpty { text-align:center; color:var(--muted); font-size:12.5px; line-height:1.8; padding:22px 8px; }
+  /* chart styling lives in real CSS rules (classes), never inline var() on SVG
+     presentation attributes - matches how #enRing .enArc is themed elsewhere */
+  .progGradA { stop-color:var(--accentText); stop-opacity:.32; }
+  .progGradB { stop-color:var(--accentText); stop-opacity:0; }
+  .progArea { fill:url(#progWGrad); stroke:none; }
+  .progLine { fill:none; stroke:var(--accentText); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+  .progDot { fill:var(--accentText); stroke:var(--panel); stroke-width:2; }
+  .progBarDeficit { fill:var(--green); }
+  .progBarSurplus { fill:var(--red); }
+  .progAxis { stroke:var(--line); stroke-width:1; }
+  .progAxisLabel { fill:var(--muted); font-size:9px; font-family:var(--sans); }
   .qtyrow { display:flex; gap:8px; align-items:stretch; }
   .qtyrow #grams { flex:1; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
@@ -675,9 +779,10 @@
       <h1>SCAN <span>//</span> LOG</h1>
     </div>
     <button id="streak" title="רצף ימי תיעוד">🔥<span id="streakN">0</span></button>
-    <button id="approveBtn" class="hdricon" title="מוצרים לאישור" aria-label="מוצרים לאישור" hidden>🍎<span class="hbadge" id="approveBadge" hidden></span></button>
-    <button id="inboxBtn" class="hdricon" title="הודעות ופידבק" aria-label="הודעות ופידבק" hidden>📬<span class="hbadge" id="inboxBadge" hidden></span></button>
-    <button id="setBtn" title="הגדרות" aria-label="הגדרות">⚙️</button>
+    <button id="menuBtn" aria-label="תפריט" title="תפריט">
+      <span class="menuBar"></span><span class="menuBar"></span><span class="menuBar"></span>
+      <span id="menuDot"></span>
+    </button>
   </div>
   <div id="streakToast"></div>
 
@@ -838,10 +943,21 @@
     </section>
 
     <section class="obstep" data-step="3" hidden>
-      <h2>שני חיבורים שחוסכים זמן</h2>
+      <h2>חיבורים שחוסכים זמן</h2>
 
       <div class="obhow">
         <div class="obrow"><span class="obnum">1</span>
+          <div>
+            <b>הרשמה עם Google</b>
+            <p class="obsmall">מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.</p>
+          </div>
+        </div>
+        <button type="button" class="obact" id="obGoogle">🔐 הרשמה עם Google</button>
+        <div class="obsmall" id="obGoogleState"></div>
+      </div>
+
+      <div class="obhow">
+        <div class="obrow"><span class="obnum">2</span>
           <div>
             <b>פתיחה מהירה בלחיצה כפולה</b>
             <p class="obsmall">לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.</p>
@@ -888,7 +1004,7 @@
       </div>
 
       <div class="obhow">
-        <div class="obrow"><span class="obnum">2</span>
+        <div class="obrow"><span class="obnum">3</span>
           <div>
             <b>חיבור ל-Health Connect</b>
             <p class="obsmall">מושך אוטומטית את הצעדים והאימונים מהשעון, ורושם בחזרה את מה שאכלת. אשר את כל ההרשאות במסך שייפתח.</p>
@@ -1021,7 +1137,6 @@
       <div id="setModal">
         <div class="setpanel">
         <div class="sethead"><b>⚙️ הגדרות</b><button id="setClose" aria-label="סגור">✕</button></div>
-        <button id="fbBtn" class="fbbtn" style="display:none;margin-top:6px">✉️ כתוב לנו</button>
         <div class="erow" style="margin-top:8px">
           <div class="efield"><label for="hIn">גובה (ס"מ)</label><input type="number" id="hIn"></div>
           <div class="efield"><label for="aIn">גיל</label><input type="number" id="aIn"></div>
@@ -1051,17 +1166,6 @@
             <div class="ehint" id="themeHint" style="margin-top:4px"></div>
           </div>
         </div>
-        <div class="erow" style="margin-top:12px">
-          <div class="efield">
-            <label>Language / שפה</label>
-            <div class="obsex" style="margin:6px 0 0">
-              <button type="button" class="obsexb" id="langEn">English</button>
-              <button type="button" class="obsexb" id="langHe">עברית</button>
-              <button type="button" class="obsexb" id="langAr">العربية</button>
-              <button type="button" class="obsexb" id="langRu">Русский</button>
-            </div>
-          </div>
-        </div>
         <div id="acctRow" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"></div>
         <div class="row" style="margin-top:12px">
           <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
@@ -1073,6 +1177,62 @@
         <input type="file" id="impInput" accept=".json,application/json" hidden>
         <div class="msg" id="setMsg"></div>
         </div>
+      </div>
+
+      <div id="drawerBackdrop"></div>
+      <nav id="drawer" aria-label="תפריט">
+        <div class="drawerHead">
+          <div class="drawerBrand">SCAN <span>//</span> LOG</div>
+          <button type="button" id="drawerClose" aria-label="סגור">✕</button>
+        </div>
+        <div class="drawerBody">
+          <div id="drawerAdminSec" class="drawerSec" hidden>
+            <button type="button" class="drawerItem" id="drawerInbox">
+              <span class="drawerIco">📬</span><span class="drawerLbl">הודעות ופידבק</span>
+              <span class="drawerBadge" id="drawerInboxBadge" hidden></span>
+              <span class="drawerArrow">›</span>
+            </button>
+            <button type="button" class="drawerItem" id="drawerApprove">
+              <span class="drawerIco">🍎</span><span class="drawerLbl">מוצרים חדשים</span>
+              <span class="drawerBadge" id="drawerApproveBadge" hidden></span>
+              <span class="drawerArrow">›</span>
+            </button>
+            <div class="drawerDiv"></div>
+          </div>
+          <button type="button" class="drawerItem" id="drawerProgress">
+            <span class="drawerIco">📈</span><span class="drawerLbl">גרף התקדמות</span>
+            <span class="drawerArrow">›</span>
+          </button>
+          <button type="button" class="drawerItem" id="drawerSettings">
+            <span class="drawerIco">⚙️</span><span class="drawerLbl">הגדרות</span>
+            <span class="drawerArrow">›</span>
+          </button>
+          <div class="drawerDiv"></div>
+          <div class="drawerLangSec">
+            <div class="drawerSecTitle">🌐 שפה</div>
+            <div class="drawerLangGrid">
+              <button type="button" class="drawerLangBtn" id="langHe">עברית</button>
+              <button type="button" class="drawerLangBtn" id="langEn">English</button>
+              <button type="button" class="drawerLangBtn" id="langAr">العربية</button>
+              <button type="button" class="drawerLangBtn" id="langRu">Русский</button>
+            </div>
+          </div>
+        </div>
+        <div class="drawerFoot">
+          <button type="button" class="drawerItem" id="fbBtn" style="display:none">
+            <span class="drawerIco">✉️</span><span class="drawerLbl">כתוב לנו</span>
+            <span class="drawerArrow">›</span>
+          </button>
+        </div>
+      </nav>
+
+      <div id="progressPage">
+        <div class="progHead">
+          <button type="button" id="progClose" aria-label="סגור">✕</button>
+          <b>📈 גרף התקדמות</b>
+          <span style="width:34px"></span>
+        </div>
+        <div class="progBody" id="progBody"></div>
       </div>
 </div>
 
@@ -1333,7 +1493,10 @@ const I18N_EN = {
   "הבנק שלך:": "Your bank:",
   "קלוריות לשרוף": "calories to burn",
   "אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.": "You can change it any time by tapping the yellow bar on the main screen.",
-  "שני חיבורים שחוסכים זמן": "Two connections that save you time",
+  "חיבורים שחוסכים זמן": "Connections that save you time",
+  "הרשמה עם Google": "Sign up with Google",
+  "🔐 הרשמה עם Google": "🔐 Sign up with Google",
+  "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "Sign in with your Gmail account to back up your data to the cloud — it is restored automatically on a new phone or after a reinstall.",
   "פתיחה מהירה בלחיצה כפולה": "Quick launch with a double press",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "Double-press your phone's side key to open the app from anywhere.",
   "לחץ על הכפתור למטה": "Press the key below",
@@ -1352,6 +1515,20 @@ const I18N_EN = {
   "⚙️ הגדרות": "⚙️ Settings",
   "הגדרות": "Settings",
   "סגור": "Close",
+  "מוצרים חדשים": "New products",
+  "גרף התקדמות": "Progress",
+  "📈 גרף התקדמות": "📈 Progress",
+  "כתוב לנו": "Contact us",
+  "🌐 שפה": "🌐 Language",
+  "תפריט": "Menu",
+  "משקל נוכחי": "Current weight",
+  "שינוי מההתחלה": "Change since start",
+  "רצף נוכחי": "Current streak",
+  "ימים שתועדו": "Days logged",
+  "מגמת משקל": "Weight trend",
+  "עדיין אין מספיק נתוני משקל לגרף. הזן משקל בוקר כמה ימים ברציפות ותראה כאן את המגמה.": "Not enough weight data yet for a chart. Log your morning weight for a few days in a row and the trend will show up here.",
+  "מאזן יומי — 14 הימים האחרונים": "Daily balance — last 14 days",
+  "עדיין אין מספיק ימים עם רישום כדי להציג מאזן יומי.": "Not enough logged days yet to show a daily balance.",
   "שבוע אחורה": "Previous week",
   "שבוע קדימה": "Next week",
   "סריקה והוספת מזון": "Scan and add food",
@@ -1763,7 +1940,10 @@ const I18N_AR = {
   "הבנק שלך:": "بنكك:",
   "קלוריות לשרוף": "سعرات للحرق",
   "אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.": "يمكنك تغييره في أي وقت بالضغط على الشريط الأصفر في الشاشة الرئيسية.",
-  "שני חיבורים שחוסכים זמן": "اتصالان يوفّران وقتك",
+  "חיבורים שחוסכים זמן": "اتصالات توفّر وقتك",
+  "הרשמה עם Google": "التسجيل عبر Google",
+  "🔐 הרשמה עם Google": "🔐 التسجيل عبر Google",
+  "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "سجّل الدخول بحساب Gmail لعمل نسخة احتياطية سحابية لبياناتك — تُستعاد تلقائيًا على هاتف جديد أو بعد إعادة التثبيت.",
   "פתיחה מהירה בלחיצה כפולה": "فتح سريع بضغطة مزدوجة",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "ضغطة مزدوجة على الزر الجانبي للهاتف تفتح التطبيق من أي مكان.",
   "לחץ על הכפתור למטה": "اضغط الزر بالأسفل",
@@ -1782,6 +1962,20 @@ const I18N_AR = {
   "⚙️ הגדרות": "⚙️ الإعدادات",
   "הגדרות": "الإعدادات",
   "סגור": "إغلاق",
+  "מוצרים חדשים": "منتجات جديدة",
+  "גרף התקדמות": "التقدم",
+  "📈 גרף התקדמות": "📈 التقدم",
+  "כתוב לנו": "راسلنا",
+  "🌐 שפה": "🌐 اللغة",
+  "תפריט": "القائمة",
+  "משקל נוכחי": "الوزن الحالي",
+  "שינוי מההתחלה": "التغيير منذ البداية",
+  "רצף נוכחי": "السلسلة الحالية",
+  "ימים שתועדו": "أيام مسجّلة",
+  "מגמת משקל": "اتجاه الوزن",
+  "עדיין אין מספיק נתוני משקל לגרף. הזן משקל בוקר כמה ימים ברציפות ותראה כאן את המגמה.": "لا توجد بيانات وزن كافية بعد للرسم البياني. سجّل وزن الصباح لعدة أيام متتالية وسيظهر الاتجاه هنا.",
+  "מאזן יומי — 14 הימים האחרונים": "الميزان اليومي — آخر 14 يومًا",
+  "עדיין אין מספיק ימים עם רישום כדי להציג מאזן יומי.": "لا توجد أيام كافية مسجّلة بعد لعرض الميزان اليومي.",
   "שבוע אחורה": "الأسبوع السابق",
   "שבוע קדימה": "الأسبوع التالي",
   "סריקה והוספת מזון": "مسح وإضافة طعام",
@@ -2168,7 +2362,10 @@ const I18N_RU = {
   "הבנק שלך:": "Ваш банк:",
   "קלוריות לשרוף": "калорий сжечь",
   "אפשר לשנות בכל רגע - פשוט לוחצים על הבר הצהוב במסך הראשי.": "Можно изменить в любой момент — просто нажмите жёлтую полосу на главном экране.",
-  "שני חיבורים שחוסכים זמן": "Две связки, которые экономят время",
+  "חיבורים שחוסכים זמן": "Связки, которые экономят время",
+  "הרשמה עם Google": "Регистрация через Google",
+  "🔐 הרשמה עם Google": "🔐 Регистрация через Google",
+  "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "Войдите через аккаунт Gmail, чтобы сохранять данные в облаке — они восстановятся автоматически на новом телефоне или после переустановки.",
   "פתיחה מהירה בלחיצה כפולה": "Быстрый запуск двойным нажатием",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "Двойное нажатие боковой кнопки телефона откроет приложение откуда угодно.",
   "לחץ על הכפתור למטה": "Нажмите кнопку ниже",
@@ -2187,6 +2384,20 @@ const I18N_RU = {
   "⚙️ הגדרות": "⚙️ Настройки",
   "הגדרות": "Настройки",
   "סגור": "Закрыть",
+  "מוצרים חדשים": "Новые продукты",
+  "גרף התקדמות": "Прогресс",
+  "📈 גרף התקדמות": "📈 Прогресс",
+  "כתוב לנו": "Написать нам",
+  "🌐 שפה": "🌐 Язык",
+  "תפריט": "Меню",
+  "משקל נוכחי": "Текущий вес",
+  "שינוי מההתחלה": "Изменение с начала",
+  "רצף נוכחי": "Текущая серия",
+  "ימים שתועדו": "Дней записано",
+  "מגמת משקל": "Тренд веса",
+  "עדיין אין מספיק נתוני משקל לגרף. הזן משקל בוקר כמה ימים ברציפות ותראה כאן את המגמה.": "Пока недостаточно данных о весе для графика. Вводите утренний вес несколько дней подряд, и здесь появится тренд.",
+  "מאזן יומי — 14 הימים האחרונים": "Дневной баланс — последние 14 дней",
+  "עדיין אין מספיק ימים עם רישום כדי להציג מאזן יומי.": "Пока недостаточно записанных дней, чтобы показать дневной баланс.",
   "שבוע אחורה": "Предыдущая неделя",
   "שבוע קדימה": "Следующая неделя",
   "סריקה והוספת מזון": "Сканировать и добавить еду",
@@ -2869,7 +3080,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.86";
+const APP_BUILD = "2026.09.09.89";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4867,19 +5078,150 @@ $("addBtn").addEventListener("click", addEntry);
 $("portionSel").addEventListener("change", e => { selPortion = +e.target.value; renderPortions(); preview(); });
 $("entryClose").addEventListener("click", closeEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
-$("setBtn").addEventListener("click", () => {
+function openSettings() {
   ovPush();
   msg("setMsg", "");
   if (typeof renderAccount === "function") renderAccount();
   $("setModal").classList.add("on");
   document.body.style.overflow = "hidden";
-});
+}
 function closeSettings() {
   $("setModal").classList.remove("on");
   document.body.style.overflow = "";
 }
 $("setClose").addEventListener("click", () => { closeSettings(); ovDrop(); });
 $("setModal").addEventListener("click", e => { if (e.target === $("setModal")) closeSettings(); });
+
+/* ---------------- side drawer menu ---------------- */
+function openDrawer() {
+  ovPush();
+  if (typeof renderAdminIcons === "function") renderAdminIcons();   // fresh badges every time it opens
+  $("drawer").classList.add("on");
+  $("drawerBackdrop").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+function closeDrawer() {
+  $("drawer").classList.remove("on");
+  $("drawerBackdrop").classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("menuBtn").addEventListener("click", openDrawer);
+$("drawerClose").addEventListener("click", () => { closeDrawer(); ovDrop(); });
+$("drawerBackdrop").addEventListener("click", () => { closeDrawer(); ovDrop(); });
+$("drawerSettings").addEventListener("click", () => { closeDrawer(); openSettings(); });
+$("drawerProgress").addEventListener("click", () => { closeDrawer(); openProgress(); });
+$("drawerInbox").addEventListener("click", () => { closeDrawer(); openInbox("feedback"); });
+$("drawerApprove").addEventListener("click", () => { closeDrawer(); openInbox("products"); });
+
+/* ---------------- progress page ----------------
+   Weight trend + daily calorie-balance charts, drawn fresh from LOG/DAYDATA
+   every time the page opens. Everything is already on the phone - zero cost,
+   zero network. Charts stay LTR (oldest -> newest, left to right) even in a
+   right-to-left language, same convention as timestamps elsewhere. */
+function openProgress() {
+  ovPush();
+  renderProgress();
+  $("progressPage").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+function closeProgress() {
+  $("progressPage").classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("progClose").addEventListener("click", () => { closeProgress(); ovDrop(); });
+
+function fmtShortDate(day) {
+  const dt = new Date(day + "T12:00:00");
+  return dt.getDate() + "/" + (dt.getMonth() + 1);
+}
+
+function weightChartSvg(points) {
+  const W = 600, H = 170, padL = 6, padR = 6, padT = 14, padB = 8;
+  const ws = points.map(p => p.w);
+  let lo = Math.min(...ws), hi = Math.max(...ws);
+  if (hi - lo < 1) { const mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
+  const span = hi - lo, pad = span * 0.12; lo -= pad; hi += pad;
+  const n = points.length;
+  const x = i => padL + (n === 1 ? (W - padL - padR) / 2 : i * (W - padL - padR) / (n - 1));
+  const y = w => padT + (H - padT - padB) * (1 - (w - lo) / (hi - lo));
+  const pts = points.map((p, i) => x(i).toFixed(1) + "," + y(p.w).toFixed(1));
+  const line = "M " + pts.join(" L ");
+  const area = "M " + x(0).toFixed(1) + "," + (H - padB) + " L " + pts.join(" L ") + " L " + x(n - 1).toFixed(1) + "," + (H - padB) + " Z";
+  const lastX = x(n - 1), lastY = y(points[n - 1].w);
+  return `<div class="progSvgWrap"><svg viewBox="0 0 ${W} ${H}">`
+    + `<defs><linearGradient id="progWGrad" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop class="progGradA" offset="0%"></stop><stop class="progGradB" offset="100%"></stop>`
+    + `</linearGradient></defs>`
+    + `<path class="progArea" d="${area}"></path>`
+    + `<path class="progLine" d="${line}"></path>`
+    + `<circle class="progDot" cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="4.5"></circle>`
+    + `</svg></div>`;
+}
+
+function balanceChartSvg(days) {
+  const W = 600, H = 160, padL = 4, padR = 4, padT = 8, padB = 18;
+  const n = days.length;
+  const maxAbs = Math.max(1, ...days.map(d => Math.abs(d.bal)));
+  const zeroY = padT + (H - padT - padB) / 2;
+  const half = (H - padT - padB) / 2 - 4;
+  const gap = (W - padL - padR) / n;
+  const bw = Math.min(30, gap * 0.58);
+  const bars = days.map((d, i) => {
+    const cx = padL + gap * i + gap / 2;
+    const h = Math.max(2, Math.abs(d.bal) / maxAbs * half);
+    const isDef = d.bal <= 0;
+    const yTop = isDef ? zeroY - h : zeroY;
+    return `<rect class="${isDef ? "progBarDeficit" : "progBarSurplus"}" x="${(cx - bw / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3"></rect>`;
+  }).join("");
+  const lblX = (i, anchor, text) => `<text class="progAxisLabel" x="${(padL + gap * i + gap / 2).toFixed(1)}" y="${H - 4}" text-anchor="${anchor}">${esc(text)}</text>`;
+  const labels = lblX(0, "start", fmtShortDate(days[0].day)) + lblX(n - 1, "end", fmtShortDate(days[n - 1].day));
+  return `<div class="progSvgWrap"><svg viewBox="0 0 ${W} ${H}">`
+    + `<line class="progAxis" x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${W - padR}" y2="${zeroY.toFixed(1)}"></line>`
+    + bars + labels
+    + `</svg></div>`;
+}
+
+function renderProgress() {
+  const body = $("progBody"); if (!body) return;
+  const weightDays = Object.keys(DAYDATA).filter(d => DAYDATA[d] && DAYDATA[d].weight).sort();
+  const logDays = new Set(LOG.map(e => e.day));
+  const firstW = weightDays.length ? DAYDATA[weightDays[0]].weight : null;
+  const lastW = weightDays.length ? DAYDATA[weightDays[weightDays.length - 1]].weight : null;
+  const delta = (firstW != null && lastW != null) ? Math.round((lastW - firstW) * 10) / 10 : null;
+  const streak = streakCount();
+
+  const stat = (v, l, cls) => `<div class="progStat"><div class="v${cls ? " " + cls : ""}">${v}</div><div class="l">${l}</div></div>`;
+  let html = `<div class="progStats">`
+    + stat(lastW != null ? lastW.toLocaleString(LOC()) + " " + T("ק\"ג") : "—", T("משקל נוכחי"))
+    + stat(delta != null ? (delta > 0 ? "+" : "") + delta.toLocaleString(LOC()) + " " + T("ק\"ג") : "—", T("שינוי מההתחלה"), delta == null ? "" : (delta <= 0 ? "down" : "up"))
+    + stat(streak.toLocaleString(LOC()), T("רצף נוכחי"))
+    + stat(logDays.size.toLocaleString(LOC()), T("ימים שתועדו"))
+    + `</div>`;
+
+  html += `<div class="progCard"><div class="progCardTitle">⚖️ ${T("מגמת משקל")}</div>`;
+  if (weightDays.length < 2) {
+    html += `<div class="progEmpty">${T("עדיין אין מספיק נתוני משקל לגרף. הזן משקל בוקר כמה ימים ברציפות ותראה כאן את המגמה.")}</div>`;
+  } else {
+    html += `<div class="progCardSub">${fmtShortDate(weightDays[0])} → ${fmtShortDate(weightDays[weightDays.length - 1])}</div>`;
+    html += weightChartSvg(weightDays.map(d => ({ day: d, w: DAYDATA[d].weight })));
+  }
+  html += `</div>`;
+
+  const balDays = [...logDays].sort().filter(d => entriesFor(d).length).slice(-14);
+  html += `<div class="progCard"><div class="progCardTitle">🔥 ${T("מאזן יומי — 14 הימים האחרונים")}</div>`;
+  if (balDays.length < 2) {
+    html += `<div class="progEmpty">${T("עדיין אין מספיק ימים עם רישום כדי להציג מאזן יומי.")}</div>`;
+  } else {
+    const bals = balDays.map(d => {
+      const kcalIn = entriesFor(d).reduce((a, e) => a + computed(e).kcal, 0);
+      return { day: d, bal: dayEnergy(d, kcalIn).bal };
+    });
+    html += balanceChartSvg(bals);
+  }
+  html += `</div>`;
+
+  body.innerHTML = html;
+}
 $("bankWrap").addEventListener("click", () => { bankOpen = !bankOpen; renderBankBox(); });
 $("hcBtn").addEventListener("click", hcTap);
 $("hcMini").addEventListener("click", async () => {
@@ -5132,6 +5474,8 @@ function ovDrop() {
   if (ovGuards > 0) { ovGuards--; history.back(); }
 }
 function closeTopOverlay() {
+  if ($("drawer").classList.contains("on")) { closeDrawer(); return true; }
+  if ($("progressPage").classList.contains("on")) { closeProgress(); return true; }
   if ($("setModal").classList.contains("on")) { closeSettings(); return true; }
   if ($("entry").classList.contains("on")) { $("entry").classList.remove("on"); pending = null; return true; }
   if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); return true; }
@@ -5144,6 +5488,20 @@ window.addEventListener("popstate", () => {
 
 $("obSk").addEventListener("click", () => {
   if (HB()) skOpen(); else alert(T("הפתיחה המהירה זמינה באפליקציה המותקנת"));
+});
+$("obGoogle").addEventListener("click", async () => {
+  const hb = HB();
+  if (!hb || !hb.googleSignIn) { $("obGoogleState").textContent = T("זמין באפליקציה המותקנת"); return; }
+  if (isSignedIn()) { $("obGoogleState").textContent = "✅ " + T("מחובר כ-") + " " + (cloudUser.email || ""); return; }
+  $("obGoogleState").textContent = T("מתחבר…");
+  try {
+    cloudUser = await hb.googleSignIn();
+    await cloudMergeSync();
+    if (typeof renderAccount === "function") renderAccount();
+    $("obGoogleState").textContent = "✅ " + T("מחובר כ-") + " " + (cloudUser.email || "");
+  } catch (e) {
+    $("obGoogleState").textContent = T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 140);
+  }
 });
 $("obHc").addEventListener("click", async () => {
   if (!HB()) { $("obHcState").textContent = T("זמין באפליקציה המותקנת"); return; }
@@ -5414,21 +5772,25 @@ function setBadge(id, n) {
   else { el.textContent = ""; el.hidden = true; }
 }
 function updateInboxBadge() {
-  setBadge("approveBadge", PENDING.length);   // 🍎 new products to approve
-  setBadge("inboxBadge", FEEDBACK.length);    // 📬 unread messages/feedback
+  setBadge("drawerApproveBadge", PENDING.length);   // 🍎 new products to approve
+  setBadge("drawerInboxBadge", FEEDBACK.length);    // 📬 unread messages/feedback
+  const dot = $("menuDot");
+  if (dot) dot.classList.toggle("on", isAdmin() && (PENDING.length + FEEDBACK.length) > 0);
 }
 
-// the two header icons live next to the gear; show them for the admin only,
+// the admin-only rows live inside the drawer; show them for the admin only,
 // wire each to its own view, and (once per session) push the admin's own
 // products into the community catalog.
 function renderAdminIcons() {
   const admin = isAdmin();
-  const a = $("approveBtn"), i = $("inboxBtn");
-  if (a) { a.hidden = !admin; a.onclick = () => openInbox("products"); }
-  if (i) { i.hidden = !admin; i.onclick = () => openInbox("feedback"); }
+  const sec = $("drawerAdminSec");
+  if (sec) sec.hidden = !admin;
   if (admin) {
-    pendingFetch(false); feedbackFetch(false);   // refresh both badges
+    pendingFetch(false); feedbackFetch(false);   // refresh both badges + the menu dot
     if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); }
+  } else {
+    setBadge("drawerApproveBadge", 0); setBadge("drawerInboxBadge", 0);
+    const dot = $("menuDot"); if (dot) dot.classList.remove("on");
   }
 }
 
