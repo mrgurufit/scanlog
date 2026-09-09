@@ -3065,7 +3065,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.92";
+const APP_BUILD = "2026.09.09.93";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3298,7 +3298,21 @@ async function ensureDetector() {
   if ("BarcodeDetector" in window) return true;
   if (zxingFail) return false;
   try {
-    zxingMod = zxingMod || await import("https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/reader/index.js");
+    if (!zxingMod) {
+      zxingMod = await import("https://cdn.jsdelivr.net/npm/zxing-wasm@2/dist/es/reader/index.js");
+      // The library's own lazy default .wasm loading races an async fetch
+      // against a sync fallback and can lose both (real failure seen: "both
+      // async and sync fetching of the wasm failed") - pin the URL ourselves
+      // and force eager, awaited instantiation instead of leaving it lazy.
+      await zxingMod.prepareZXingModule({
+        overrides: {
+          locateFile: (path, prefix) => path.endsWith(".wasm")
+            ? "https://cdn.jsdelivr.net/npm/zxing-wasm@" + zxingMod.ZXING_WASM_VERSION + "/dist/reader/" + path
+            : prefix + path,
+        },
+        fireImmediately: true,
+      });
+    }
     const MAP = { ean_13: "EAN-13", ean_8: "EAN-8", upc_a: "UPC-A", upc_e: "UPC-E", code_128: "Code128", code_39: "Code39", itf: "ITF" };
     const scratch = document.createElement("canvas");
     window.BarcodeDetector = class {
