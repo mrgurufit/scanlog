@@ -3065,7 +3065,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.93";
+const APP_BUILD = "2026.09.09.94";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3288,6 +3288,85 @@ function pendingSubmit(code, p) {
 function HB() {
   try { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.HealthBridge) || null; }
   catch { return null; }
+}
+
+/* ---------------- web cloud accounts (browser / Safari, no native bridge) ----
+   Ido, 2026-09-09: the APK already backs a user's log up to Firestore via
+   Google sign-in (HB().googleSignIn/cloudGet/cloudSet). Anyone using the site
+   in a plain browser instead of the installed app had no such option - CB()
+   below gives the same five calls (authState/googleSignIn/googleSignOut/
+   cloudGet/cloudSet) via the Firebase Web SDK, against the SAME Firestore
+   project/doc shape (users/{uid}, field "data"), so an account started on
+   the web opens correctly in the APK and vice versa. Every call site that
+   deals with cloud accounts uses CB() instead of HB() so it works either way;
+   everything else (scanner, Health Connect, BLE scale...) stays HB()-only. */
+let fbAuthMod = null, fbFsMod = null, fbAuth = null, fbDb = null;
+async function ensureFirebaseWeb() {
+  if (fbAuth) return true;
+  if (HB()) return false;   // native app has its own bridge, skip the web SDK entirely
+  try {
+    const [appMod, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"),
+    ]);
+    const app = appMod.initializeApp({
+      apiKey: "AIzaSyCClavNB7qLkbrR-xl30CdFCNBpU2FP794",
+      authDomain: "mrgurufit-scan-log.firebaseapp.com",
+      projectId: "mrgurufit-scan-log",
+      storageBucket: "mrgurufit-scan-log.firebasestorage.app",
+      messagingSenderId: "307501409775",
+      appId: "1:307501409775:web:7a2a7f60636524569b421a",
+    });
+    fbAuthMod = authMod; fbFsMod = fsMod;
+    fbAuth = authMod.getAuth(app);
+    fbDb = fsMod.getFirestore(app);
+    // completes a signInWithRedirect() started before a previous page reload
+    // (the fallback path for browsers/in-app-webviews that block popups)
+    authMod.getRedirectResult(fbAuth).catch(() => {});
+    return true;
+  } catch { fbAuth = null; return false; }
+}
+function fbUserObj(u) {
+  if (!u) return { signedIn: false };
+  return { signedIn: true, uid: u.uid, email: u.email || "", name: u.displayName || "", photo: u.photoURL || "" };
+}
+function CB() {
+  const hb = HB();
+  if (hb && hb.googleSignIn) return hb;
+  if (!fbAuth) return null;
+  return {
+    authState: async () => fbUserObj(fbAuth.currentUser),
+    googleSignIn: async () => {
+      const provider = new fbAuthMod.GoogleAuthProvider();
+      try {
+        const r = await fbAuthMod.signInWithPopup(fbAuth, provider);
+        return fbUserObj(r.user);
+      } catch (e) {
+        // popup blocked / unsupported (common in in-app browsers like WhatsApp) -
+        // fall back to a full-page redirect; the page reloads and getRedirectResult
+        // above picks the signed-in user back up on the next load
+        if (/popup|operation-not-supported/i.test(e && e.code || "")) {
+          await fbAuthMod.signInWithRedirect(fbAuth, provider);
+          return new Promise(() => {});   // navigation is already underway
+        }
+        throw e;
+      }
+    },
+    googleSignOut: async () => { await fbAuthMod.signOut(fbAuth); },
+    cloudGet: async () => {
+      const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
+      if (!uid) throw new Error("not signed in");
+      const snap = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid));
+      const d = snap.exists() ? snap.data() : null;
+      return { json: d ? (d.data || null) : null, updated: d ? (d.updated || 0) : 0 };
+    },
+    cloudSet: async ({ json }) => {
+      const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
+      if (!uid) throw new Error("not signed in");
+      await fbFsMod.setDoc(fbFsMod.doc(fbDb, "users", uid), { data: json, updated: Date.now() }, { merge: true });
+    },
+  };
 }
 
 /* The Android WebView has no BarcodeDetector, so inside the APK the SAME
@@ -5527,8 +5606,9 @@ window.addEventListener("popstate", () => {
 });
 
 $("obGoogle").addEventListener("click", async () => {
-  const hb = HB();
-  if (!hb || !hb.googleSignIn) { $("obGoogleState").textContent = T("זמין באפליקציה המותקנת"); return; }
+  if (!CB()) { $("obGoogleState").textContent = T("טוען…"); await ensureFirebaseWeb(); }
+  const hb = CB();
+  if (!hb || !hb.googleSignIn) { $("obGoogleState").textContent = T("ההתחברות לא זמינה כרגע."); return; }
   if (isSignedIn()) { $("obGoogleState").textContent = "✅ " + T("מחובר כ-") + " " + (cloudUser.email || ""); return; }
   $("obGoogleState").textContent = T("מתחבר…");
   try {
@@ -5697,12 +5777,13 @@ let cloudUser = null, cloudTimer = null;
 function isSignedIn() { return !!(cloudUser && cloudUser.signedIn); }
 
 async function cloudRefreshUser() {
-  const hb = HB(); if (!hb || !hb.authState) return;
+  await ensureFirebaseWeb();   // no-op inside the APK; loads the Firebase Web SDK in a browser
+  const hb = CB(); if (!hb || !hb.authState) { renderAccount(); return; }
   try { cloudUser = await hb.authState(); } catch { cloudUser = null; }
   renderAccount();
 }
 async function cloudSignIn() {
-  const hb = HB(); if (!hb || !hb.googleSignIn) return;
+  const hb = CB(); if (!hb || !hb.googleSignIn) return;
   msg("setMsg", T("מתחבר…"), "");
   try {
     cloudUser = await hb.googleSignIn();
@@ -5714,7 +5795,7 @@ async function cloudSignIn() {
   }
 }
 async function cloudSignOut() {
-  const hb = HB(); if (!hb || !hb.googleSignOut) return;
+  const hb = CB(); if (!hb || !hb.googleSignOut) return;
   try { await hb.googleSignOut(); } catch { /* ignore */ }
   cloudUser = null; renderAccount();
   msg("setMsg", T("התנתקת מהחשבון"), "ok");
@@ -5722,7 +5803,7 @@ async function cloudSignOut() {
 // pull the cloud copy, MERGE it into this phone, then push the merged result -
 // so a new device downloads everything and an existing one never loses data
 async function cloudMergeSync() {
-  const hb = HB(); if (!hb || !isSignedIn() || !hb.cloudGet) return;
+  const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudGet) return;
   try {
     const r = await hb.cloudGet();
     if (r && r.json) { try { mergePayload(JSON.parse(r.json)); renderTotals(); } catch { /* bad json */ } }
@@ -5730,7 +5811,7 @@ async function cloudMergeSync() {
   } catch { /* offline - try again next launch */ }
 }
 async function cloudPushNow() {
-  const hb = HB(); if (!hb || !isSignedIn() || !hb.cloudSet) return;
+  const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudSet) return;
   try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); } catch { /* offline */ }
 }
 function cloudPush() {   // debounced; called on every change to the user's data
@@ -5741,8 +5822,8 @@ function cloudPush() {   // debounced; called on every change to the user's data
 function renderAccount() {
   if (typeof renderAdminIcons === "function") renderAdminIcons();   // header 🍎/📬 follow admin state
   const row = $("acctRow"); if (!row) return;
-  const hb = HB();
-  if (!hb || !hb.googleSignIn) { row.style.display = "none"; return; }  // web/PWA: no native auth
+  const hb = CB();
+  if (!hb || !hb.googleSignIn) { row.style.display = "none"; return; }  // neither native bridge nor web SDK ready yet
   row.style.display = "block";
   if (typeof renderVer === "function") renderVer();   // refresh the version line so the admin-only אבחון link follows sign-in/out
   if (isSignedIn()) {
