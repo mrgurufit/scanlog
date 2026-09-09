@@ -3065,7 +3065,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.91";
+const APP_BUILD = "2026.09.09.92";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3610,9 +3610,24 @@ async function startScan() {
 
   $("camHint").textContent = T("מבקש גישה למצלמה — אשר את הבקשה שתופיע…");
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
+    // On some Android WebViews the getUserMedia permission bridge silently
+    // hangs — no system prompt ever appears, so the promise never settles.
+    // The native scan sheet (APK only) always prompts correctly, so time
+    // this out and fall back to it instead of leaving a frozen black box.
+    let timedOut = false;
+    const gum = navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false
+    }).then(s => {
+      if (timedOut) { s.getTracks().forEach(t => t.stop()); return null; }
+      return s;
     });
+    const timeout = new Promise(res => setTimeout(() => { timedOut = true; res("TIMEOUT"); }, 7000));
+    const result = await Promise.race([gum, timeout]);
+    if (result === "TIMEOUT") {
+      if (HB()) { stopScan(); nativeScan(); return; }
+      throw { name: "NotAllowedError" };
+    }
+    stream = result;
   } catch (err) {
     const why = {
       NotAllowedError: T("הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה."),
