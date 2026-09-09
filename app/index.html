@@ -184,7 +184,8 @@
   .enLbl { font-size:10px; color:var(--muted); font-weight:700; margin-top:2px; }
   #enStats { flex:1; display:flex; flex-direction:column; gap:7px; min-width:0; }
   .enStat { display:flex; align-items:center; justify-content:space-between; gap:8px;
-    background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 11px; font-size:12.5px; }
+    background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 11px; font-size:12.5px;
+    overflow:hidden; }   /* belt-and-braces: nothing inside ever visually escapes the rounded box */
   .enStat > span { color:var(--muted); }
   .enStat b { font-variant-numeric:tabular-nums; font-size:14px; }
   /* "out" stat: label + sync/pencil controls + value, with a steps sub-line */
@@ -200,7 +201,11 @@
   .enOutSub:empty { display:none; }
   /* morning-weight stat: label and input on ONE row, in place of the old balance box */
   .enStat.enWeight { align-items:center; gap:8px; }
-  .enStat.enWeight label { color:var(--muted); font-size:12.5px; white-space:nowrap; }
+  /* the label shrinks (with an ellipsis) instead of pushing the input out of
+     the box - that's what let it "escape" past the rounded corner on some
+     screens (Ido, 2026-09-09) */
+  .enStat.enWeight label { color:var(--muted); font-size:12.5px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
   .enStat.enWeight input { flex:0 0 auto; width:84px; padding:5px 8px; font-size:14px; text-align:center; }
   /* small "where does 'out' come from" info popup */
   .outinfopop { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:18px; }
@@ -2846,7 +2851,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.82";
+const APP_BUILD = "2026.09.09.83";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
