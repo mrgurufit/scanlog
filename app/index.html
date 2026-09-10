@@ -554,6 +554,7 @@
   .obdots { display:flex; gap:6px; justify-content:center; margin-bottom:6px; }
   .obdots i { width:22px; height:4px; border-radius:2px; background:#252d3c; }
   .obdots i.on { background:var(--accent); }
+  .obverline { text-align:center; font-size:10px; color:#5b6472; margin:-2px 0 10px; direction:ltr; }
   .obnext {
     width:100%; margin-top:16px; padding:14px; border:0; border-radius:12px;
     background:var(--accent); color:#141005; font-weight:800; font-size:15px; font-family:inherit;
@@ -906,6 +907,7 @@
 <div id="ob">
   <div class="obcard">
     <div class="obdots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div id="obVerLine" class="obverline"></div>
 
     <section class="obstep" data-step="0">
       <div class="oblang">
@@ -3095,7 +3097,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.10.95";
+const APP_BUILD = "2026.09.10.96";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3111,6 +3113,10 @@ function renderVer() {
     (NATIVE_VER && isAdmin() ? ' · <u id="dbgLink" style="cursor:pointer">' + T("אבחון") + '</u>' : "");   // admin-only: regular users never see the diagnostics link
   const l = document.getElementById("dbgLink");
   if (l) l.onclick = showDbg;
+  // same build/version, shown small at the top of onboarding too - so a screenshot of
+  // step 1 already answers "which build is this" without skipping ahead first
+  const ov = document.getElementById("obVerLine");
+  if (ov) ov.textContent = APP_BUILD + (NATIVE_VER ? " · " + NATIVE_VER : "");
 }
 
 /* on-screen device diagnostic: which settings screens actually exist here.
