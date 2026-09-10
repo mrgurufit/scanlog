@@ -3095,7 +3095,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.09.94";
+const APP_BUILD = "2026.09.10.95";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5647,7 +5647,7 @@ $("obGoogle").addEventListener("click", async () => {
     if (typeof renderAccount === "function") renderAccount();
     $("obGoogleState").textContent = "✅ " + T("מחובר כ-") + " " + (cloudUser.email || "");
   } catch (e) {
-    $("obGoogleState").textContent = T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 140);
+    $("obGoogleState").textContent = T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 280);
   }
 });
 $("obHc").addEventListener("click", async () => {
@@ -5821,7 +5821,7 @@ async function cloudSignIn() {
     renderAccount();
     msg("setMsg", "✅ " + T("מחובר כ-") + " " + (cloudUser.email || ""), "ok");
   } catch (e) {
-    msg("setMsg", T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 140), "err");
+    msg("setMsg", T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 280), "err");
   }
 }
 async function cloudSignOut() {
