@@ -5892,9 +5892,17 @@ function timeAgo(iso) {
   return Math.round(h / 24) + " " + T("ימים קודם");
 }
 
+// The approval inbox is the ONE thing left in the app that reads the whole
+// shared store, and that export costs about one Make operation per product -
+// so this call gets dearer every time a user contributes one. Only Ido's phone
+// ever runs it, and a product waiting half an hour to appear costs nothing, so
+// the automatic window is 30 minutes. Pull-to-refresh in the inbox passes
+// force and is always allowed.
+const PENDING_CACHE_MS = 30 * 60 * 1000;
+
 async function pendingFetch(force) {
   if (!isAdmin()) return;
-  if (!force && Date.now() - pendingAt < 600 * 1000) { updateInboxBadge(); return; }
+  if (!force && Date.now() - pendingAt < PENDING_CACHE_MS) { updateInboxBadge(); return; }
   try {
     let text = null;
     const hb = HB();
