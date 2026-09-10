@@ -1,8 +1,14 @@
 name: Compile community catalog
 
+# Every 10 minutes cost ~28 Make operations a run - about 4,000 a day - and
+# on 2026-09-09 that alone drained the month's 20,000 and paused the whole
+# Make account, which took every webhook in the project down with it.
+# The catalog changes a couple of times a week and every phone pulls it
+# once a day, so a nightly compile loses nothing. Use "Run workflow" to
+# publish an approval immediately.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "17 2 * * *"
   workflow_dispatch: {}
 
 permissions:

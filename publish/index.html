@@ -2479,10 +2479,26 @@ function dayNumFor(iso) {
   return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - d0) / 864e5) + 1;
 }
 
+
+/* Make answers a webhook whose scenario is paused with HTTP 200 and the bare
+   word "Accepted" - it queues the call and drops it. That is what an account
+   out of its monthly operations looks like from here, and reading it as JSON
+   used to fail with "Unexpected token 'A'". */
+const MAKE_PAUSED = "\u05d7\u05e9\u05d1\u05d5\u05df \u05d4-Make \u05de\u05d5\u05e9\u05d4\u05d4 \u2014 \u05e0\u05d2\u05de\u05e8\u05d5 \u05d4\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05d4\u05d7\u05d5\u05d3\u05e9\u05d9\u05d5\u05ea";
+
+async function proxyJson(res, what) {
+  if (!res.ok) throw new Error(`${what}: HTTP ${res.status}`);
+  const text = await res.text();
+  if (/^\s*Accepted\s*$/i.test(text)) throw new Error(MAKE_PAUSED);
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${what}: \u05d4\u05e4\u05e8\u05d5\u05e7\u05e1\u05d9 \u05dc\u05d0 \u05d4\u05d7\u05d6\u05d9\u05e8 JSON`);
+  }
+}
+
 async function fetchPlatform(platform) {
-  const res = await fetch(`${ANALYTICS_PROXY}?platform=${platform}`);
-  if (!res.ok) throw new Error(`${platform}: HTTP ${res.status}`);
-  return res.json();
+  return proxyJson(await fetch(`${ANALYTICS_PROXY}?platform=${platform}`), platform);
 }
 
 async function refreshPerf() {
@@ -2536,7 +2552,9 @@ async function refreshPerf() {
     }
   } catch (err) {
     btn.disabled = false;
-    rStatus(`הרענון נכשל (${err.message}). ייתכן שהדפדפן חוסם את הקריאה מקובץ מקומי — המשימה הלילית מרעננת בכל מקרה.`, "err");
+    rStatus(err.message === MAKE_PAUSED
+      ? MAKE_PAUSED + " — כל ה-webhook יענו \"Accepted\" עד האיפוס ב-1.10. המספרים שלמטה הם מהרענון האחרון שהצליח."
+      : `הרענון נכשל (${err.message}).`, "err");
     log("refresh failed: " + err.message);
     return;
   }
@@ -2958,8 +2976,7 @@ async function refreshFollowers() {
   folStatus("מושך…", "pend");
   try {
     const r = await fetch(ANALYTICS_PROXY + "?type=followers&from=2026-08-15");
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const d = await r.json();
+    const d = await proxyJson(r, "followers");
     const idToPf = Object.fromEntries((d.accounts || []).map(a => [a._id, a.platform]));
     FOLLOWERS = {
       fetched: true,
@@ -3027,8 +3044,7 @@ async function refreshDemo() {
   demoStatus("מושך…", "pend");
   try {
     const r = await fetch(ANALYTICS_PROXY + "?type=demo");
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const d = await r.json();
+    const d = await proxyJson(r, "demo");
     if (!d.success) throw new Error("אין נתונים");
     store.set("pc_demo_cache", JSON.stringify({ at: Date.now(), data: d }));
     renderDemo(d);
