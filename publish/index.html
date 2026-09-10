@@ -3159,11 +3159,23 @@ function dfStartPoll() {
 }
 function dfStopPoll() { clearTimeout(dfTimer); dfTimer = null; }
 
-/* the first minute is the impatient part - after that a slower beat is plenty */
+/* the first minute is the impatient part - after that a slower beat is plenty.
+   It also has to STOP: polling only ended on a day that reached 100% and said
+   it was published, so a tab left open on a day that failed or was never
+   finished kept asking every two minutes for as long as the screen was on -
+   4 operations a time, about 1,000 in a night. An hour of asking is the most
+   any build needs; past that it waits for him. */
+const DF_MAX_POLLS = 40;
 function dfWiden() {
   dfPollCount++;
   if (dfPollCount === 3) dfPollGap = 60000;
   else if (dfPollCount === 10) dfPollGap = 120000;
+  else if (dfPollCount >= DF_MAX_POLLS) {
+    dfStopPoll();
+    const el = $("dfStage");
+    if (el) el.textContent = el.textContent.replace(/ · .*$/, "") +
+      " · הבנייה עדיין רצה — רענן את הדף כדי להמשיך לעקוב";
+  }
 }
 document.addEventListener("visibilitychange", () => {
   /* coming back should feel instant, so ask once immediately */

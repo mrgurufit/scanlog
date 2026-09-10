@@ -5937,7 +5937,16 @@ function renderAdminIcons() {
   const sec = $("drawerAdminSec");
   if (sec) sec.hidden = !admin;
   if (admin) {
-    pendingFetch(false); feedbackFetch(false);   // refresh both badges + the menu dot
+    // This is a RENDER function - it runs on every drawer open. Fetching from
+    // here meant up to two whole-store pulls an hour for as long as the app was
+    // open, and that pull costs about one Make operation per product in the
+    // catalog. Both fetches now run once per app session; opening the inbox
+    // still forces a fresh one, which is the moment the numbers matter.
+    if (!window.__adminPulled) {
+      window.__adminPulled = true;
+      pendingFetch(false); feedbackFetch(false);
+    }
+    updateInboxBadge();                          // badges + the menu dot, no network
     if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); }
   } else {
     setBadge("drawerApproveBadge", 0); setBadge("drawerInboxBadge", 0);
