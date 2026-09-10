@@ -189,6 +189,25 @@ jobs:
           out = {'v': datetime.date.today().isoformat(), 'count': len(codes), 'codes': codes}
           json.dump(out, open('catalog.new', 'w'), ensure_ascii=False, separators=(',', ':'))
           print('built catalog with', len(codes), 'codes')
+
+          # The products still waiting for Ido's approval, written out so his
+          # inbox does not have to buy the whole store from Make to show a
+          # badge. No personal data is in these rows - barcode, name, macros,
+          # a photo and a timestamp - the same fields the public catalog holds.
+          pend = [{'barcode': str(r.get('barcode', '') or '').strip(),
+                   'name': r.get('name', '') or '',
+                   'kcal': num(r.get('kcal', 0)), 'pro': num(r.get('pro', 0)),
+                   'carb': num(r.get('carb', 0)), 'fat': num(r.get('fat', 0)),
+                   'photo': r.get('photo', '') or '', 'pt': r.get('pt', '') or '',
+                   'src': r.get('src', '') or '', 'at': r.get('at', '') or '',
+                   'status': 'pending'}
+                  for r in data
+                  if str(r.get('status', '') or '').strip().lower() == 'pending'
+                  and str(r.get('barcode', '') or '').strip() and r.get('name')]
+          json.dump({'v': datetime.date.today().isoformat(), 'count': len(pend),
+                     'items': pend},
+                    open('pending.new', 'w'), ensure_ascii=False, separators=(',', ':'))
+          print('built pending list with', len(pend), 'items')
           PY
 
       - name: Commit only if the products or photos changed
@@ -196,14 +215,17 @@ jobs:
           set -euo pipefail
           old="$(python3 -c "import json; print(json.dumps(json.load(open('app/catalog.json')).get('codes',{}),sort_keys=True,ensure_ascii=False))" 2>/dev/null || echo '{}')"
           new="$(python3 -c "import json; print(json.dumps(json.load(open('catalog.new')).get('codes',{}),sort_keys=True,ensure_ascii=False))")"
-          if [ "$old" = "$new" ]; then
-            echo "catalog unchanged - nothing to publish"
+          oldp="$(cat app/pending.json 2>/dev/null | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin).get('items',[]),sort_keys=True,ensure_ascii=False))" 2>/dev/null || echo '[]')"
+          newp="$(python3 -c "import json; print(json.dumps(json.load(open('pending.new')).get('items',[]),sort_keys=True,ensure_ascii=False))")"
+          if [ "$old" = "$new" ] && [ "$oldp" = "$newp" ]; then
+            echo "catalog and pending list unchanged - nothing to publish"
             exit 0
           fi
           mv catalog.new app/catalog.json
+          mv pending.new app/pending.json
           git config user.name "catalog-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add app/catalog.json
+          git add app/catalog.json app/pending.json
           [ -d app/img ] && git add app/img || true
           git commit -m "Catalog: republish community products ($(python3 -c "import json;print(json.load(open('app/catalog.json'))['count'])") items)"
           git push

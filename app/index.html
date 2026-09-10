@@ -5900,9 +5900,30 @@ function timeAgo(iso) {
 // force and is always allowed.
 const PENDING_CACHE_MS = 30 * 60 * 1000;
 
+// The nightly compile publishes the waiting products as a plain file next to
+// catalog.json. Reading that costs nothing at all, so it is what the badge and
+// the list use; the live whole-store call below - about one Make operation per
+// product in the catalog - now happens only when he pulls to refresh.
+async function pendingFromFile() {
+  try {
+    const u = new URL("pending.json", location.href).href + "?v=" + new Date().toISOString().slice(0, 10);
+    let text = null;
+    const hb = HB();
+    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [u, "https://mrgurufit.com/app/pending.json"] }); text = (r && r.body) || null; }
+    else { const r = await fetch(u, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
+    if (!text) return false;
+    const d = JSON.parse(text);
+    if (!d || !Array.isArray(d.items)) return false;
+    PENDING = d.items.filter(r => r && r.barcode && r.name);
+    updateInboxBadge();
+    return true;
+  } catch { return false; }
+}
+
 async function pendingFetch(force) {
   if (!isAdmin()) return;
   if (!force && Date.now() - pendingAt < PENDING_CACHE_MS) { updateInboxBadge(); return; }
+  if (!force && await pendingFromFile()) return;
   try {
     let text = null;
     const hb = HB();
