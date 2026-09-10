@@ -523,6 +523,8 @@
                border-radius:7px; padding:4px 11px; font-weight:800; white-space:nowrap; }
   #betaBar button { background:none; border:0; color:#8b93a3; font-size:19px;
                     line-height:1; cursor:pointer; padding:0 2px; }
+  .fbgate { text-align:center; padding:6px 2px 2px; }
+  .fbgate p { margin:0 0 10px; font-size:13.5px; color:var(--muted); line-height:1.5; }
   #stepsRow { display:flex; align-items:center; gap:6px; margin-top:4px; min-height:16px; }
   #stepsHint { font-size:11.5px; color:var(--muted); min-height:14px; white-space:pre-line; }
   #hcMini { display:none; background:#1d5c39; color:#d9ffe8; border:0; border-radius:7px;
@@ -871,6 +873,10 @@
       </div>
       <input type="file" id="fbShotIn" accept="image/*" hidden>
       <button type="button" id="fbSend" class="fbsend">שליחה</button>
+      <div id="fbGate" class="fbgate" style="display:none">
+        <p>כדי שנוכל לחזור אליך, הודעה נשלחת רק מחשבון Google מחובר.</p>
+        <button type="button" id="fbGateBtn" class="fbsend">התחברות עם Google</button>
+      </div>
       <div id="fbMsg" class="msg"></div>
     </div>
   </div>
@@ -6340,6 +6346,20 @@ let fbImage = "";
 // it too), so it can also be used to file a note from his own phone
 function updateFbButton() { $("fbBtn").style.display = "block"; }
 
+// A message with no account behind it cannot be answered, and it is the one
+// place a stranger can put text into Ido's inbox. Both reasons point the same
+// way: the form is only there for someone signed in.
+function fbGateApply() {
+  const open = isSignedIn();
+  ["fbSubject", "fbText", "fbShotBtn", "fbSend"].forEach(id => {
+    const el = $(id); if (el) el.style.display = open ? "" : "none";
+  });
+  document.querySelectorAll("#fbModal .fblbl, #fbModal .fbshotrow")
+    .forEach(el => { el.style.display = open ? "" : "none"; });
+  const g = $("fbGate"); if (g) g.style.display = open ? "none" : "block";
+  return open;
+}
+
 function openFb() {
   fbImage = "";
   $("fbSubject").value = "באג";
@@ -6348,11 +6368,20 @@ function openFb() {
   $("fbShotPrev").removeAttribute("src");
   msg("fbMsg", "");
   $("fbSend").disabled = false; $("fbSend").textContent = T("שליחה");
+  fbGateApply();
   $("fbModal").classList.add("on");
 }
 function closeFb() { $("fbModal").classList.remove("on"); }
 
 $("fbBtn").addEventListener("click", openFb);
+$("fbGateBtn").addEventListener("click", async () => {
+  const b = $("fbGateBtn");
+  b.disabled = true; b.textContent = T("מתחבר…");
+  try { await cloudSignIn(); } catch { /* cloudSignIn reports its own failure */ }
+  b.disabled = false; b.textContent = T("התחברות עם Google");
+  if (!fbGateApply()) msg("fbMsg", T("ההתחברות לא הושלמה — נסה שוב."), "err");
+  else msg("fbMsg", "");
+});
 $("fbClose").addEventListener("click", closeFb);
 $("fbModal").addEventListener("click", e => { if (e.target === $("fbModal")) closeFb(); });
 $("fbShotBtn").addEventListener("click", () => $("fbShotIn").click());
@@ -6390,6 +6419,9 @@ async function fbFlush() {
   localStorage.setItem(LS_FB, JSON.stringify(rest));
 }
 $("fbSend").addEventListener("click", async () => {
+  // the gate hides the button, but a stale modal left open across a sign-out
+  // would still have it - so the rule is enforced here too, not just in the UI
+  if (!isSignedIn()) { fbGateApply(); msg("fbMsg", T("צריך להתחבר כדי לשלוח."), "err"); return; }
   const text = $("fbText").value.trim();
   if (text.length < 3) { msg("fbMsg", T("כתוב הודעה קצרה לפני שליחה."), "err"); $("fbText").focus(); return; }
   const payload = {
