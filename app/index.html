@@ -1123,10 +1123,10 @@
     <div class="field" id="per100Field">
       <label>ערכים ל-100 גרם <span class="per100" id="per100Hint">(מהמדבקה על האריזה — נשמר לפעם הבאה)</span></label>
       <div class="grid4">
-        <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal">
-        <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal">
-        <input type="number" id="p100carb" placeholder="פחמ׳" inputmode="decimal">
-        <input type="number" id="p100fat" placeholder="שומן" inputmode="decimal">
+        <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal" step="0.1">
+        <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal" step="0.1">
+        <input type="number" id="p100carb" placeholder="פחמ׳" inputmode="decimal" step="0.1">
+        <input type="number" id="p100fat" placeholder="שומן" inputmode="decimal" step="0.1">
       </div>
     </div>
 
@@ -2784,6 +2784,14 @@ let PROFILE = store.get(LS_PROF, { height: 182, age: 36 });
 let DAYDATA = store.get(LS_DAY, {});   // per day: {weight, activity}
 const $ = id => document.getElementById(id);
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+// nutrition values per 100g never need more precision than a food label
+// itself carries - round every source (OFF, the catalog, OCR, a past log row)
+// to one decimal before it ever lands in a p100* field (Ido, 2026-09-11:
+// "בערכים של המזון... לאפשר עד ספרה אחת אחרי הנקודה")
+function setMacroField(id, v) {
+  const n = parseFloat(v);
+  $(id).value = (v === "" || v == null || !isFinite(n)) ? "" : Math.round(n * 10) / 10;
+}
 const todayKey = () => new Date().toLocaleDateString("sv-SE");
 const LOC = () => ({ he: "he-IL", en: "en-GB", ar: "ar", ru: "ru-RU" }[LANG] || "en-GB");   // date wording per UI language
 let viewDay = todayKey();
@@ -3228,7 +3236,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.104";
+const APP_BUILD = "2026.09.11.105";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4377,10 +4385,10 @@ async function missWebSearch() {
 
 function applyMissPick(r) {
   $("pName").value = r.name;
-  $("p100kcal").value = r.k;
-  $("p100pro").value = r.p;
-  $("p100carb").value = r.c;
-  $("p100fat").value = r.f;
+  setMacroField("p100kcal", r.k);
+  setMacroField("p100pro", r.p);
+  setMacroField("p100carb", r.c);
+  setMacroField("p100fat", r.f);
   setEntryProduct(r.portions, r.unit);
   if (!shotSrc() && r.photo) setShot(r.photo);
   $("foundTag").textContent = T("✓ התאמה: ") + r.name + " " + T("— ייזכר תחת הברקוד שנסרק");
@@ -4415,10 +4423,10 @@ function openProduct(r) {
   $("foundTag").textContent = r.src === "מאגר" ? T("מהמאגר המובנה — ערכים מקובלים ל-100 ג׳") : "✓ " + r.name;
   $("foundTag").className = "foundtag known";
   $("pName").value = r.name;
-  $("p100kcal").value = r.k;
-  $("p100pro").value = r.p;
-  $("p100carb").value = r.c;
-  $("p100fat").value = r.f;
+  setMacroField("p100kcal", r.k);
+  setMacroField("p100pro", r.p);
+  setMacroField("p100carb", r.c);
+  setMacroField("p100fat", r.f);
   setShot(r.photo || "");
   $("grams").value = "";
   setEntryProduct(r.portions, r.unit);
@@ -4966,10 +4974,10 @@ async function readLabel(file) {
   $("ocrDetails").style.display = "block";
   const p = parseLabel(text);
   const got = [];
-  if (p.kcal != null) { $("p100kcal").value = p.kcal; got.push(T("קק״ל") + " " + p.kcal); }
-  if (p.pro  != null) { $("p100pro").value  = p.pro;  got.push(T("חלבון") + " " + p.pro); }
-  if (p.carb != null) { $("p100carb").value = p.carb; got.push(T("פחמ׳") + " " + p.carb); }
-  if (p.fat  != null) { $("p100fat").value  = p.fat;  got.push(T("שומן") + " " + p.fat); }
+  if (p.kcal != null) { setMacroField("p100kcal", p.kcal); got.push(T("קק״ל") + " " + p.kcal); }
+  if (p.pro  != null) { setMacroField("p100pro", p.pro);   got.push(T("חלבון") + " " + p.pro); }
+  if (p.carb != null) { setMacroField("p100carb", p.carb); got.push(T("פחמ׳") + " " + p.carb); }
+  if (p.fat  != null) { setMacroField("p100fat", p.fat);   got.push(T("שומן") + " " + p.fat); }
   preview();
   if (!got.length) msg("entryMsg", T("לא זוהו ערכים — פתח את \"מה נקרא מהתמונה\" למטה כדי לראות מה המנוע ראה, וצלם שוב רק את הטבלה, קרוב וישר."), "err");
   else msg("entryMsg", T("נקרא מהטבלה: ") + got.join(" · ") + " " + T("— ודא שזו העמודה של 100 גרם ותקן אם צריך."), "ok");
@@ -4987,10 +4995,10 @@ async function onBarcode(code, photo) {
   $("foundTag").textContent = known ? T("✓ מוכר — הערכים מולאו") : (code ? T("מוצר חדש · ") + code : T("בלי ברקוד"));
   $("foundTag").className = "foundtag " + (known ? "known" : "newp");
   $("pName").value = known ? known.name : "";
-  $("p100kcal").value = known ? known.kcal : "";
-  $("p100pro").value = known ? known.pro : "";
-  $("p100carb").value = known ? known.carb : "";
-  $("p100fat").value = known ? known.fat : "";
+  setMacroField("p100kcal", known ? known.kcal : "");
+  setMacroField("p100pro", known ? known.pro : "");
+  setMacroField("p100carb", known ? known.carb : "");
+  setMacroField("p100fat", known ? known.fat : "");
   // The camera frame is a snapshot of a barcode, not a picture of the food.
   // It stays in `pending` so "השתמש בתמונה שצילמתי" can still use it, but it
   // is never the automatic thumbnail any more.
@@ -5011,10 +5019,10 @@ async function onBarcode(code, photo) {
     const cat = catalogGet(code);
     if (cat) {
       if (!$("pName").value) $("pName").value = cat.name;
-      if (!$("p100kcal").value && cat.kcal) $("p100kcal").value = cat.kcal;
-      if (!$("p100pro").value && cat.pro) $("p100pro").value = cat.pro;
-      if (!$("p100carb").value && cat.carb) $("p100carb").value = cat.carb;
-      if (!$("p100fat").value && cat.fat) $("p100fat").value = cat.fat;
+      if (!$("p100kcal").value && cat.kcal) setMacroField("p100kcal", cat.kcal);
+      if (!$("p100pro").value && cat.pro) setMacroField("p100pro", cat.pro);
+      if (!$("p100carb").value && cat.carb) setMacroField("p100carb", cat.carb);
+      if (!$("p100fat").value && cat.fat) setMacroField("p100fat", cat.fat);
       setEntryProduct(cat.portions, cat.unit);
       if (!shotSrc() && cat.photo) setShot(cat.photo);
       PRODUCTS[code] = { name: cat.name, kcal: cat.kcal, pro: cat.pro, carb: cat.carb, fat: cat.fat, photo: cat.photo || "" };
@@ -5040,10 +5048,10 @@ async function onBarcode(code, photo) {
     if (!pending || pending.barcode !== code) return;
     if (off) {
       if (!$("pName").value) $("pName").value = off.name;
-      if (!$("p100kcal").value && off.kcal !== "") $("p100kcal").value = off.kcal;
-      if (!$("p100pro").value && off.pro !== "") $("p100pro").value = off.pro;
-      if (!$("p100carb").value && off.carb !== "") $("p100carb").value = off.carb;
-      if (!$("p100fat").value && off.fat !== "") $("p100fat").value = off.fat;
+      if (!$("p100kcal").value && off.kcal !== "") setMacroField("p100kcal", off.kcal);
+      if (!$("p100pro").value && off.pro !== "") setMacroField("p100pro", off.pro);
+      if (!$("p100carb").value && off.carb !== "") setMacroField("p100carb", off.carb);
+      if (!$("p100fat").value && off.fat !== "") setMacroField("p100fat", off.fat);
       if (!shotSrc() && off.photo) setShot(off.photo);
       const complete = off.name && off.kcal !== "";
       // a COMPLETE OFF product needs no contribution - OFF already serves it to
@@ -5159,10 +5167,10 @@ function openEntryForEdit(e) {
   editEntryId = e.id;
   pending = { barcode: e.barcode || "", photo: "" };
   $("pName").value = e.name;
-  $("p100kcal").value = e.k100;
-  $("p100pro").value = e.pro100;
-  $("p100carb").value = e.carb100;
-  $("p100fat").value = e.fat100;
+  setMacroField("p100kcal", e.k100);
+  setMacroField("p100pro", e.pro100);
+  setMacroField("p100carb", e.carb100);
+  setMacroField("p100fat", e.fat100);
   setShot(e.photo || "");
   const pr = e.barcode && PRODUCTS[e.barcode];
   setEntryProduct(pr && pr.portions, pr && pr.unit);
@@ -5404,6 +5412,12 @@ function reopenSearch() {
 $("cancelBtn").addEventListener("click", closeEntry);
 $("addBtn").addEventListener("click", addEntry);
 ["grams", "p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", preview));
+// live-truncate typed nutrition values to one decimal digit, same limit
+// setMacroField already applies to anything filled in automatically
+["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => $(id).addEventListener("input", e => {
+  const v = e.target.value, fixed = v.replace(/^(-?\d*\.\d)\d+/, "$1");
+  if (fixed !== v) e.target.value = fixed;
+}));
 $("portionSel").addEventListener("change", e => { selPortion = +e.target.value; renderPortions(); preview(); });
 $("entryClose").addEventListener("click", closeEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
