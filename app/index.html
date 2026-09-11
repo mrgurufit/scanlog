@@ -436,6 +436,15 @@
     background:var(--panel2); border:1px solid var(--line); color:var(--text);
   }
   .progBody { flex:1; overflow-y:auto; padding:16px 14px calc(20px + env(safe-area-inset-bottom)); max-width:620px; margin:0 auto; width:100%; }
+  #catalogPage { display:none; position:fixed; inset:0; z-index:150; background:var(--bg); flex-direction:column; }
+  #catalogPage.on { display:flex; }
+  .catSearch {
+    width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--text); font-size:14px; font-family:inherit; margin-bottom:8px;
+  }
+  .catCount { color:var(--muted); font-size:12px; margin-bottom:8px; }
+  #catalogList { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  #catalogList:empty { display:none; }
   .progStats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
   .progStat { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:13px 10px; text-align:center; }
   .progStat .v { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
@@ -1190,6 +1199,10 @@
               <span class="drawerBadge" id="drawerApproveBadge" hidden></span>
               <span class="drawerArrow">›</span>
             </button>
+            <button type="button" class="drawerItem" id="drawerCatalog">
+              <span class="drawerIco">🗂️</span><span class="drawerLbl">קטלוג קהילתי</span>
+              <span class="drawerArrow">›</span>
+            </button>
             <div class="drawerDiv"></div>
           </div>
           <button type="button" class="drawerItem" id="drawerProgress">
@@ -1226,6 +1239,19 @@
           <span style="width:34px"></span>
         </div>
         <div class="progBody" id="progBody"></div>
+      </div>
+
+      <div id="catalogPage">
+        <div class="progHead">
+          <button type="button" id="catalogClose" aria-label="סגור">✕</button>
+          <b>🗂️ קטלוג קהילתי</b>
+          <span style="width:34px"></span>
+        </div>
+        <div class="progBody">
+          <input type="text" id="catalogSearch" class="catSearch" placeholder="🔎 חפש בקטלוג…" autocomplete="off">
+          <div class="catCount" id="catalogCount"></div>
+          <div id="catalogList"></div>
+        </div>
       </div>
 </div>
 
@@ -1517,6 +1543,13 @@ const I18N_EN = {
   "הגדרות": "Settings",
   "סגור": "Close",
   "מוצרים חדשים": "New products",
+  "🗂️ קטלוג קהילתי": "🗂️ Community catalog",
+  "קטלוג קהילתי": "Community catalog",
+  "🔎 חפש בקטלוג…": "🔎 Search the catalog…",
+  "מוצרים בקטלוג הקהילתי": "products in the community catalog",
+  "קהילתי": "Community",
+  "הקטלוג ריק כרגע": "The catalog is empty right now",
+  "לא נמצא": "No results",
   "גרף התקדמות": "Progress",
   "📈 גרף התקדמות": "📈 Progress",
   "כתוב לנו": "Contact us",
@@ -1972,6 +2005,13 @@ const I18N_AR = {
   "הגדרות": "الإعدادات",
   "סגור": "إغلاق",
   "מוצרים חדשים": "منتجات جديدة",
+  "🗂️ קטלוג קהילתי": "🗂️ الكتالوج المجتمعي",
+  "קטלוג קהילתי": "الكتالوج المجتمعي",
+  "🔎 חפש בקטלוג…": "🔎 ابحث في الكتالوج…",
+  "מוצרים בקטלוג הקהילתי": "منتجات في الكتالوج المجتمعي",
+  "קהילתי": "مجتمعي",
+  "הקטלוג ריק כרגע": "الكتالوج فارغ حاليًا",
+  "לא נמצא": "لم يتم العثور على نتائج",
   "גרף התקדמות": "التقدم",
   "📈 גרף התקדמות": "📈 التقدم",
   "כתוב לנו": "راسلنا",
@@ -2402,6 +2442,13 @@ const I18N_RU = {
   "הגדרות": "Настройки",
   "סגור": "Закрыть",
   "מוצרים חדשים": "Новые продукты",
+  "🗂️ קטלוג קהילתי": "🗂️ Общий каталог",
+  "קטלוג קהילתי": "Общий каталог",
+  "🔎 חפש בקטלוג…": "🔎 Поиск в каталоге…",
+  "מוצרים בקטלוג הקהילתי": "продуктов в общем каталоге",
+  "קהילתי": "Общий",
+  "הקטלוג ריק כרגע": "Каталог сейчас пуст",
+  "לא נמצא": "Ничего не найдено",
   "גרף התקדמות": "Прогресс",
   "📈 גרף התקדמות": "📈 Прогресс",
   "כתוב לנו": "Написать нам",
@@ -3097,7 +3144,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.10.96";
+const APP_BUILD = "2026.09.11.97";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5241,6 +5288,7 @@ $("drawerSettings").addEventListener("click", () => { closeDrawer(); openSetting
 $("drawerProgress").addEventListener("click", () => { closeDrawer(); openProgress(); });
 $("drawerInbox").addEventListener("click", () => { closeDrawer(); openInbox("feedback"); });
 $("drawerApprove").addEventListener("click", () => { closeDrawer(); openInbox("products"); });
+$("drawerCatalog").addEventListener("click", () => { closeDrawer(); openCatalogPage(); });
 
 /* ---------------- progress page ----------------
    Weight trend + daily calorie-balance charts, drawn fresh from LOG/DAYDATA
@@ -5258,6 +5306,75 @@ function closeProgress() {
   document.body.style.overflow = "";
 }
 $("progClose").addEventListener("click", () => { closeProgress(); ovDrop(); });
+
+/* admin-only browse of the whole shared catalog (CATALOG.codes) - view what
+   everyone is contributing, and tap a row to open it in the entry sheet like
+   a search hit, so curating a catalog product is a normal edit+save. */
+function openCatalogPage() {
+  if (!isAdmin()) return;
+  ovPush();
+  catalogPull(false).then(renderCatalogList);
+  renderCatalogList();
+  $("catalogSearch").value = "";
+  $("catalogPage").classList.add("on");
+  document.body.style.overflow = "hidden";
+}
+function closeCatalogPage() {
+  $("catalogPage").classList.remove("on");
+  document.body.style.overflow = "";
+}
+$("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop(); });
+function renderCatalogList() {
+  const q = $("catalogSearch").value.trim().toLowerCase();
+  const codes = Object.entries((CATALOG && CATALOG.codes) || {});
+  $("catalogCount").textContent = codes.length + " " + T("מוצרים בקטלוג הקהילתי");
+  const rows = codes
+    .map(([code, p]) => ({ code, p }))
+    .filter(({ p }) => !q || (p.n || "").toLowerCase().includes(q))
+    .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
+    .slice(0, 300);
+  $("catalogList").innerHTML = rows.map(({ code, p }) =>
+    `<button class="sr" data-code="${esc(code)}">
+       <span class="srs mine">${T("קהילתי")}</span>
+       <span class="srn">${esc(displayName(p.n, true))}</span>
+       <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}</span>
+     </button>`).join("") ||
+    `<div class="sr dim">${q ? T("לא נמצא") : T("הקטלוג ריק כרגע")}</div>`;
+  $("catalogList").querySelectorAll(".sr[data-code]").forEach(b => {
+    b.addEventListener("click", () => {
+      const code = b.dataset.code, p = CATALOG.codes[code];
+      if (!p) return;
+      closeCatalogPage();   // visual swap only - keep the one history guard
+                             // openCatalogPage() pushed, so a physical back
+                             // press closes whichever of the two is on screen
+      // openProduct wants the short field names (k/p/c/f) a search hit carries,
+      // not catalogGet's long ones (kcal/pro/carb/fat) meant for PRODUCTS
+      openProduct({
+        name: p.n, k: p.k || 0, p: p.p || 0, c: p.c || 0, f: p.f || 0,
+        photo: p.img || "", portions: Array.isArray(p.pt) ? p.pt : [], unit: p.u || 0,
+        barcode: code, src: "מאגר",
+      });
+      entryFromSearch = false;   // ✕ should just close, not reopen the scanner/search
+    });
+  });
+}
+$("catalogSearch").addEventListener("input", () => renderCatalogList());
+
+// pull every catalog product into the admin's own PRODUCTS too, so his phone
+// mirrors the shared catalog in both directions (shareAllMine does mine→there,
+// this does there→mine). Never overwrites a product he already has - his own
+// copy may carry edits the catalog hasn't picked up yet.
+async function catalogAdoptAll() {
+  if (!isAdmin()) return;
+  try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
+  let changed = false;
+  for (const code of Object.keys((CATALOG && CATALOG.codes) || {})) {
+    if (!/^\d{6,}$/.test(code) || PRODUCTS[code]) continue;
+    const hit = catalogGet(code);
+    if (hit && hit.name) { PRODUCTS[code] = hit; changed = true; }
+  }
+  if (changed) store.set(LS_PROD, PRODUCTS);
+}
 
 function fmtShortDate(day) {
   const dt = new Date(day + "T12:00:00");
@@ -5631,6 +5748,7 @@ function ovDrop() {
 function closeTopOverlay() {
   if ($("drawer").classList.contains("on")) { closeDrawer(); return true; }
   if ($("progressPage").classList.contains("on")) { closeProgress(); return true; }
+  if ($("catalogPage").classList.contains("on")) { closeCatalogPage(); return true; }
   if ($("setModal").classList.contains("on")) { closeSettings(); return true; }
   if ($("entry").classList.contains("on")) { $("entry").classList.remove("on"); pending = null; return true; }
   if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); return true; }
@@ -5980,7 +6098,7 @@ function renderAdminIcons() {
       pendingFetch(false); feedbackFetch(false);
     }
     updateInboxBadge();                          // badges + the menu dot, no network
-    if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); }
+    if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); catalogAdoptAll(); }
   } else {
     setBadge("drawerApproveBadge", 0); setBadge("drawerInboxBadge", 0);
     const dot = $("menuDot"); if (dot) dot.classList.remove("on");
