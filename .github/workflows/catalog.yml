@@ -29,33 +29,58 @@ jobs:
       # dearer every time someone contributed one. With MAKE_API_TOKEN set as a
       # repository secret this compile is free at any catalog size; without it
       # the old webhook still works, so the catalog never depends on the token.
+      # The Make REST API costs NO operations - only scenario runs do. The
+      # export scenario costs roughly one operation per product, so it got
+      # dearer every time someone contributed one. With MAKE_API_TOKEN set as a
+      # repository secret this compile is free at any catalog size; without it
+      # the old webhook still works, so the catalog never depends on the token.
       - name: Fetch the shared product store
         env:
           MAKE_API_TOKEN: ${{ secrets.MAKE_API_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${MAKE_API_TOKEN:-}" ]; then
-            echo "reading the data store through the Make API (0 operations)"
-            curl -sSf -H "Authorization: Token ${MAKE_API_TOKEN}" \
-              "https://us2.make.com/api/v2/data-stores/140664/data?pg%5Blimit%5D=10000" \
-              > raw.json
-            python3 - <<'PY'
-          import json
-          raw = json.load(open('raw.json'))
-          rows = raw.get('records', raw) if isinstance(raw, dict) else raw
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+
+          HOOK = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg"
+          API = "https://us2.make.com/api/v2/data-stores/140664/data"
+          PAGE = 500          # 10000 was rejected with a bare 400
+
+          def get(url, headers=None, timeout=120):
+              req = urllib.request.Request(url, headers=headers or {})
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as f:
+                      return f.read().decode("utf-8", "replace")
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode("utf-8", "replace")[:500]
+                  raise SystemExit("HTTP %s from %s\n%s" % (e.code, url.split("?")[0], body))
+
+          tok = (os.environ.get("MAKE_API_TOKEN") or "").strip()
           out = []
-          for r in rows:
-              d = r.get('data', r) if isinstance(r, dict) else {}
-              if isinstance(d, dict):
-                  out.append(d)
-          json.dump(out, open('export.json', 'w'), ensure_ascii=False)
-          print('records:', len(out))
+          if tok:
+              print("reading the data store through the Make API (0 operations)")
+              off = 0
+              while True:
+                  url = "%s?pg%%5Blimit%%5D=%d&pg%%5Boffset%%5D=%d" % (API, PAGE, off)
+                  raw = json.loads(get(url, {"Authorization": "Token " + tok}))
+                  rows = raw.get("records", raw) if isinstance(raw, dict) else raw
+                  if not isinstance(rows, list):
+                      raise SystemExit("unexpected API shape: %s" % str(raw)[:300])
+                  for r in rows:
+                      d = r.get("data", r) if isinstance(r, dict) else {}
+                      if isinstance(d, dict):
+                          out.append(d)
+                  if len(rows) < PAGE:
+                      break
+                  off += PAGE
+          else:
+              print("MAKE_API_TOKEN not set - falling back to the export webhook "
+                    "(~1 operation per product)")
+              out = json.loads(get(HOOK))
+
+          json.dump(out, open("export.json", "w"), ensure_ascii=False)
+          print("records:", len(out))
           PY
-          else
-            echo "MAKE_API_TOKEN not set - falling back to the export webhook (~1 operation per product)"
-            curl -sSf "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg" > export.json
-            python3 -c "import json;print('records:',len(json.load(open('export.json'))))"
-          fi
 
       # A camera/gallery product photo arrives as a data: URL. Count the ones we
       # have not hosted yet - we only spin up Python when there is at least one.
