@@ -464,6 +464,15 @@
   .drawerLangBtn.on { background:#241a0e; border-color:var(--accentText); color:var(--accentText); }
   :root[data-theme="light"] .drawerLangBtn.on { background:#fff6da; }
   .drawerFoot { flex:0 0 auto; border-top:1px solid var(--line); padding:6px 12px calc(6px + env(safe-area-inset-bottom)); }
+  /* centered, right under the language grid (Ido, 2026-09-11) - not a
+     list item, so no left-aligned icon/arrow row */
+  .drawerFbBtn {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; margin-top:10px; padding:11px; border-radius:11px; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .drawerFbBtn:active { background:var(--panel); }
 
   /* ---------------- progress page (Ido, 2026-09-09) ---------------- */
   #progressPage { display:none; position:fixed; inset:0; z-index:150; background:var(--bg); flex-direction:column; }
@@ -1292,13 +1301,10 @@
               <button type="button" class="drawerLangBtn" id="langAr">العربية</button>
               <button type="button" class="drawerLangBtn" id="langRu">Русский</button>
             </div>
+            <button type="button" class="drawerFbBtn" id="fbBtn" style="display:none">
+              <span>✉️</span><span>כתוב לנו</span>
+            </button>
           </div>
-        </div>
-        <div class="drawerFoot">
-          <button type="button" class="drawerItem" id="fbBtn" style="display:none">
-            <span class="drawerIco">✉️</span><span class="drawerLbl">כתוב לנו</span>
-            <span class="drawerArrow">›</span>
-          </button>
         </div>
       </nav>
 
@@ -3244,7 +3250,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.100";
+const APP_BUILD = "2026.09.11.101";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6759,7 +6765,10 @@ function openFb() {
 }
 function closeFb() { $("fbModal").classList.remove("on"); }
 
-$("fbBtn").addEventListener("click", openFb);
+// close the drawer first - #drawerBackdrop sits at a higher z-index than
+// #fbModal, so leaving the drawer open buried the feedback sheet behind it
+// (real bug: it opened, but was invisible/unclickable) (Ido, 2026-09-11)
+$("fbBtn").addEventListener("click", () => { closeDrawer(); openFb(); });
 $("fbGateBtn").addEventListener("click", async () => {
   const b = $("fbGateBtn");
   b.disabled = true; b.textContent = T("מתחבר…");
