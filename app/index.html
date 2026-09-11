@@ -3144,7 +3144,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.97";
+const APP_BUILD = "2026.09.11.98";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5169,13 +5169,19 @@ function addEntry() {
        Ido approves it in the admin inbox, to keep wrong/spam data out of the
        shared catalog. A product already in the catalog is never re-sent. */
     const inCatalog = !!(CATALOG && CATALOG.codes && CATALOG.codes[e.barcode]);
-    if (/^\d{6,}$/.test(e.barcode) && !inCatalog) {
+    if (/^\d{6,}$/.test(e.barcode)) {
       // Admin, or verified external data (a COMPLETE Open Food Facts hit, which
-      // is locked and not hand-typed) -> straight to the shared catalog so it
-      // keeps growing on its own. A non-admin's hand-typed NEW product -> the
-      // pending queue for Ido to approve, to keep wrong data out.
+      // is locked and not hand-typed) -> straight to the shared catalog, EVEN
+      // when the barcode is already there - sharedContribute no-ops on its own
+      // if nothing actually changed, but a photo/value the admin just edited on
+      // an existing catalog product needs to re-send, or the edit never leaves
+      // this phone (bug hit 2026-09-11: a photo added to an already-known
+      // product "saved" locally but silently never reached the shared catalog).
+      // A non-admin's hand-typed NEW product -> the pending queue for Ido to
+      // approve, but only when it is genuinely new; a non-admin can't touch an
+      // already-catalogued product's data at all (entryEditable() locks the UI).
       if (isAdmin() || (pending && pending.fromDB)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
-      else pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
+      else if (!inCatalog) pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
     }
   }
   viewDay = e.day;
@@ -5324,12 +5330,23 @@ function closeCatalogPage() {
   document.body.style.overflow = "";
 }
 $("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop(); });
+// The shared catalog only recompiles once a day (see [[make-operations-budget]]
+// scale fix, 2026-09-09), so right after the admin edits a product (a new
+// photo, say) CATALOG.codes can be up to 24h stale. His own PRODUCTS is always
+// the freshest copy of anything he has touched - prefer it, so browsing right
+// after an edit shows what he just did instead of "it disappeared" (real bug
+// hit 2026-09-11: this page was reading CATALOG.codes only).
+function catalogRowData(code) {
+  const own = PRODUCTS[code];
+  if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit };
+  return CATALOG.codes[code];
+}
 function renderCatalogList() {
   const q = $("catalogSearch").value.trim().toLowerCase();
-  const codes = Object.entries((CATALOG && CATALOG.codes) || {});
+  const codes = Object.keys((CATALOG && CATALOG.codes) || {})
+    .map(code => ({ code, p: catalogRowData(code) })).filter(x => x.p);
   $("catalogCount").textContent = codes.length + " " + T("מוצרים בקטלוג הקהילתי");
   const rows = codes
-    .map(([code, p]) => ({ code, p }))
     .filter(({ p }) => !q || (p.n || "").toLowerCase().includes(q))
     .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
     .slice(0, 300);
@@ -5342,7 +5359,7 @@ function renderCatalogList() {
     `<div class="sr dim">${q ? T("לא נמצא") : T("הקטלוג ריק כרגע")}</div>`;
   $("catalogList").querySelectorAll(".sr[data-code]").forEach(b => {
     b.addEventListener("click", () => {
-      const code = b.dataset.code, p = CATALOG.codes[code];
+      const code = b.dataset.code, p = catalogRowData(code);
       if (!p) return;
       closeCatalogPage();   // visual swap only - keep the one history guard
                              // openCatalogPage() pushed, so a physical back
