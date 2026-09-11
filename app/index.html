@@ -117,11 +117,6 @@
     flex:0 0 auto; width:30px; height:30px; border-radius:50%; align-self:center;
     background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:15px; padding:0;
   }
-  .imgpicksheet { max-width:360px; }
-  .imgpickgrid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:12px 0; }
-  .imgpickgrid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; border:2px solid var(--line); cursor:pointer; }
-  .imgpickgrid img:active { border-color:var(--accent); }
-
   /* header + streak */
   .hdr { display:flex; align-items:flex-start; gap:10px; }
   .hdr > div:first-child { flex:1; }
@@ -916,16 +911,8 @@
       <div class="picchoose-title">תמונת המוצר</div>
       <button type="button" id="picCamBtn" class="prim">📷 צלם את המוצר</button>
       <button type="button" id="picGalBtn">🖼️ בחר מהגלריה</button>
-      <button type="button" id="picWebBtn">🌐 בחר מהאינטרנט</button>
+      <button type="button" id="picWebBtn">🌐 חפש בגוגל תמונות</button>
       <button type="button" id="picCancel" class="ghost">ביטול</button>
-    </div>
-  </div>
-
-  <div id="imgPickOv" class="picchoose">
-    <div class="picchoose-sheet imgpicksheet">
-      <div class="picchoose-title" id="imgPickTitle">בחירת תמונה</div>
-      <div id="imgPickGrid" class="imgpickgrid"></div>
-      <button type="button" id="imgPickCancel" class="ghost">ביטול</button>
     </div>
   </div>
 
@@ -1627,12 +1614,9 @@ const I18N_EN = {
   "הקטלוג ריק כרגע": "The catalog is empty right now",
   "לא נמצא": "No results",
   "הוסף מנה": "Add portion",
-  "🌐 בחר מהאינטרנט": "🌐 Choose from the internet",
-  "בחירת תמונה": "Choose a photo",
-  "מחפש תמונות…": "Searching for photos…",
-  "לא נמצאו תמונות": "No photos found",
-  "בחר תמונה מייצגת": "Pick a representative photo",
+  "🌐 חפש בגוגל תמונות": "🌐 Search Google Images",
   "אין שם מוצר לחיפוש.": "No product name to search for.",
+  "שמור את התמונה שבחרת, ואז לחץ שוב על התמונה ובחר \"בחר מהגלריה\".": "Save the photo you picked, then tap the photo again and choose \"Choose from gallery\".",
   "התמונה עודכנה.": "Photo updated.",
   "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "You can add a portion only after the product is saved with a name and calories.",
   "המנה נוספה.": "Portion added.",
@@ -2099,12 +2083,9 @@ const I18N_AR = {
   "הקטלוג ריק כרגע": "الكتالوج فارغ حاليًا",
   "לא נמצא": "لم يتم العثور على نتائج",
   "הוסף מנה": "إضافة حصة",
-  "🌐 בחר מהאינטרנט": "🌐 اختر من الإنترنت",
-  "בחירת תמונה": "اختيار صورة",
-  "מחפש תמונות…": "جارٍ البحث عن صور…",
-  "לא נמצאו תמונות": "لم يتم العثور على صور",
-  "בחר תמונה מייצגת": "اختر صورة تمثيلية",
+  "🌐 חפש בגוגל תמונות": "🌐 ابحث في صور جوجل",
   "אין שם מוצר לחיפוש.": "لا يوجد اسم منتج للبحث.",
+  "שמור את התמונה שבחרת, ואז לחץ שוב על התמונה ובחר \"בחר מהגלריה\".": "احفظ الصورة التي اخترتها، ثم اضغط على الصورة مرة أخرى واختر \"اختر من المعرض\".",
   "התמונה עודכנה.": "تم تحديث الصورة.",
   "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "يمكن إضافة حصة فقط بعد حفظ المنتج باسم وسعرات حرارية.",
   "המנה נוספה.": "تمت إضافة الحصة.",
@@ -2546,12 +2527,9 @@ const I18N_RU = {
   "הקטלוג ריק כרגע": "Каталог сейчас пуст",
   "לא נמצא": "Ничего не найдено",
   "הוסף מנה": "Добавить порцию",
-  "🌐 בחר מהאינטרנט": "🌐 Выбрать из интернета",
-  "בחירת תמונה": "Выбор фото",
-  "מחפש תמונות…": "Поиск фото…",
-  "לא נמצאו תמונות": "Фото не найдены",
-  "בחר תמונה מייצגת": "Выберите подходящее фото",
+  "🌐 חפש בגוגל תמונות": "🌐 Поиск в Google Картинках",
   "אין שם מוצר לחיפוש.": "Нет названия продукта для поиска.",
+  "שמור את התמונה שבחרת, ואז לחץ שוב על התמונה ובחר \"בחר מהגלריה\".": "Сохраните выбранное фото, затем снова нажмите на фото и выберите «Выбрать из галереи».",
   "התמונה עודכנה.": "Фото обновлено.",
   "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "Порцию можно добавить только после сохранения продукта с названием и калориями.",
   "המנה נוספה.": "Порция добавлена.",
@@ -3250,7 +3228,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.101";
+const APP_BUILD = "2026.09.11.102";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6634,11 +6612,14 @@ $("picCam").addEventListener("change", e => {
 // clear it so the entry card prompts to photograph the product
 $("shot").addEventListener("error", () => { if (shotSrc()) setShot(""); });
 
-/* "בחר מהאינטרנט" - a third option alongside camera/gallery. No Google Images
-   API is wired in (that needs a paid, quota-limited Custom Search key); Open
-   Food Facts already hosts real product package photos and the app already
-   pays the Make op for offSearch, so it doubles as the picker's photo source
-   (Ido, 2026-09-11). */
+/* "🌐 חפש בגוגל תמונות" - a third option alongside camera/gallery. Zero Make
+   ops and zero API keys: it just opens Google's OWN image-search page for the
+   product name, exactly as if he'd typed it in - same as any link he taps in
+   the app. He picks a photo THERE, saves it to the gallery, then comes back
+   and taps "בחר מהגלריה" to bring it in. picTarget (already set by
+   openPicChoose) stays untouched across the round trip, so the gallery pick
+   still lands on the right product/log-row/catalog-code (Ido, 2026-09-11:
+   "רק תפתח לי דף גוגל... ככה לא יהיו פעולות מייק"). */
 function picQueryName() {
   if (typeof picTarget === "string" && picTarget.startsWith("cat:")) {
     const code = picTarget.slice(4);
@@ -6648,38 +6629,14 @@ function picQueryName() {
   const e = LOG.find(x => x.id === picTarget);
   return (e && e.name) || "";
 }
-async function openWebImagePicker() {
+function openWebImagePicker() {
   const name = picQueryName();
   if (!name) { showToast(T("אין שם מוצר לחיפוש.")); return; }
   closePicChoose();
-  const grid = $("imgPickGrid");
-  $("imgPickTitle").textContent = T("מחפש תמונות…");
-  grid.innerHTML = "";
-  $("imgPickOv").classList.add("on");
-  const hits = await offSearch(name);
-  const seen = new Set();
-  const photos = [];
-  for (const h of hits) {
-    if (h.photo && !seen.has(h.photo)) { seen.add(h.photo); photos.push(h.photo); }
-    if (photos.length >= 5) break;
-  }
-  if (!photos.length) {
-    $("imgPickTitle").textContent = T("לא נמצאו תמונות");
-    return;
-  }
-  $("imgPickTitle").textContent = T("בחר תמונה מייצגת");
-  grid.innerHTML = photos.map((p, i) => `<img src="${esc(p)}" data-i="${i}">`).join("");
-  grid.querySelectorAll("img[data-i]").forEach(img => {
-    img.addEventListener("click", () => {
-      closeImgPick();
-      applyPickedPhoto(photos[+img.dataset.i]);
-    });
-  });
+  window.open("https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(name), "_blank", "noopener");
+  showToast(T("שמור את התמונה שבחרת, ואז לחץ שוב על התמונה ובחר \"בחר מהגלריה\"."));
 }
-function closeImgPick() { $("imgPickOv").classList.remove("on"); }
 $("picWebBtn").addEventListener("click", openWebImagePicker);
-$("imgPickCancel").addEventListener("click", closeImgPick);
-$("imgPickOv").addEventListener("click", e => { if (e.target === $("imgPickOv")) closeImgPick(); });
 
 /* ➕ on a catalog row adds a portion straight to the product, same prompt UX
    as the entry sheet's addPortion(), but writing PRODUCTS[code] directly so
