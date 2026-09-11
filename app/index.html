@@ -3228,7 +3228,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.103";
+const APP_BUILD = "2026.09.11.104";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3534,7 +3534,10 @@ function CB() {
     cloudSet: async ({ json }) => {
       const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
       if (!uid) throw new Error("not signed in");
-      await fbFsMod.setDoc(fbFsMod.doc(fbDb, "users", uid), { data: json, updated: Date.now() }, { merge: true });
+      // email rides along so the admin HQ can show who is who (the native
+      // bridge writes only {data, updated}; there it lives inside the payload)
+      await fbFsMod.setDoc(fbFsMod.doc(fbDb, "users", uid),
+        { data: json, updated: Date.now(), email: (fbAuth.currentUser && fbAuth.currentUser.email) || null }, { merge: true });
     },
   };
 }
@@ -6073,6 +6076,7 @@ $("copyBtn").addEventListener("click", async () => {
    into this phone (union of log ids, newest wins per product/day). */
 function buildPayload() {
   return { v: 2, exported: new Date().toISOString(),
+    email: (typeof cloudUser !== "undefined" && cloudUser && cloudUser.email) || "",
     log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
     bank: BANK, lang: LANG,
     push: localStorage.getItem("fl_push") || "",

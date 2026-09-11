@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Scan &amp; Log — HQ</title>
+<link rel="icon" href="../app/icon-192.png">
+<style>
+  :root { --bg:#0A0C11; --panel:#12161F; --panel2:#1A2130; --line:#242D3E;
+          --ink:#F2F5FA; --muted:#8D97AB; --gold:#FFD21E; --ok:#3DDC84; --bad:#FF5C5C; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Rubik",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+         line-height:1.6; font-size:14.5px; padding:26px 16px 60px; }
+  .wrap { max-width:1060px; margin:0 auto; }
+  h1 { font-size:22px; margin:0; }
+  h1 small { color:var(--muted); font-weight:400; font-size:13px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  button { font-family:inherit; cursor:pointer; }
+  .gbtn { background:var(--gold); color:#141005; font-weight:800; font-size:15px; border:0; border-radius:11px; padding:12px 22px; }
+  .ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--line); border-radius:9px; padding:7px 14px; font-size:12.5px; }
+  .gate { max-width:420px; margin:12vh auto 0; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:34px 26px; }
+  .gate p { color:var(--muted); font-size:13.5px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:0 0 18px; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:12px 14px; }
+  .stat b { display:block; font-size:24px; color:var(--gold); font-variant-numeric:tabular-nums; }
+  .stat small { color:var(--muted); font-size:11.5px; }
+  .tblwrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:760px; }
+  th { text-align:right; font-size:11px; color:var(--muted); font-weight:700; padding:10px 10px; border-bottom:2px solid var(--line); white-space:nowrap; position:sticky; top:0; background:var(--panel); }
+  td { padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; font-variant-numeric:tabular-nums; }
+  tr.u { cursor:pointer; }
+  tr.u:hover td { background:var(--panel2); }
+  td.mail { font-weight:600; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; text-align:right; }
+  .def { color:var(--ok); font-weight:700; } .sur { color:var(--bad); font-weight:700; } .na { color:var(--muted); }
+  .chip { display:inline-block; font-size:10.5px; border-radius:999px; padding:1px 8px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); }
+  .chip.on { color:var(--ok); border-color:#1D5C39; }
+  tr.detail td { background:#0D1017; padding:12px 16px; }
+  .mini { width:auto; min-width:0; font-size:12px; }
+  .mini th, .mini td { padding:4px 10px; border-bottom:1px solid var(--line); }
+  .err { background:#301A10; border:1px solid var(--bad); color:#F0A583; border-radius:12px; padding:12px 16px; margin:12px 0; display:none; }
+  .load { color:var(--muted); text-align:center; padding:40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="gate" id="gate">
+    <h1>Scan &amp; Log — HQ 🔒</h1>
+    <p>לוח הבקרה של המשתמשים. הכניסה מאושרת לחשבון המנהל בלבד.</p>
+    <button class="gbtn" id="signin">כניסה עם Google</button>
+    <p id="gateMsg" style="min-height:20px"></p>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="top">
+      <h1>👥 המשתמשים <small id="who"></small></h1>
+      <div>
+        <button class="ghost" id="refresh">↻ רענון</button>
+        <button class="ghost" id="signout">יציאה</button>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sTotal">—</b><small>נרשמו בענן</small></div>
+      <div class="stat"><b id="sToday">—</b><small>תיעדו אוכל היום</small></div>
+      <div class="stat"><b id="sWeek">—</b><small>פעילים 7 ימים</small></div>
+      <div class="stat"><b id="sDef">—</b><small>בגירעון היום</small></div>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="tblwrap">
+      <table id="tbl">
+        <thead><tr>
+          <th>מייל</th><th>סנכרון אחרון</th><th>משקל</th>
+          <th>נכנסו היום</th><th>יצאו היום</th><th>מאזן היום</th>
+          <th>ממוצע 7 ימים</th><th>רשומות</th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="8" class="load">טוען…</td></tr></tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:11.5px">מאזן שלילי (ירוק) = גירעון · חיובי (אדום) = עודף · "יצאו" = BMR לפי הפרופיל + אימון, בדיוק כמו באפליקציה. לחיצה על שורה פותחת 14 ימים אחורה.</p>
+  </div>
+</div>
+
+<script type="module">
+const ADMIN = "mr.guru.fit@gmail.com";
+const CFG = {
+  apiKey: "AIzaSyCClavNB7qLkbrR-xl30CdFCNBpU2FP794",
+  authDomain: "mrgurufit-scan-log.firebaseapp.com",
+  projectId: "mrgurufit-scan-log",
+  appId: "1:307501409775:web:7a2a7f60636524569b421a"
+};
+const V = "10.14.1";
+const [{ initializeApp }, A, F] = await Promise.all([
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+  import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
+]);
+const app = initializeApp(CFG);
+const auth = A.getAuth(app);
+const db = F.getFirestore(app);
+const $ = id => document.getElementById(id);
+
+$("signin").addEventListener("click", async () => {
+  try { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); }
+  catch (e) {
+    if (/popup/i.test(String(e.code))) A.signInWithRedirect(auth, new A.GoogleAuthProvider());
+    else $("gateMsg").textContent = "שגיאה: " + (e.code || e.message);
+  }
+});
+try { await A.getRedirectResult(auth); } catch (e) { /* handled below by auth state */ }
+$("signout").addEventListener("click", () => A.signOut(auth).then(() => location.reload()));
+$("refresh").addEventListener("click", () => load());
+
+A.onAuthStateChanged(auth, user => {
+  if (!user) { $("gate").hidden = false; $("panel").hidden = true; return; }
+  if ((user.email || "").toLowerCase() !== ADMIN) {
+    $("gateMsg").textContent = "אין גישה לחשבון " + (user.email || "") + " — זה לוח למנהל בלבד.";
+    A.signOut(auth);
+    return;
+  }
+  $("gate").hidden = true; $("panel").hidden = false;
+  $("who").textContent = user.email;
+  load();
+});
+
+/* ---- the same arithmetic the app uses, replicated 1:1 ---- */
+const dayKey = off => { const d = new Date(); d.setDate(d.getDate() - off); return d.toLocaleDateString("sv-SE"); };
+function kcalIn(log, day) {
+  let k = 0, n = 0;
+  for (const e of log) if (e.day === day) { k += (e.k100 || 0) * (e.grams || 0) / 100; n++; }
+  return { k: Math.round(k), n };
+}
+function weightFor(dd, day) {
+  if (dd[day] && dd[day].weight) return dd[day].weight;
+  const days = Object.keys(dd).filter(d => d <= day && dd[d].weight).sort();
+  return days.length ? dd[days[days.length - 1]].weight : null;
+}
+function outFor(p, dd, day, w) {
+  if (!w) return null;
+  const k = p.sex === "f" ? -161 : 5;
+  const bmr = Math.round(10 * w + 6.25 * (p.height || 182) - 5 * (p.age || 36) + k);
+  return bmr + ((dd[day] && dd[day].activity) || 0);
+}
+function dayRow(u, day) {
+  const { k: inK, n } = kcalIn(u.log, day);
+  const w = weightFor(u.dd, day);
+  const out = outFor(u.prof, u.dd, day, w);
+  const bal = (out != null && n) ? inK - out : null;
+  return { day, inK: n ? inK : null, out, bal, n, w };
+}
+const fmt = v => v == null ? "—" : Math.round(v).toLocaleString("he-IL");
+const balCell = b => b == null ? '<span class="na">—</span>'
+  : b <= 0 ? '<span class="def">−' + fmt(-b) + ' גירעון</span>'
+           : '<span class="sur">+' + fmt(b) + ' עודף</span>';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function load() {
+  $("rows").innerHTML = '<tr><td colspan="8" class="load">טוען…</td></tr>';
+  $("err").style.display = "none";
+  let snap;
+  try { snap = await F.getDocs(F.collection(db, "users")); }
+  catch (e) {
+    $("err").textContent = "קריאת המשתמשים נכשלה (" + (e.code || e.message) + ") — ודא שחוקי ה־Firestore כוללים קריאת אדמין.";
+    $("err").style.display = "block";
+    $("rows").innerHTML = "";
+    return;
+  }
+  const users = [];
+  snap.forEach(docSnap => {
+    const d = docSnap.data() || {};
+    let p = {};
+    try { p = JSON.parse(d.data || "{}"); } catch (e) { p = {}; }
+    users.push({
+      uid: docSnap.id,
+      email: d.email || p.email || "",
+      updated: d.updated || 0,
+      log: Array.isArray(p.log) ? p.log : [],
+      dd: p.daydata || {},
+      prof: p.profile || {}
+    });
+  });
+  users.sort((a, b) => b.updated - a.updated);
+
+  const t0 = dayKey(0);
+  let today = 0, week = 0, defToday = 0;
+  const weekDays = []; for (let i = 0; i < 7; i++) weekDays.push(dayKey(i));
+
+  const rows = users.map((u, i) => {
+    const r0 = dayRow(u, t0);
+    if (r0.n) today++;
+    if (u.log.some(e => weekDays.includes(e.day))) week++;
+    if (r0.bal != null && r0.bal <= 0 && r0.n) defToday++;
+    const bals = [];
+    for (let d = 0; d < 7; d++) { const r = dayRow(u, dayKey(d)); if (r.bal != null) bals.push(r.bal); }
+    const avg = bals.length ? bals.reduce((a, b) => a + b, 0) / bals.length : null;
+    const upd = u.updated ? new Date(u.updated).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+    const active = u.updated && (Date.now() - u.updated < 26 * 3600e3);
+    return '<tr class="u" data-i="' + i + '">' +
+      '<td class="mail">' + (u.email ? esc(u.email) : '<span class="na">' + esc(u.uid.slice(0, 8)) + '… (טרם סונכרן מייל)</span>') + '</td>' +
+      '<td>' + upd + ' <span class="chip' + (active ? " on" : "") + '">' + (active ? "פעיל" : "רדום") + '</span></td>' +
+      '<td>' + (r0.w ? r0.w.toFixed(1) : "—") + '</td>' +
+      '<td>' + fmt(r0.inK) + '</td>' +
+      '<td>' + fmt(r0.out) + '</td>' +
+      '<td>' + balCell(r0.bal) + '</td>' +
+      '<td>' + (avg == null ? '<span class="na">—</span>' : balCell(avg)) + '</td>' +
+      '<td>' + u.log.length + "</td></tr>";
+  }).join("");
+
+  $("rows").innerHTML = rows || '<tr><td colspan="8" class="load">אין עדיין משתמשים בענן.</td></tr>';
+  $("sTotal").textContent = users.length;
+  $("sToday").textContent = today;
+  $("sWeek").textContent = week;
+  $("sDef").textContent = defToday;
+
+  document.querySelectorAll("tr.u").forEach(tr => tr.addEventListener("click", () => {
+    const open = tr.nextElementSibling && tr.nextElementSibling.classList.contains("detail");
+    document.querySelectorAll("tr.detail").forEach(x => x.remove());
+    if (open) return;
+    const u = users[+tr.dataset.i];
+    let mini = '<table class="mini"><tr><th>יום</th><th>נכנסו</th><th>יצאו</th><th>מאזן</th><th>משקל</th><th>ארוחות</th></tr>';
+    for (let d = 0; d < 14; d++) {
+      const r = dayRow(u, dayKey(d));
+      if (!r.n && !(u.dd[r.day] && u.dd[r.day].weight)) continue;
+      mini += "<tr><td>" + r.day.slice(5) + "</td><td>" + fmt(r.inK) + "</td><td>" + fmt(r.out) + "</td><td>" +
+        balCell(r.bal) + "</td><td>" + (u.dd[r.day] && u.dd[r.day].weight ? u.dd[r.day].weight : "—") + "</td><td>" + r.n + "</td></tr>";
+    }
+    mini += "</table>";
+    const det = document.createElement("tr");
+    det.className = "detail";
+    det.innerHTML = '<td colspan="8">' + mini + "</td>";
+    tr.after(det);
+  }));
+}
+</script>
+</body>
+</html>
