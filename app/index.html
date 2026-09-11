@@ -102,6 +102,25 @@
   .sr .srs.mine { background:#12301f; color:var(--green); border-color:#1d5c39; }
   .sr .srs.gen  { background:#2a2410; color:var(--accentText); border-color:#6b5a12; }
   .sr.dim { color:var(--muted); font-size:12.5px; justify-content:center; }
+  /* catalog browse page: a thumbnail (tap to replace) + the usual text, plus a
+     small add-portion shortcut, all on one row - built to stay light at
+     hundreds/thousands of rows (lazy-loaded images, no per-row network until
+     a thumbnail or the add-portion button is actually tapped) */
+  .catThumbBtn {
+    flex:0 0 auto; width:40px; height:40px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel); display:flex; align-items:center; justify-content:center;
+    overflow:hidden; padding:0; font-size:16px; color:var(--muted);
+  }
+  .catThumbBtn img { width:100%; height:100%; object-fit:cover; display:block; }
+  .catMain { flex:1; min-width:0; display:flex; align-items:flex-start; gap:8px; text-align:start; background:none; border:0; padding:0; font-size:inherit; color:inherit; }
+  .catAddPortion {
+    flex:0 0 auto; width:30px; height:30px; border-radius:50%; align-self:center;
+    background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:15px; padding:0;
+  }
+  .imgpicksheet { max-width:360px; }
+  .imgpickgrid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:12px 0; }
+  .imgpickgrid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; border:2px solid var(--line); cursor:pointer; }
+  .imgpickgrid img:active { border-color:var(--accent); }
 
   /* header + streak */
   .hdr { display:flex; align-items:flex-start; gap:10px; }
@@ -724,8 +743,10 @@
   .shotwrap.needpic button { background:var(--accent); color:#141005; font-weight:700; }
   .item img { cursor:pointer; }
 
-  /* camera-or-gallery chooser */
-  .picchoose { position:fixed; inset:0; z-index:90; display:none; align-items:flex-end; justify-content:center;
+  /* camera-or-gallery chooser - z-index above #catalogPage/#progressPage (150)
+     so it still shows when opened from there (real bug hit 2026-09-11: it
+     rendered behind the catalog page, invisibly) */
+  .picchoose { position:fixed; inset:0; z-index:155; display:none; align-items:flex-end; justify-content:center;
     background:rgba(0,0,0,.55); }
   .picchoose.on { display:flex; }
   .picchoose-sheet { width:100%; max-width:460px; background:var(--panel); border:1px solid var(--line);
@@ -886,7 +907,16 @@
       <div class="picchoose-title">תמונת המוצר</div>
       <button type="button" id="picCamBtn" class="prim">📷 צלם את המוצר</button>
       <button type="button" id="picGalBtn">🖼️ בחר מהגלריה</button>
+      <button type="button" id="picWebBtn">🌐 בחר מהאינטרנט</button>
       <button type="button" id="picCancel" class="ghost">ביטול</button>
+    </div>
+  </div>
+
+  <div id="imgPickOv" class="picchoose">
+    <div class="picchoose-sheet imgpicksheet">
+      <div class="picchoose-title" id="imgPickTitle">בחירת תמונה</div>
+      <div id="imgPickGrid" class="imgpickgrid"></div>
+      <button type="button" id="imgPickCancel" class="ghost">ביטול</button>
     </div>
   </div>
 
@@ -1590,6 +1620,16 @@ const I18N_EN = {
   "קהילתי": "Community",
   "הקטלוג ריק כרגע": "The catalog is empty right now",
   "לא נמצא": "No results",
+  "הוסף מנה": "Add portion",
+  "🌐 בחר מהאינטרנט": "🌐 Choose from the internet",
+  "בחירת תמונה": "Choose a photo",
+  "מחפש תמונות…": "Searching for photos…",
+  "לא נמצאו תמונות": "No photos found",
+  "בחר תמונה מייצגת": "Pick a representative photo",
+  "אין שם מוצר לחיפוש.": "No product name to search for.",
+  "התמונה עודכנה.": "Photo updated.",
+  "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "You can add a portion only after the product is saved with a name and calories.",
+  "המנה נוספה.": "Portion added.",
   "גרף התקדמות": "Progress",
   "📈 גרף התקדמות": "📈 Progress",
   "כתוב לנו": "Contact us",
@@ -2052,6 +2092,16 @@ const I18N_AR = {
   "קהילתי": "مجتمعي",
   "הקטלוג ריק כרגע": "الكتالوج فارغ حاليًا",
   "לא נמצא": "لم يتم العثور على نتائج",
+  "הוסף מנה": "إضافة حصة",
+  "🌐 בחר מהאינטרנט": "🌐 اختر من الإنترنت",
+  "בחירת תמונה": "اختيار صورة",
+  "מחפש תמונות…": "جارٍ البحث عن صور…",
+  "לא נמצאו תמונות": "لم يتم العثور على صور",
+  "בחר תמונה מייצגת": "اختر صورة تمثيلية",
+  "אין שם מוצר לחיפוש.": "لا يوجد اسم منتج للبحث.",
+  "התמונה עודכנה.": "تم تحديث الصورة.",
+  "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "يمكن إضافة حصة فقط بعد حفظ المنتج باسم وسعرات حرارية.",
+  "המנה נוספה.": "تمت إضافة الحصة.",
   "גרף התקדמות": "التقدم",
   "📈 גרף התקדמות": "📈 التقدم",
   "כתוב לנו": "راسلنا",
@@ -2489,6 +2539,16 @@ const I18N_RU = {
   "קהילתי": "Общий",
   "הקטלוג ריק כרגע": "Каталог сейчас пуст",
   "לא נמצא": "Ничего не найдено",
+  "הוסף מנה": "Добавить порцию",
+  "🌐 בחר מהאינטרנט": "🌐 Выбрать из интернета",
+  "בחירת תמונה": "Выбор фото",
+  "מחפש תמונות…": "Поиск фото…",
+  "לא נמצאו תמונות": "Фото не найдены",
+  "בחר תמונה מייצגת": "Выберите подходящее фото",
+  "אין שם מוצר לחיפוש.": "Нет названия продукта для поиска.",
+  "התמונה עודכנה.": "Фото обновлено.",
+  "אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.": "Порцию можно добавить только после сохранения продукта с названием и калориями.",
+  "המנה נוספה.": "Порция добавлена.",
   "גרף התקדמות": "Прогресс",
   "📈 גרף התקדמות": "📈 Прогресс",
   "כתוב לנו": "Написать нам",
@@ -3184,7 +3244,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.99";
+const APP_BUILD = "2026.09.11.100";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5440,15 +5500,21 @@ function renderCatalogList() {
     .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
     .slice(0, 300);
   $("catalogList").innerHTML = rows.map(({ code, p }) =>
-    `<button class="sr" data-code="${esc(code)}">
-       <span class="srs mine">${T("קהילתי")}</span>
-       <span class="srn">${esc(displayName(p.n, true))}</span>
-       <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}</span>
-     </button>`).join("") ||
+    `<div class="sr" data-code="${esc(code)}">
+       <button type="button" class="catThumbBtn" data-thumb="${esc(code)}" aria-label="${T("תמונת המוצר")}">
+         ${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}
+       </button>
+       <button type="button" class="catMain" data-open="${esc(code)}">
+         <span class="srs mine">${T("קהילתי")}</span>
+         <span class="srn">${esc(displayName(p.n, true))}</span>
+         <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}</span>
+       </button>
+       <button type="button" class="catAddPortion" data-portion="${esc(code)}" aria-label="${T("הוסף מנה")}">➕</button>
+     </div>`).join("") ||
     `<div class="sr dim">${q ? T("לא נמצא") : T("הקטלוג ריק כרגע")}</div>`;
-  $("catalogList").querySelectorAll(".sr[data-code]").forEach(b => {
+  $("catalogList").querySelectorAll(".catMain[data-open]").forEach(b => {
     b.addEventListener("click", () => {
-      const code = b.dataset.code, p = catalogRowData(code);
+      const code = b.dataset.open, p = catalogRowData(code);
       if (!p) return;
       closeCatalogPage();   // visual swap only - keep the one history guard
                              // openCatalogPage() pushed, so a physical back
@@ -5463,6 +5529,12 @@ function renderCatalogList() {
       entryFromSearch = false;   // ✕ should not reopen the scanner/search...
       entryFromCatalog = true;  // ...it should save the edit and go back to this list instead
     });
+  });
+  $("catalogList").querySelectorAll(".catThumbBtn[data-thumb]").forEach(b => {
+    b.addEventListener("click", () => openPicChoose("cat:" + b.dataset.thumb));
+  });
+  $("catalogList").querySelectorAll(".catAddPortion[data-portion]").forEach(b => {
+    b.addEventListener("click", () => catalogAddPortion(b.dataset.portion));
   });
 }
 $("catalogSearch").addEventListener("input", () => renderCatalogList());
@@ -6495,12 +6567,30 @@ async function pickedPicture(file) {
   let data;
   try { data = await toThumb(file); }
   catch { msg(picTarget ? "scanMsg" : "entryMsg", T("לא הצלחתי לקרוא את התמונה הזאת."), "err"); return; }
-  if (picTarget == null) { setShot(data); return; }
+  applyPickedPhoto(data);
+}
+
+/* Wherever the photo came from (camera, gallery, or a pick off the internet
+   picker), it lands here and branches on picTarget same as the chooser did:
+   "cat:<code>" = a row on the catalog browse page (no entry sheet open at
+   all), null = the entry card, otherwise a log entry id. */
+function applyPickedPhoto(photo) {
+  if (!photo) return;
+  if (typeof picTarget === "string" && picTarget.startsWith("cat:")) {
+    const code = picTarget.slice(4);
+    PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, { photo });
+    store.set(LS_PROD, PRODUCTS);
+    if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
+    renderCatalogList();
+    showToast(T("התמונה עודכנה."));
+    return;
+  }
+  if (picTarget == null) { setShot(photo); return; }
   const e = LOG.find(x => x.id === picTarget);
   if (!e) return;
-  e.photo = data;
+  e.photo = photo;
   // update the product memory AND every other log row of the same product
-  applyProductPhoto(e.barcode, e.name, data);
+  applyProductPhoto(e.barcode, e.name, photo);
   store.set(LS_LOG, LOG);
   renderLog();
   // admin: push the photo to the shared catalog so it reaches everyone
@@ -6537,6 +6627,71 @@ $("picCam").addEventListener("change", e => {
 // a broken image URL (dead OFF link, offline) is the same as "no picture" -
 // clear it so the entry card prompts to photograph the product
 $("shot").addEventListener("error", () => { if (shotSrc()) setShot(""); });
+
+/* "בחר מהאינטרנט" - a third option alongside camera/gallery. No Google Images
+   API is wired in (that needs a paid, quota-limited Custom Search key); Open
+   Food Facts already hosts real product package photos and the app already
+   pays the Make op for offSearch, so it doubles as the picker's photo source
+   (Ido, 2026-09-11). */
+function picQueryName() {
+  if (typeof picTarget === "string" && picTarget.startsWith("cat:")) {
+    const code = picTarget.slice(4);
+    return (PRODUCTS[code] && PRODUCTS[code].name) || "";
+  }
+  if (picTarget == null) return $("pName").value.trim();
+  const e = LOG.find(x => x.id === picTarget);
+  return (e && e.name) || "";
+}
+async function openWebImagePicker() {
+  const name = picQueryName();
+  if (!name) { showToast(T("אין שם מוצר לחיפוש.")); return; }
+  closePicChoose();
+  const grid = $("imgPickGrid");
+  $("imgPickTitle").textContent = T("מחפש תמונות…");
+  grid.innerHTML = "";
+  $("imgPickOv").classList.add("on");
+  const hits = await offSearch(name);
+  const seen = new Set();
+  const photos = [];
+  for (const h of hits) {
+    if (h.photo && !seen.has(h.photo)) { seen.add(h.photo); photos.push(h.photo); }
+    if (photos.length >= 5) break;
+  }
+  if (!photos.length) {
+    $("imgPickTitle").textContent = T("לא נמצאו תמונות");
+    return;
+  }
+  $("imgPickTitle").textContent = T("בחר תמונה מייצגת");
+  grid.innerHTML = photos.map((p, i) => `<img src="${esc(p)}" data-i="${i}">`).join("");
+  grid.querySelectorAll("img[data-i]").forEach(img => {
+    img.addEventListener("click", () => {
+      closeImgPick();
+      applyPickedPhoto(photos[+img.dataset.i]);
+    });
+  });
+}
+function closeImgPick() { $("imgPickOv").classList.remove("on"); }
+$("picWebBtn").addEventListener("click", openWebImagePicker);
+$("imgPickCancel").addEventListener("click", closeImgPick);
+$("imgPickOv").addEventListener("click", e => { if (e.target === $("imgPickOv")) closeImgPick(); });
+
+/* ➕ on a catalog row adds a portion straight to the product, same prompt UX
+   as the entry sheet's addPortion(), but writing PRODUCTS[code] directly so
+   he never has to open product after product just to define a portion. */
+function catalogAddPortion(code) {
+  const p = PRODUCTS[code];
+  if (!p) { showToast(T("אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.")); return; }
+  const raw = prompt(T("שם המנה ואז המשקל בגרמים, למשל: יחידה 50"));
+  if (!raw) return;
+  const m = String(raw).trim().match(/^(.*?)[\s,:]+(\d+(?:\.\d+)?)\s*$/);
+  if (!m) { alert(T("כתוב שם ואז מספר, למשל: יחידה 50")); return; }
+  p.portions = Array.isArray(p.portions) ? p.portions : [];
+  p.portions.push({ n: m[1].trim() || T("מנה"), g: +m[2] });
+  store.set(LS_PROD, PRODUCTS);
+  if (isAdmin()) sharedContribute(code, p);
+  renderCatalogList();
+  showToast(T("המנה נוספה."));
+}
 
 /* Rows whose food has no pinned picture still deserve one. Once, in the
    background and only while online, ask Wikipedia for each distinct missing
