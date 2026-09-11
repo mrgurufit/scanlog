@@ -554,6 +554,11 @@
                border-radius:7px; padding:4px 11px; font-weight:800; white-space:nowrap; }
   #betaBar button { background:none; border:0; color:#8b93a3; font-size:19px;
                     line-height:1; cursor:pointer; padding:0 2px; }
+  .syncbody { text-align:center; padding:4px 2px 2px; }
+  .syncbody p { margin:0 0 10px; font-size:13.5px; color:var(--muted); line-height:1.6; }
+  .syncbody .ghost { display:block; width:100%; margin-top:8px; background:none;
+                     border:0; color:var(--muted); font-size:12.5px; cursor:pointer;
+                     text-decoration:underline; }
   .fbgate { text-align:center; padding:6px 2px 2px; }
   .fbgate p { margin:0 0 10px; font-size:13.5px; color:var(--muted); line-height:1.5; }
   #stepsRow { display:flex; align-items:center; gap:6px; margin-top:4px; min-height:16px; }
@@ -910,6 +915,19 @@
         <button type="button" id="fbGateBtn" class="fbsend">התחברות עם Google</button>
       </div>
       <div id="fbMsg" class="msg"></div>
+    </div>
+  </div>
+
+  <div id="syncModal" class="fbmodal">
+    <div class="fbpanel">
+      <div class="fbhead"><b>☁️ התחברות</b><button type="button" id="syncClose" aria-label="סגור">✕</button></div>
+      <div class="syncbody">
+        <p>האפליקציה מסתנכרנת בין כולם: כל מוצר שמישהו סורק נשמר במאגר המשותף, ומגיע לכל הטלפונים.</p>
+        <p>כדי להשתתף בזה — ושהיומן שלך ישרוד החלפת טלפון — צריך חשבון Google.</p>
+        <button type="button" id="syncIn" class="fbsend">התחברות עם Google</button>
+        <button type="button" id="syncLater" class="ghost">אמשיך בלי חשבון</button>
+      </div>
+      <div id="syncMsg" class="msg"></div>
     </div>
   </div>
 
@@ -3364,8 +3382,11 @@ function sharedContribute(code, p) {
   // queue for the cloud (durable + retried) and flush now. status:"approved"
   // means it is published to everyone as soon as the next compile runs - this is
   // the admin path and the trusted-external-data path (a complete OFF hit).
+  // who sent it, so a wrong value in the shared catalog can be traced back
+  const who = (!isAdmin() && isSignedIn() && cloudUser && cloudUser.email)
+    ? "app:" + cloudUser.email : (p.src || "app");
   contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app", status: "approved" });
+    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: who, status: "approved" });
   contribFlush();
 }
 
@@ -5206,8 +5227,18 @@ function addEntry() {
       // A non-admin's hand-typed NEW product -> the pending queue for Ido to
       // approve, but only when it is genuinely new; a non-admin can't touch an
       // already-catalogued product's data at all (entryEditable() locks the UI).
-      if (isAdmin() || (pending && pending.fromDB)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
-      else if (!inCatalog) pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
+      // Ido, 2026-09-11: "everything users scan uploads to the community
+      // catalog automatically, so everyone is in sync". Pre-moderation was
+      // holding hand-typed products back, so the trust boundary moves from
+      // "is this the admin" to "is there an account behind this" - the
+      // contributor's email rides along in `src`, and a bad value can be
+      // rejected, which now really removes it (the compile deletes rejected
+      // barcodes from the catalog it carries forward).
+      if (isAdmin() || isSignedIn() || (pending && pending.fromDB)) {
+        sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+      } else if (!inCatalog) {
+        pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
+      }
     }
   }
   viewDay = e.day;
@@ -6838,8 +6869,34 @@ catalogPull();
 contribFlush();
 fbFlush();
 // cloud account: pick up the signed-in user and sync their data down+up
+/* Ido, 2026-09-11: everyone signed in means everyone in sync. Shown once per
+   app session, never during first-run onboarding, and never where signing in
+   cannot work anyway (the old hook.us2.make.com address is not an authorised
+   Firebase domain, and a prompt nobody can satisfy is just a wall). */
+function maybeAskSignIn() {
+  if (isSignedIn()) return;
+  if (localStorage.getItem(LS_OB) !== "1") return;
+  const hb = CB(); if (!hb || !hb.googleSignIn) return;
+  if (window.__syncAsked) return;
+  window.__syncAsked = true;
+  msg("syncMsg", "");
+  $("syncModal").classList.add("on");
+}
+function closeSync() { $("syncModal").classList.remove("on"); }
+$("syncClose").addEventListener("click", closeSync);
+$("syncLater").addEventListener("click", closeSync);
+$("syncIn").addEventListener("click", async () => {
+  const b = $("syncIn");
+  b.disabled = true; b.textContent = T("מתחבר…");
+  try { await cloudSignIn(); } catch { /* cloudSignIn reports its own failure */ }
+  b.disabled = false; b.textContent = T("התחברות עם Google");
+  if (isSignedIn()) closeSync();
+  else msg("syncMsg", T("ההתחברות לא הושלמה — נסה שוב."), "err");
+});
+
 (async () => {
   await cloudRefreshUser();
+  maybeAskSignIn();
   updateFbButton();
   updateScaleRow();
   // admin-only: silently reconnect a paired scale so weighing "just works"

@@ -219,6 +219,14 @@ jobs:
                   code['pt'] = pt
               codes[bc] = code
 
+          # A reject has to remove a product that already went out. Products
+          # publish themselves now, so skipping rejected rows in the NEW data is
+          # not enough - the carried-forward catalog has to drop them as well.
+          for r in data:
+              bc = str(r.get('barcode', '') or '').strip()
+              if bc and str(r.get('status', '') or '').strip().lower() == 'rejected':
+                  codes.pop(bc, None)
+
           out = {'v': datetime.date.today().isoformat(), 'count': len(codes), 'codes': codes}
           json.dump(out, open('catalog.new', 'w'), ensure_ascii=False, separators=(',', ':'))
           print('built catalog with', len(codes), 'codes')
