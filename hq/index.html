@@ -78,7 +78,44 @@
       </table>
     </div>
     <p style="color:var(--muted);font-size:11.5px">מאזן שלילי (ירוק) = גירעון · חיובי (אדום) = עודף · "יצאו" = BMR לפי הפרופיל + אימון, בדיוק כמו באפליקציה. לחיצה על שורה פותחת 14 ימים אחורה.</p>
-  </div>
+
+    <div class="top" style="margin-top:34px"><h1>💸 פעולות Make — מי עולה כמה</h1></div>
+    <div class="stats">
+      <div class="stat"><b>40,000</b><small>מכסה חודשית (מחזור מתאפס ב־10 לחודש)</small></div>
+      <div class="stat"><b>4,878</b><small>נוצלו נכון ל־11.09 בבוקר</small></div>
+      <div class="stat"><b>~1,200</b><small>מתוכן: פרץ חד־פעמי ברגע האיפוס (תור וובהוקים)</small></div>
+      <div class="stat"><b>3</b><small>עלות ביקור באתר (הייתה 4 — אופטימיזציה 11.09)</small></div>
+    </div>
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th>פעולה</th><th>תרחיש</th><th>עלות לקריאה</th><th>מי/מתי</th><th>הגנות ומצב</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>דפי האתר · הקטלוג באפליקציה · סריקות · דף ה־HQ הזה</td><td>—</td><td><b class="def">0</b></td><td>כל מבקר</td><td>סטטי / Firestore — לעולם לא נוגע ב־Make</td></tr>
+          <tr><td>ביקור באתר (ספירת תנועה)</td><td>SITE traffic collect</td><td>3</td><td>פעם בסשן דפדפן, כל העמודים</td><td class="def">✂️ 11.09: הוסר Respond מיותר (היה 4)</td></tr>
+          <tr><td>מונה התנועה בפורטל</td><td>SITE traffic read</td><td>4</td><td>אתה · פעם ביום לכל היותר</td><td>throttle נשמר ב־localStorage</td></tr>
+          <tr><td>אנליטיקס פלטפורמות בפורטל</td><td>analytics proxy</td><td>3</td><td>אתה · משיכה יומית למקור</td><td>מוגבל משיכה אחת ביום</td></tr>
+          <tr><td>אשף הריל: פס התקדמות</td><td>DAY FLOW read status</td><td>4</td><td>poll רק בזמן בנייה</td><td>backoff + שינה כשהטאב מוסתר</td></tr>
+          <tr><td>אשף הריל: קריאת יום / כפתור</td><td>DAY FLOW read/write</td><td>3–6</td><td>לחיצה שלך</td><td>חסום בכפתור</td></tr>
+          <tr><td>שער הפורטל (כניסה בטלפון)</td><td>config vault</td><td>3–4</td><td>פעם למכשיר</td><td>המפתחות נשמרים ב־localStorage</td></tr>
+          <tr><td>הודעת וואטסאפ אליך</td><td>WhatsApp Out</td><td>2</td><td>אירועים בודדים</td><td>—</td></tr>
+          <tr><td>אפליקציה: חיפוש טקסט עולמי (OFF)</td><td>SCAN LOG product search</td><td>3</td><td>רק כשאין תוצאה מקומית/בקטלוג</td><td class="sur">⚠️ גדל עם המשתמשים — המועמד הבא לצמצום</td></tr>
+          <tr><td>אפליקציה: תרומת מוצר לקטלוג</td><td>PRODUCTS contribute</td><td>3</td><td>פר מוצר חדש בלבד</td><td>חסום בכפתור, חד־פעמי למוצר</td></tr>
+          <tr><td>אפליקציה: כתוב לנו</td><td>SCANLOG feedback</td><td>3–4</td><td>פר פנייה</td><td>—</td></tr>
+          <tr><td>אדמין: אינבוקס אישורים / עיון בקטלוג החי</td><td>PRODUCTS export</td><td class="sur"><b>~46</b> (4 + מוצר במאגר)</td><td>אתה · בפתיחת האינבוקס</td><td>cache 30 דק' · העלות גדלה עם הקטלוג</td></tr>
+          <tr><td>קומפילציית קטלוג לילית (GitHub)</td><td>PRODUCTS export (fallback)</td><td class="sur">~46</td><td>פעם בלילה</td><td class="sur">☐ ממתין לך: טוקן MAKE_API_TOKEN ב־GitHub ⇒ העלות יורדת ל־0</td></tr>
+          <tr><td>קריאת פידבק משתמשים לאדמין</td><td>FEEDBACK export</td><td>3</td><td>אתה · בפתיחת האינבוקס</td><td>cache 30 דק'</td></tr>
+          <tr><td>הקישור הישן של האפליקציה (hook.us2)</td><td>SCAN LOG serve app page</td><td>3</td><td>~9 פתיחות ביום</td><td>ייכבה כשהמשתמשת האחרונה תעבור ל־mrgurufit.com/app</td></tr>
+          <tr><td>push report</td><td>SCAN LOG push report</td><td>3</td><td>נדיר</td><td>—</td></tr>
+          <tr><td>lookup מוצר בודד</td><td>PRODUCTS lookup</td><td>3</td><td>כמעט לא בשימוש</td><td>מועמד לכיבוי</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:11.5px">
+      תחזית חודשית בקצב הנוכחי (בלי פרץ האיפוס): ~8,000–12,000 מתוך 40,000. הכלל הקבוע: שום דבר פר־צפייה או פר־סריקה לא נוגע ב־Make;
+      ה־REST API של Make חינם לגמרי (רק ריצות תרחיש נספרות). הטבלה עודכנה ידנית ב־11.09.2026 — כשקלוד מריץ ביקורת, המספרים מתעדכנים כאן.
+    </p>
 </div>
 
 <script type="module">
