@@ -3,6 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <title>Scan &amp; Log</title>
+<script>
+/* mrgurufit.com/app is the address printed in every reel, so a FIRST-TIME
+   browser visitor is sent to the sales landing at /get/ instead of landing
+   inside the product. Everyone already using the app stays untouched:
+   the APK (Capacitor / non-web host), the installed PWA (standalone), anyone
+   with data in localStorage, and anyone arriving via ?app=1 (the landing's
+   own "open the web version" link, remembered forever). The APK's
+   applyUpdate downloads THIS file — the guard must never fire off-web. */
+(function () {
+  try {
+    var h = location.hostname;
+    if (h !== "mrgurufit.com" && h.indexOf("github.io") < 0) return;
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return;
+    if (navigator.standalone) return;
+    if (/(^|[?&])app=1/.test(location.search)) { localStorage.setItem("fl_webuser", "1"); return; }
+    if (localStorage.getItem("fl_webuser") || localStorage.getItem("fl_log") ||
+        localStorage.getItem("fl_profile") || localStorage.getItem("fl_daydata")) return;
+    location.replace("/get/");
+  } catch (e) { /* never break the app over marketing */ }
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <!-- so an icon added to the home screen opens dark and chromeless, like an app -->
 <meta name="theme-color" content="#0d0f14">

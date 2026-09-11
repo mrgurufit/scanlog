@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scan &amp; Log — האפליקציה</title>
+<meta name="description" content="סורקים ברקוד, רואים קלוריות, יורדים במשקל. האפליקציה החינמית מתוך אתגר 100 הימים של Mr Guru Fit.">
+<meta property="og:title" content="Scan &amp; Log — סורקים. יודעים. יורדים.">
+<meta property="og:description" content="האפליקציה שאיתה אני יורד 25 ק״ג מול המצלמה. חינם, בבטא פתוחה.">
+<meta property="og:image" content="https://mrgurufit.com/brand/appshot.jpg">
+<meta name="theme-color" content="#0A0C11">
+<link rel="icon" href="../app/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Oswald:wght@500;700&family=Cairo:wght@700;900&family=Rubik:ital,wght@0,400;0,500;0,700;0,900&display=swap">
+<style>
+  :root {
+    --bg:#0A0C11; --panel:#12161F; --panel2:#1A2130; --line:#242D3E;
+    --ink:#F2F5FA; --muted:#8D97AB; --gold:#FFD21E; --gold2:#F0C000; --ok:#3DDC84;
+    --disp:"Karantina","Oswald","Cairo",sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink); line-height:1.6;
+    font-family:"Rubik",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
+
+  /* top bar */
+  .top { display:flex; align-items:center; justify-content:space-between; padding:16px 0 0; }
+  .brand { display:flex; align-items:center; gap:9px; font-weight:900; letter-spacing:1px; font-size:13px; }
+  .brand img { width:30px; height:30px; border-radius:8px; }
+  .lang { display:flex; gap:5px; }
+  .lang button {
+    padding:5px 10px; border-radius:999px; font-size:11.5px; font-weight:700; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted); cursor:pointer;
+  }
+  .lang button.on { background:#241A0E; border-color:var(--gold); color:var(--gold); }
+
+  /* hero — the scan moment */
+  .hero { position:relative; padding:34px 0 10px; }
+  .scanbox { position:relative; padding:26px 22px 22px; margin-top:10px; }
+  .scanbox::before, .scanbox::after,
+  .scanbox i::before, .scanbox i::after {
+    content:""; position:absolute; width:34px; height:34px; border:3px solid var(--gold);
+  }
+  .scanbox::before { top:0; inset-inline-start:0; border-bottom:0; border-inline-end:0; border-start-start-radius:8px; }
+  .scanbox::after  { top:0; inset-inline-end:0;  border-bottom:0; border-inline-start:0; border-start-end-radius:8px; }
+  .scanbox i::before { bottom:0; inset-inline-start:0; border-top:0; border-inline-end:0; border-end-start-radius:8px; }
+  .scanbox i::after  { bottom:0; inset-inline-end:0;  border-top:0; border-inline-start:0; border-end-end-radius:8px; }
+  .scanline {
+    position:absolute; inset-inline:6px; top:8%; height:3px; border-radius:3px;
+    background:linear-gradient(90deg, transparent, var(--gold) 18%, #fff 50%, var(--gold) 82%, transparent);
+    box-shadow:0 0 18px 2px rgba(255,210,30,.55);
+    animation:sweep 1.6s cubic-bezier(.4,0,.4,1) .3s 1 both;
+  }
+  @keyframes sweep { 0% { top:6%; opacity:0 } 12% { opacity:1 } 88% { opacity:1 } 100% { top:92%; opacity:0 } }
+  h1 {
+    margin:0; font-family:var(--disp); font-weight:700; text-wrap:balance;
+    font-size:clamp(58px, 13.5vw, 118px); line-height:.92; letter-spacing:.5px;
+  }
+  h1 .l2 { color:var(--gold); }
+  @supports (-webkit-text-stroke: 2px #fff) {
+    h1 .l3 { -webkit-text-stroke:2px var(--ink); color:transparent; }
+  }
+  .idchip {
+    display:inline-flex; align-items:center; gap:8px; margin:18px 0 0;
+    background:#0E1B14; border:1px solid #1E4230; color:var(--ok);
+    border-radius:999px; padding:8px 14px; font-size:13.5px; font-weight:500;
+    opacity:0; transform:translateY(8px) scale(.96);
+    animation:pop .5s cubic-bezier(.2,.9,.3,1.4) 1.9s 1 forwards;
+  }
+  @keyframes pop { to { opacity:1; transform:none } }
+  @media (prefers-reduced-motion: reduce) {
+    .scanline { animation:none; opacity:0; }
+    .idchip { animation:none; opacity:1; transform:none; }
+    .phone { animation:none !important; }
+  }
+  .herogrid { display:grid; grid-template-columns:1fr; gap:8px; align-items:center; }
+  @media (min-width:760px) { .herogrid { grid-template-columns:1.25fr .75fr; gap:30px; } }
+  .phone {
+    width:min(230px, 56vw); margin:26px auto 6px; display:block;
+    border-radius:26px; border:6px solid #222B3C;
+    box-shadow:0 24px 60px rgba(0,0,0,.65), 0 0 0 1px #2E3950, 0 0 44px rgba(255,210,30,.08);
+    transform:rotate(-5deg); animation:float 5s ease-in-out infinite;
+  }
+  [dir="rtl"] .phone { transform:rotate(5deg); }
+  @keyframes float { 0%,100% { translate:0 0 } 50% { translate:0 -8px } }
+  .ctarow { margin:26px 0 8px; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+  .bigcta {
+    display:block; width:100%; max-width:420px; text-align:center; text-decoration:none;
+    background:linear-gradient(180deg, var(--gold), var(--gold2)); color:#141005;
+    font-weight:900; font-size:19px; font-family:inherit;
+    padding:17px 26px; border-radius:14px;
+    box-shadow:0 10px 30px rgba(255,210,30,.28);
+  }
+  .bigcta small { display:block; font-weight:600; font-size:12px; opacity:.75; margin-top:2px; }
+  .trust { font-size:12.5px; color:var(--muted); }
+  .dchip {
+    display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);
+    background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 13px;
+  }
+  .dchip b { color:var(--gold); font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+
+  /* barcode divider */
+  .bars {
+    height:36px; margin:34px 0 0; opacity:.5;
+    background:repeating-linear-gradient(90deg,
+      var(--line) 0 3px, transparent 3px 7px, var(--line) 7px 9px, transparent 9px 16px,
+      var(--line) 16px 22px, transparent 22px 26px);
+    -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  /* proof tiles */
+  .proof { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:26px 0 0; }
+  .proof div { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 8px; text-align:center; }
+  .proof b { display:block; font-family:var(--disp); font-weight:700; font-size:clamp(30px,7vw,44px); line-height:1; color:var(--gold); }
+  .proof small { font-size:11.5px; color:var(--muted); display:block; margin-top:4px; line-height:1.4; }
+
+  /* features */
+  h2 { font-family:var(--disp); font-weight:700; font-size:clamp(38px,8vw,60px); line-height:1; margin:52px 0 18px; text-wrap:balance; }
+  h2 em { font-style:normal; color:var(--gold); }
+  .featgrid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media (min-width:760px) { .featgrid { grid-template-columns:1fr 1fr; } }
+  .feat { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; display:flex; gap:14px; align-items:flex-start; }
+  .feat .ic { flex:0 0 auto; width:44px; height:44px; border-radius:12px; background:var(--panel2); border:1px solid var(--line);
+              display:flex; align-items:center; justify-content:center; font-size:21px; }
+  .feat b { display:block; font-size:16.5px; margin-bottom:3px; }
+  .feat p { margin:0; font-size:13.5px; color:#C3CBDA; }
+  .shots { display:flex; gap:18px; justify-content:center; margin:30px 0 6px; }
+  .shots img { width:min(200px, 42vw); border-radius:18px; border:4px solid #222B3C; box-shadow:0 16px 40px rgba(0,0,0,.55); }
+  .shots img:first-child { transform:rotate(-3.5deg) translateY(8px); }
+  .shots img:last-child { transform:rotate(3.5deg); }
+
+  /* founder */
+  .me { display:flex; gap:16px; align-items:flex-start; background:var(--panel); border:1px solid var(--line);
+        border-radius:18px; padding:20px; margin-top:48px; }
+  .me img { width:64px; height:64px; border-radius:50%; border:2px solid var(--gold); flex:0 0 auto; }
+  .me b { font-size:16px; }
+  .me p { margin:6px 0 0; font-size:14px; color:#C3CBDA; }
+  .me a { color:var(--gold); font-weight:600; text-decoration:none; }
+
+  /* install */
+  .install { margin-top:54px; background:linear-gradient(180deg, #141926, #10141D);
+             border:1px solid #4A3F14; border-radius:22px; padding:26px 20px 22px;
+             box-shadow:0 0 0 1px rgba(255,210,30,.14), 0 0 40px rgba(255,210,30,.06); }
+  .install h2 { margin:0 0 6px; }
+  .promise { font-size:14.5px; color:#C3CBDA; margin:0 0 16px; }
+  .promise b { color:var(--gold); }
+  .timer { display:flex; gap:8px; direction:ltr; justify-content:center; margin:16px 0 20px; }
+  .timer span { min-width:62px; text-align:center; background:#0B0E15; border:1px solid var(--line);
+                border-radius:12px; padding:10px 6px 11px; font-variant-numeric:tabular-nums; }
+  .timer b { display:block; font-family:var(--disp); font-weight:700; font-size:34px; line-height:1; color:var(--gold); }
+  .timer small { font-size:10px; color:var(--muted); }
+  .step { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink);
+          background:var(--panel2); border:1px solid var(--line); border-radius:13px;
+          padding:15px 16px; margin:10px 0; font-weight:800; font-size:15.5px; }
+  .step.main { background:linear-gradient(180deg, var(--gold), var(--gold2)); border-color:var(--gold); color:#141005; }
+  .step .n { flex:0 0 auto; width:24px; height:24px; border-radius:50%; font-size:12.5px; font-weight:900;
+             display:flex; align-items:center; justify-content:center;
+             background:var(--panel); color:var(--gold); border:1px solid var(--line); }
+  .step.main .n { background:#141005; color:var(--gold); border:0; }
+  .step small { display:block; font-weight:500; font-size:11.5px; opacity:.7; }
+  .alt { margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
+  .alt a { color:#8AB4F8; }
+
+  footer { margin:44px 0 90px; padding-top:18px; border-top:1px solid var(--line);
+           font-size:12px; color:#5B6474; text-align:center; }
+  footer a { color:#6F7A8C; }
+
+  /* sticky mini CTA */
+  .stick { position:fixed; bottom:0; inset-inline:0; z-index:50; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+           background:#0A0C11F2; border-top:1px solid var(--line); backdrop-filter:blur(8px);
+           display:flex; align-items:center; justify-content:center; gap:14px;
+           transform:translateY(110%); transition:transform .35s ease; }
+  .stick.on { transform:none; }
+  .stick a { flex:0 0 auto; text-decoration:none; background:var(--gold); color:#141005; font-weight:900;
+             font-size:14.5px; padding:11px 22px; border-radius:11px; }
+  .stick b { font-size:13px; color:var(--gold); font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+  .stick small { font-size:11px; color:var(--muted); display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand"><img src="../app/icon-512.png" alt=""> SCAN &amp; LOG</div>
+    <div class="lang">
+      <button type="button" data-l="en">EN</button>
+      <button type="button" data-l="he">עברית</button>
+      <button type="button" data-l="ru">РУС</button>
+      <button type="button" data-l="ar">عربي</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="herogrid">
+      <div class="scanbox"><i></i>
+        <div class="scanline" aria-hidden="true"></div>
+        <h1><span class="l1" data-t="h1a"></span><br><span class="l2" data-t="h1b"></span><br><span class="l3" data-t="h1c"></span></h1>
+        <div class="idchip">✓&nbsp;<span data-t="chip"></span></div>
+      </div>
+      <img class="phone" src="../brand/appshot.jpg" alt="Scan &amp; Log">
+    </div>
+    <div class="ctarow">
+      <a class="bigcta" href="#install" data-th="cta1"></a>
+      <span class="trust" data-t="trust"></span>
+      <span class="dchip">⏳ <span data-t="dchip"></span> <b id="dmini">—</b></span>
+    </div>
+  </div>
+
+  <div class="bars" aria-hidden="true"></div>
+
+  <div class="proof">
+    <div><b>-7</b><small data-t="p1"></small></div>
+    <div><b>26</b><small data-t="p2"></small></div>
+    <div><b>0</b><small data-t="p3"></small></div>
+  </div>
+
+  <h2 data-th="f_h2"></h2>
+  <div class="featgrid">
+    <div class="feat"><div class="ic">📷</div><div><b data-t="f1t"></b><p data-t="f1p"></p></div></div>
+    <div class="feat"><div class="ic">🔥</div><div><b data-t="f2t"></b><p data-t="f2p"></p></div></div>
+    <div class="feat"><div class="ic">⌚</div><div><b data-t="f3t"></b><p data-t="f3p"></p></div></div>
+    <div class="feat"><div class="ic">☁️</div><div><b data-t="f4t"></b><p data-t="f4p"></p></div></div>
+  </div>
+
+  <div class="shots">
+    <img src="../brand/appshot2.jpg" alt="" loading="lazy">
+    <img src="../brand/appshot3.jpg" alt="" loading="lazy">
+  </div>
+
+  <div class="me">
+    <img src="../brand/avatar-320.jpg" alt="Ido — Mr Guru Fit">
+    <div>
+      <b data-t="me_t"></b>
+      <p><span data-t="me_p"></span> <a href="../" data-t="me_a"></a></p>
+    </div>
+  </div>
+
+  <div class="install" id="install">
+    <h2 data-th="i_h2"></h2>
+    <p class="promise" data-th="i_promise"></p>
+    <div class="timer" id="tmr">
+      <span><b id="td">0</b><small data-t="t_d"></small></span>
+      <span><b id="th">0</b><small data-t="t_h"></small></span>
+      <span><b id="tm">0</b><small data-t="t_m"></small></span>
+      <span><b id="ts">0</b><small data-t="t_s"></small></span>
+    </div>
+    <a class="step" href="https://groups.google.com/g/scan-log-testers" target="_blank" rel="noopener">
+      <span class="n">1</span><span><span data-t="s1"></span><small data-t="s1s"></small></span></a>
+    <a class="step main" href="https://play.google.com/apps/testing/fit.mrguru.scanlog" target="_blank" rel="noopener">
+      <span class="n">2</span><span><span data-t="s2"></span><small data-t="s2s"></small></span></a>
+    <div class="alt">
+      <a href="../app/download.html" data-t="alt_apk"></a> · <a href="../app/?app=1" data-t="alt_web"></a>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../privacy/" data-t="ft_priv"></a> · <a href="../" data-t="ft_story"></a><br>
+    <span data-t="ft_med"></span>
+  </footer>
+</div>
+
+<div class="stick" id="stick">
+  <span><b id="smini">—</b><small data-t="st_s"></small></span>
+  <a href="#install" data-t="st_cta"></a>
+</div>
+
+<script>
+const TXT = {
+ "__title": {
+  en: "Scan & Log — the free app", he: "Scan & Log — האפליקציה",
+  ru: "Scan & Log — бесплатное приложение", ar: "Scan & Log — التطبيق المجاني"
+ },
+ h1a: { en: "SCAN IT.", he: "סורקים.", ru: "СКАНИРУЙ.", ar: "امسح." },
+ h1b: { en: "KNOW IT.", he: "יודעים.", ru: "ЗНАЙ.", ar: "اعرف." },
+ h1c: { en: "LOSE IT.", he: "יורדים.", ru: "ХУДЕЙ.", ar: "انزل." },
+ chip: {
+  en: "Identified: 7 kg down in 24 days, on camera",
+  he: "זוהה: 7 ק\"ג פחות ב־24 יום, מול המצלמה",
+  ru: "Распознано: минус 7 кг за 24 дня, на камеру",
+  ar: "تم التعرف: 7 كغم أقل في 24 يوماً، أمام الكاميرا"
+ },
+ cta1: {
+  en: "Get it free now <small>less than a minute · no card · no catch</small>",
+  he: "התקינו חינם עכשיו <small>פחות מדקה · בלי כרטיס · בלי אותיות קטנות</small>",
+  ru: "Установить бесплатно <small>меньше минуты · без карты · без подвоха</small>",
+  ar: "ثبّته مجاناً الآن <small>أقل من دقيقة · بلا بطاقة · بلا شروط خفية</small>"
+ },
+ trust: {
+  en: "Android via Google Play (open beta) · iPhone: web version",
+  he: "אנדרואיד דרך גוגל פליי (בטא פתוחה) · אייפון: גרסת ווב",
+  ru: "Android через Google Play (открытая бета) · iPhone: веб-версия",
+  ar: "أندرويد عبر Google Play (بيتا مفتوحة) · آيفون: نسخة الويب"
+ },
+ dchip: {
+  en: "Free for life if you join by Sep 30 — closes in",
+  he: "חינם לכל החיים למצטרפים עד 30.9 — נסגר בעוד",
+  ru: "Бесплатно навсегда до 30.09 — закроется через",
+  ar: "مجاناً مدى الحياة حتى 30.9 — يُغلق خلال"
+ },
+ p1: { en: "kg on camera, day 1 → 24", he: "ק\"ג מול מצלמה, יום 1 ← 24", ru: "кг на камеру, день 1 → 24", ar: "كغم أمام الكاميرا، اليوم 1 ← 24" },
+ p2: { en: "daily episodes, none skipped", he: "פרקים יומיים, אפס דילוגים", ru: "эпизодов подряд, без пропусков", ar: "حلقة يومية، بلا تفويت" },
+ p3: { en: "guesses. Every gram is scanned", he: "ניחושים. כל גרם נסרק", ru: "догадок. Каждый грамм отсканирован", ar: "تخمينات. كل غرام يُمسح" },
+ f_h2: { en: "What it <em>does</em>", he: "מה היא <em>עושה</em>", ru: "Что оно <em>умеет</em>", ar: "ماذا <em>يفعل</em>" },
+ f1t: { en: "One-second scan", he: "סריקה של שנייה", ru: "Скан за секунду", ar: "مسح في ثانية" },
+ f1p: {
+  en: "Point at a barcode — calories, protein, carbs and fat appear. Israeli + world databases, plus a community catalog that grows daily.",
+  he: "מכוונים לברקוד — קלוריות, חלבון, פחמימות ושומן על המסך. מאגר ישראלי + עולמי, וקטלוג קהילה שגדל כל יום.",
+  ru: "Наведите на штрихкод — калории, белки, углеводы и жиры на экране. Израильская и мировая базы плюс растущий каталог сообщества.",
+  ar: "وجّه الكاميرا نحو الباركود — السعرات والبروتين والكربوهيدرات والدهون على الشاشة. قاعدة إسرائيلية وعالمية وكتالوج مجتمعي ينمو يومياً."
+ },
+ f2t: { en: "The calorie bank", he: "בנק הקלוריות", ru: "Банк калорий", ar: "بنك السعرات" },
+ f2p: {
+  en: "Daily target, live deficit, and how much is left to burn — the exact formula dropping my weight on camera.",
+  he: "יעד יומי, גירעון חי, וכמה נשאר לשרוף — בדיוק הנוסחה שמורידה אותי מול המצלמה.",
+  ru: "Дневная цель, живой дефицит и сколько осталось сжечь — та самая формула, что снижает мой вес на камеру.",
+  ar: "هدف يومي، عجز مباشر، وكم تبقى للحرق — نفس المعادلة التي تُنزل وزني أمام الكاميرا."
+ },
+ f3t: { en: "Talks to your watch", he: "מתחבר לשעון שלך", ru: "Дружит с часами", ar: "يتصل بساعتك" },
+ f3p: {
+  en: "Weight, steps and burned calories flow in from your smartwatch through Health Connect.",
+  he: "משקל, צעדים וקלוריות שנשרפו נכנסים לבד מהשעון החכם דרך Health Connect.",
+  ru: "Вес, шаги и сожжённые калории приходят сами с умных часов через Health Connect.",
+  ar: "الوزن والخطوات والسعرات المحروقة تصل تلقائياً من ساعتك الذكية عبر Health Connect."
+ },
+ f4t: { en: "Your data follows you", he: "הנתונים שלך איתך", ru: "Данные всегда с вами", ar: "بياناتك معك" },
+ f4p: {
+  en: "Cloud backup with your Google account — switch phones, keep everything. In four languages.",
+  he: "גיבוי בענן עם חשבון גוגל — מחליפים טלפון והכל נשאר. וב־4 שפות.",
+  ru: "Облачная копия с Google-аккаунтом — смените телефон, всё останется. На четырёх языках.",
+  ar: "نسخ احتياطي سحابي بحساب Google — بدّل هاتفك ويبقى كل شيء. وبأربع لغات."
+ },
+ me_t: { en: "I'm Ido. I built it because I was done guessing.", he: "אני עידו. בניתי אותה כי נמאס לי לנחש.", ru: "Я Идо. Я сделал его, потому что устал гадать.", ar: "أنا عيدو. صنعته لأنني سئمت التخمين." },
+ me_p: {
+  en: "I'm losing 25 kg on camera, one episode a day. Every gram you see in the videos goes through this app, and I improve it daily from what users write me.",
+  he: "אני יורד 25 ק\"ג מול מצלמה, פרק כל יום. כל גרם שאתם רואים בסרטונים עובר דרך האפליקציה הזאת, ואני משפר אותה כל יום לפי מה שאתם כותבים לי.",
+  ru: "Я сбрасываю 25 кг на камеру, по эпизоду в день. Каждый грамм в видео проходит через это приложение, и я улучшаю его ежедневно по отзывам.",
+  ar: "أنزل 25 كغم أمام الكاميرا، حلقة كل يوم. كل غرام تراه في الفيديوهات يمر عبر هذا التطبيق، وأطوّره يومياً مما يكتبه لي المستخدمون."
+ },
+ me_a: { en: "The full story →", he: "לסיפור המלא ←", ru: "Вся история →", ar: "القصة الكاملة ←" },
+ i_h2: { en: "In by Sep 30 — <em>yours for life</em>", he: "נכנסים עד 30.9 — <em>שלכם לנצח</em>", ru: "Успей до 30.09 — <em>твоё навсегда</em>", ar: "انضم حتى 30.9 — <em>لك مدى الحياة</em>" },
+ i_promise: {
+  en: "Everyone who joins the beta keeps the app <b>free for life</b> — every future update and upgrade included. Two quick steps with your Google account:",
+  he: "מי שנכנס לבטא שומר את האפליקציה <b>חינם לכל החיים</b> — כולל כל עדכון ושדרוג עתידי. שני צעדים קצרים עם חשבון הגוגל:",
+  ru: "Каждый участник беты получает приложение <b>бесплатно навсегда</b> — включая все будущие обновления. Два быстрых шага с Google-аккаунтом:",
+  ar: "كل من ينضم إلى البيتا يحتفظ بالتطبيق <b>مجاناً مدى الحياة</b> — شاملاً كل تحديث وترقية قادمة. خطوتان سريعتان بحساب Google:"
+ },
+ t_d: { en: "days", he: "ימים", ru: "дней", ar: "أيام" },
+ t_h: { en: "hrs", he: "שעות", ru: "часов", ar: "ساعات" },
+ t_m: { en: "min", he: "דקות", ru: "минут", ar: "دقائق" },
+ t_s: { en: "sec", he: "שניות", ru: "секунд", ar: "ثوانٍ" },
+ s1: { en: "Join the testers group", he: "מצטרפים לקבוצת הטסטרים", ru: "Вступить в группу тестеров", ar: "انضم إلى مجموعة المختبِرين" },
+ s1s: { en: "one click with Google", he: "קליק אחד עם גוגל", ru: "один клик с Google", ar: "نقرة واحدة بحساب Google" },
+ s2: { en: "Get it on Google Play", he: "מורידים מגוגל פליי", ru: "Скачать в Google Play", ar: "حمّله من Google Play" },
+ s2s: { en: "updates arrive automatically", he: "עדכונים מגיעים לבד", ru: "обновления приходят сами", ar: "التحديثات تصل تلقائياً" },
+ alt_apk: { en: "Direct APK download", he: "הורדה ישירה (APK)", ru: "Прямое скачивание APK", ar: "تنزيل مباشر APK" },
+ alt_web: { en: "iPhone or computer: open the web version", he: "אייפון או מחשב: לגרסת הווב", ru: "iPhone или ПК: веб-версия", ar: "آيفون أو حاسوب: نسخة الويب" },
+ ft_priv: { en: "Privacy", he: "פרטיות", ru: "Конфиденциальность", ar: "الخصوصية" },
+ ft_story: { en: "100 days on camera", he: "100 ימים מול המצלמה", ru: "100 дней на камеру", ar: "100 يوم أمام الكاميرا" },
+ ft_med: { en: "Not medical advice.", he: "לא ייעוץ רפואי.", ru: "Не является медицинской рекомендацией.", ar: "ليست نصيحة طبية." },
+ st_s: { en: "free for life — beta closes", he: "חינם לכל החיים — הבטא נסגרת", ru: "бесплатно навсегда — бета закроется", ar: "مجاناً مدى الحياة — البيتا تُغلق" },
+ st_cta: { en: "Install free", he: "התקנה חינם", ru: "Установить", ar: "ثبّت مجاناً" },
+ closed_h2: { en: "The beta is <em>closed</em>", he: "הבטא <em>נסגרה</em>", ru: "Бета <em>закрыта</em>", ar: "<em>أُغلقت</em> البيتا" },
+ closed_p: {
+  en: "Beta spots are taken. Join the email list on the main site and be first in line for the full release.",
+  he: "מקומות הבטא נתפסו. הירשמו למייל באתר הראשי ותהיו ראשונים בתור לשחרור המלא.",
+  ru: "Места в бете заняты. Подпишитесь на почту на главном сайте — будете первыми в очереди.",
+  ar: "امتلأت أماكن البيتا. سجّل بريدك في الموقع الرئيسي لتكون أول من يحصل على الإصدار الكامل."
+ }
+};
+
+const LANGS = ["en", "he", "ru", "ar"], RTL = { he: 1, ar: 1 };
+let L = "he";
+try { L = localStorage.getItem("mgf_lang") || "he"; } catch (e) {}
+if (LANGS.indexOf(L) < 0) L = "he";
+const tv = v => (v && (v[L] || v.en)) || "";
+
+function paint() {
+  document.documentElement.lang = L;
+  document.documentElement.dir = RTL[L] ? "rtl" : "ltr";
+  document.querySelectorAll("[data-t]").forEach(el => { const v = TXT[el.dataset.t]; if (v) el.textContent = tv(v); });
+  document.querySelectorAll("[data-th]").forEach(el => { const v = TXT[el.dataset.th]; if (v) el.innerHTML = tv(v); });
+  document.title = tv(TXT.__title);
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === L));
+}
+document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => {
+  L = b.dataset.l;
+  try { localStorage.setItem("mgf_lang", L); } catch (e) {}
+  paint();
+}));
+
+/* The deadline is real: the testers group closes for joining at the end of
+   Sep 30, Israel time. Past zero the page sells the waitlist instead. */
+const BETA_CLOSE = Date.parse("2026-09-30T23:59:59+03:00");
+const $ = id => document.getElementById(id);
+function tick() {
+  let left = BETA_CLOSE - Date.now();
+  if (left <= 0) {
+    document.querySelector(".install h2").innerHTML = tv(TXT.closed_h2);
+    document.querySelector(".promise").textContent = tv(TXT.closed_p);
+    $("tmr").style.display = "none";
+    document.querySelectorAll(".step").forEach(s => s.style.display = "none");
+    document.querySelector(".dchip").style.display = "none";
+    $("stick").style.display = "none";
+    return;
+  }
+  left = Math.floor(left / 1000);
+  const dd = Math.floor(left / 86400);
+  const hh = String(Math.floor(left % 86400 / 3600)).padStart(2, "0");
+  const mm = String(Math.floor(left % 3600 / 60)).padStart(2, "0");
+  const ss = String(left % 60).padStart(2, "0");
+  $("td").textContent = dd; $("th").textContent = hh; $("tm").textContent = mm; $("ts").textContent = ss;
+  $("dmini").textContent = $("smini").textContent = dd + ":" + hh + ":" + mm + ":" + ss;
+  setTimeout(tick, 1000);
+}
+
+/* sticky CTA appears once the hero CTA scrolls away, hides over the install block */
+const stick = $("stick");
+const io = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.target.className.indexOf("bigcta") >= 0) stick.classList.toggle("on", !e.isIntersecting && Date.now() < BETA_CLOSE);
+    if (e.target.id === "install" && e.isIntersecting) stick.classList.remove("on");
+  });
+}, { threshold: 0.1 });
+io.observe(document.querySelector(".bigcta"));
+io.observe($("install"));
+
+paint();
+tick();
+</script>
+<script src="/traffic.js" defer></script>
+</body>
+</html>
