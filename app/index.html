@@ -3228,7 +3228,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.102";
+const APP_BUILD = "2026.09.11.103";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3879,7 +3879,12 @@ async function startScan() {
     // this out and fall back to it instead of leaving a frozen black box.
     let timedOut = false;
     const gum = navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }, audio: false
+      // continuous autofocus, requested here too - some browsers only honour a
+      // focus mode set at getUserMedia time, others only via applyConstraints
+      // after the stream exists (both are tried below); without it a phone can
+      // default to a fixed/slow focus that never sharpens on a small, close-up
+      // barcode (Ido, 2026-09-11: "יש ברקודים ממש קטנים וזה לא מצליח לתפוס")
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, focusMode: { ideal: "continuous" } }, audio: false
     }).then(s => {
       if (timedOut) { s.getTracks().forEach(t => t.stop()); return null; }
       return s;
@@ -3928,6 +3933,12 @@ async function startScan() {
     const track = stream.getVideoTracks()[0];
     const caps = (track.getCapabilities && track.getCapabilities()) || {};
     if (caps.torch || IN_APK) $("torchBtn").classList.add("avail");
+    // belt-and-suspenders: re-assert continuous autofocus once the track
+    // actually exists, for browsers that ignore a focusMode requested inside
+    // getUserMedia itself but do honour applyConstraints afterwards
+    if (caps.focusMode && caps.focusMode.includes("continuous")) {
+      track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+    }
   } catch { if (IN_APK) $("torchBtn").classList.add("avail"); }
   loop();
 }
