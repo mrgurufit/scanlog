@@ -3,76 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scan &amp; Log — הורדה לאנדרואיד</title>
+<title>Scan &amp; Log</title>
 <link rel="icon" href="icon-192.png">
+<!-- The direct-APK page was retired on 2026-09-11 (his call: Google Play only,
+     every install must count toward the 12-tester production gate). This
+     address was shared on WhatsApp and is linked from installed copies of the
+     app, so it forwards to the sales landing instead of going dark. -->
+<meta http-equiv="refresh" content="0; url=/get/">
+<script>location.replace("/get/");</script>
 <style>
-  :root { --bg:#0d0f14; --panel:#161a22; --panel2:#1d2330; --line:#2a3242; --text:#f2f4f8; --muted:#8a93a6; --accent:#ffd400; --green:#2ecc71; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:radial-gradient(1200px 600px at 50% -10%, #1b2130 0%, var(--bg) 60%); color:var(--text);
-    font-family:-apple-system,Segoe UI,Roboto,Arial,"Noto Sans Hebrew",sans-serif; line-height:1.65; min-height:100vh; }
-  .wrap { max-width:520px; margin:0 auto; padding:36px 20px 60px; text-align:center; }
-  .app-icon { width:96px; height:96px; border-radius:22px; box-shadow:0 10px 30px rgba(0,0,0,.5); }
-  h1 { font-size:26px; margin:16px 0 2px; }
-  .tag { color:var(--muted); font-size:15px; margin-bottom:26px; }
-  .dl { display:block; background:var(--accent); color:#141005; font-weight:800; font-size:19px; text-decoration:none;
-    padding:17px; border-radius:14px; margin:8px 0; box-shadow:0 8px 22px rgba(255,212,0,.25); }
-  .dl small { display:block; font-weight:600; font-size:12px; opacity:.7; margin-top:2px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px 18px; margin:22px 0; text-align:right; }
-  .card h2 { font-size:16px; margin:0 0 10px; color:var(--accent); }
-  ol { margin:0; padding-inline-start:20px; }
-  ol li { margin:7px 0; font-size:15px; color:#dfe3ea; }
-  .feat { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:18px 0; }
-  .feat span { background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:7px 13px; font-size:13px; color:#cfd6e2; }
-  .note { color:var(--muted); font-size:13px; margin-top:8px; }
-  a.link { color:var(--accent); }
-  .foot { margin-top:34px; color:var(--muted); font-size:12px; }
+  body { margin:0; background:#0A0C11; color:#8D97AB; min-height:100vh;
+         display:flex; align-items:center; justify-content:center;
+         font-family:"Rubik",-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+  a { color:#FFD21E; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <img class="app-icon" src="icon-512.png" alt="Scan & Log">
-  <h1>Scan &amp; Log</h1>
-  <div class="tag">סורקים ברקוד, מקבלים קלוריות — ומגיעים ליעד.</div>
-
-  <div class="feat">
-    <span>📷 סריקת ברקוד</span><span>🍎 מאגר מוצרים משותף</span><span>🔥 מעקב קלוריות</span><span>☁️ גיבוי בענן</span>
-  </div>
-
-  <a class="dl" href="https://play.google.com/apps/testing/fit.mrguru.scanlog" target="_blank" rel="noopener">▶ דרך Google Play (מומלץ)<small>בטא פתוחה · מתעדכן אוטומטית</small></a>
-
-  <div class="card">
-    <h2>התקנה דרך Google Play (הדרך המומלצת)</h2>
-    <ol>
-      <li>מצטרפים לקבוצת הטסטרים בלחיצה אחת: <a class="link" href="https://groups.google.com/g/scan-log-testers" target="_blank" rel="noopener">קבוצת scan-log-testers</a> (עם חשבון הגוגל שלך).</li>
-      <li>לוחצים על <b>דרך Google Play</b> למעלה ומאשרים הצטרפות לבדיקה.</li>
-      <li>מתקינים מגוגל פליי כרגיל. העדכונים מגיעים אוטומטית.</li>
-    </ol>
-    <div class="note">כל מצטרף לבטא מקרב אותנו לשחרור המלא בחנות — תודה 🙏</div>
-  </div>
-
-  <a class="dl" style="background:var(--panel2);color:var(--text);box-shadow:none;border:1px solid var(--line)" href="ScanLog.apk" download>⬇️ הורדה ישירה<small>קובץ APK · גרסה 1.36</small></a>
-
-  <div class="card">
-    <h2>התקנה ישירה (30 שניות)</h2>
-    <ol>
-      <li>לחץ על <b>הורדה ישירה</b> למעלה.</li>
-      <li>פתח את הקובץ שירד (מגיע לתיקיית ההורדות).</li>
-      <li>אם יופיע חלון "התקנה ממקור לא ידוע" — אשר <b>"אפשר מהמקור הזה"</b> ולחץ שוב.</li>
-      <li>לחץ <b>התקן</b> → <b>פתח</b>. זהו!</li>
-    </ol>
-    <div class="note">בטוח לחלוטין — זו גרסת בדיקה חתומה של האפליקציה. אנדרואיד רק מוודא שאתה מאשר התקנה מחוץ לחנות.</div>
-  </div>
-
-  <div class="card">
-    <h2>עוזרים לנו להשתפר 🙏</h2>
-    <p style="margin:0;font-size:15px;color:#dfe3ea">זו גרסת בדיקה. מצאת באג? חסר מוצר? רעיון? יש באפליקציה כפתור <b>"✉️ כתוב לנו"</b> בתחתית — כל פנייה מגיעה אלינו ישירות.</p>
-  </div>
-
-  <div class="foot">
-    Scan &amp; Log · <a class="link" href="privacy.html">מדיניות פרטיות</a><br>
-    לאייפון / דפדפן: <a class="link" href="./?app=1">פתח את גרסת הווב</a>
-  </div>
-</div>
-<script src="/traffic.js" defer></script>
+<p><a href="/get/">ממשיכים לעמוד ההורדה ←</a></p>
 </body>
 </html>
