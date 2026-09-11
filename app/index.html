@@ -3166,7 +3166,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.98";
+const APP_BUILD = "2026.09.11.99";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4086,7 +4086,7 @@ const SEARCH_PROXY = "https://hook.us2.make.com/wfvh3tmswu9cgl151p3ucab080okz9hb
 let searchToken = 0, lastResults = [];
 // when the entry was opened by picking a manual-search result, remember the
 // query + list so closing the entry (✕) returns to that exact list (Ido req)
-let entryFromSearch = false, searchReturn = null;
+let entryFromSearch = false, searchReturn = null, entryFromCatalog = false;
 
 function localMatches(q) {
   const res = [];
@@ -5051,7 +5051,10 @@ function persistPortions() {
   if (!name || !k) return;
   PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, {
     name, kcal: k, pro: num($("p100pro").value), carb: num($("p100carb").value), fat: num($("p100fat").value),
-    photo: (PRODUCTS[code] && PRODUCTS[code].photo) || (/^(data:|https:)/.test(shotSrc()) ? shotSrc() : ""),
+    // the CURRENT shot wins - it may be a photo just swapped in this same
+    // session; only fall back to whatever was already stored if the shot was
+    // cleared. (Was backwards: an existing photo always beat a fresh one.)
+    photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : ((PRODUCTS[code] && PRODUCTS[code].photo) || ""),
     portions: entryPortions.slice(),
   });
   store.set(LS_PROD, PRODUCTS);
@@ -5160,6 +5163,7 @@ function addEntry() {
     $("entry").classList.remove("on"); document.body.style.overflow = ""; pending = null;
     renderLog();
     msg("scanMsg", T("עודכן"), "ok");
+    if (entryFromCatalog) { entryFromCatalog = false; openCatalogPage(); }
     return;
   }
 
@@ -5212,6 +5216,7 @@ function addEntry() {
   pending = null;
   renderLog();
   msg("scanMsg", `${T("נוסף:")} ${name} · ${grams} ${T("ג׳")}`, "ok");
+  if (entryFromCatalog) { entryFromCatalog = false; openCatalogPage(); }
 }
 
 function report(day) {
@@ -5256,11 +5261,42 @@ $("manualBtn").addEventListener("click", () => {
   onBarcode(code.trim(), "");
 });
 function closeEntry() {
+  // ✕ from the catalog browse page means "done curating this product", not
+  // "discard" - save whatever is in the fields (no grams/log-row needed,
+  // unlike addEntry) and go back to the list instead of the main screen
+  // (Ido, 2026-09-11: a photo swapped here silently had nowhere to save to).
+  if (entryFromCatalog) {
+    entryFromCatalog = false;
+    persistCatalogEdit();
+    $("entry").classList.remove("on"); pending = null; editEntryId = null;
+    $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = "";
+    if (typeof scaleLast === "object") { scaleLast.filled = false; }
+    if ($("scaleLive")) $("scaleLive").style.display = "none";
+    openCatalogPage();
+    return;
+  }
   $("entry").classList.remove("on"); pending = null; editEntryId = null;
   $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = "";
   if (typeof scaleLast === "object") { scaleLast.filled = false; }
   if ($("scaleLive")) $("scaleLive").style.display = "none";
   if (entryFromSearch) { entryFromSearch = false; reopenSearch(); }   // ✕ from a search pick -> back to that list
+}
+// Save name/macros/photo/portions straight to the product, no grams or log
+// row required - mirrors persistPortions() but for any field, used when the
+// entry sheet was opened purely to curate a catalog product rather than log
+// a serving of it.
+function persistCatalogEdit() {
+  const code = pending && pending.barcode;
+  if (!/^\d{6,}$/.test(code || "")) return;
+  const name = $("pName").value.trim(), k = num($("p100kcal").value);
+  if (!name || !k) return;
+  PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, {
+    name, kcal: k, pro: num($("p100pro").value), carb: num($("p100carb").value), fat: num($("p100fat").value),
+    photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : ((PRODUCTS[code] && PRODUCTS[code].photo) || ""),
+    portions: entryPortions.slice(),
+  });
+  store.set(LS_PROD, PRODUCTS);
+  if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
 }
 // reopen the scanner in name-search mode and restore the exact list the user
 // picked from, so cancelling a product does not force a fresh manual search
@@ -5393,7 +5429,8 @@ function renderCatalogList() {
         photo: p.img || "", portions: Array.isArray(p.pt) ? p.pt : [], unit: p.u || 0,
         barcode: code, src: "מאגר",
       });
-      entryFromSearch = false;   // ✕ should just close, not reopen the scanner/search
+      entryFromSearch = false;   // ✕ should not reopen the scanner/search...
+      entryFromCatalog = true;  // ...it should save the edit and go back to this list instead
     });
   });
 }
