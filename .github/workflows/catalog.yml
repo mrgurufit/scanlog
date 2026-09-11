@@ -44,7 +44,7 @@ jobs:
 
           HOOK = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg"
           API = "https://us2.make.com/api/v2/data-stores/140664/data"
-          PAGE = 500          # 10000 was rejected with a bare 400
+          PAGE = 100          # the endpoint's own maximum: "Available maximum limit 100"
 
           # Cloudflare sits in front of make.com and answers Python's default
           # User-Agent with 403 "error code: 1010" - a browser-signature ban,
