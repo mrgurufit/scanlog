@@ -269,8 +269,11 @@
   .oiRow.oiTot b { color:var(--accentText); }
   .oiFoot { margin-top:12px; font-size:12px; color:var(--muted); line-height:1.8; }
   .oiFoot u { cursor:pointer; color:var(--accentText); }
-  .oiSub { font-size:11px; color:var(--muted); margin:-3px 0 6px; line-height:1.4; }
   .oiRow .oiInline { color:var(--text); font-weight:600; margin-inline-start:4px; }
+  .oiBmrRow { gap:8px; }
+  .oiBmrRow > span { display:flex; align-items:baseline; gap:5px; min-width:0; flex:1 1 auto; }
+  .oiCap { font-style:normal; font-size:10.5px; font-weight:400; opacity:.8; }
+  .oiBmrRow b { flex:0 0 auto; }
   .oiHcBtn { display:block; width:100%; margin-top:10px; padding:9px; border-radius:10px; font-family:inherit;
              background:#1d5c39; color:#d9ffe8; border:0; font-weight:700; font-size:13px; cursor:pointer; }
   .eprof { margin-top:9px; }
@@ -3010,8 +3013,7 @@ function openOutInfo() {
   const workMinutes = Number(d.workMinutes) || 0;
   const workKcal = Number(d.burnWork) || 0;
   const rows = [
-    `<div class="oiRow"><span>BMR</span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`,
-    `<div class="oiSub">${T("כמות הקלוריות שהגוף שלך שורף במנוחה")}</div>`,
+    `<div class="oiRow oiBmrRow"><span>BMR <i class="oiCap">${T("כמות הקלוריות שהגוף שלך שורף במנוחה")}</i></span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`,
     `<div class="oiRow"><span>👟 ${T("צעדים")} <b class="oiInline">${steps.toLocaleString("he-IL")}</b></span><b>${stepsKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
     `<div class="oiRow"><span>🏋️ ${T("אימון")} <b class="oiInline">${workMinutes.toLocaleString("he-IL")} ${T("דקות")}</b></span><b>${workKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
     `<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b id="oiTotalVal">${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
@@ -3353,7 +3355,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.9";
+const APP_BUILD = "2026.09.12.10";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
