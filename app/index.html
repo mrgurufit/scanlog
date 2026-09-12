@@ -269,6 +269,13 @@
   .oiRow.oiTot b { color:var(--accentText); }
   .oiFoot { margin-top:12px; font-size:12px; color:var(--muted); line-height:1.8; }
   .oiFoot u { cursor:pointer; color:var(--accentText); }
+  .oiSub { font-size:11px; color:var(--muted); margin:-3px 0 6px; line-height:1.4; }
+  .oiRow input[type=number] {
+    width:78px; text-align:center; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:5px 6px; font-size:13.5px; font-family:inherit; font-variant-numeric:tabular-nums;
+  }
+  .oiHcBtn { display:block; width:100%; margin-top:10px; padding:9px; border-radius:10px; font-family:inherit;
+             background:#1d5c39; color:#d9ffe8; border:0; font-weight:700; font-size:13px; cursor:pointer; }
   .eprof { margin-top:9px; }
   .eprof summary { cursor:pointer; font-size:12px; color:var(--muted); }
   .ehint { font-size:11px; color:var(--muted); line-height:1.7; margin-top:8px; }
@@ -681,7 +688,11 @@
   }
   #coach .coachtxt b { font-size:18px; }
   #coach .coachtxt p { font-size:14px; color:#c2cad8; margin:6px 0 0; }
-  body.coaching #fab { z-index:39; animation:coachpulse 1.5s ease-in-out infinite; }
+  body[data-coachtarget="fab"] #fab { z-index:39; animation:coachpulse 1.5s ease-in-out infinite; }
+  body[data-coachtarget="man"] #manBtn,
+  body[data-coachtarget="info"] #outInfo {
+    position:relative; z-index:39; border-radius:50%; animation:coachpulse 1.5s ease-in-out infinite;
+  }
   @keyframes coachpulse {
     0%,100% { box-shadow:0 6px 20px rgba(0,0,0,.55), 0 0 0 0 rgba(255,212,0,.55); }
     50% { box-shadow:0 6px 20px rgba(0,0,0,.55), 0 0 0 18px rgba(255,212,0,0); }
@@ -724,6 +735,15 @@
   #portionAdmin .padd { background:none; border:1px dashed var(--line); color:var(--muted); border-radius:9px;
                         padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; }
   #portionAdmin .pdelbtn { border-color:#5a2b2b; color:#c88; }
+  #portionAdmin .padd.hintGlow { border-style:solid; border-color:var(--accentText); color:var(--accentText);
+                                  animation:coachpulse 1.5s ease-in-out infinite; }
+  /* first-time nudge: shown once, the moment a new/unknown product lets a
+     regular user propose a portion of their own (Ido, 2026-09-12) */
+  .portHint { background:#1a2130; border:1px solid #4a3f1a; border-radius:10px;
+              padding:9px 11px; margin:6px 0; font-size:12px; line-height:1.5; }
+  .portHint b { display:block; margin-bottom:3px; font-size:12.5px; }
+  .portHint p { margin:0; color:var(--muted); }
+  .portHint .ex { color:var(--accentText); font-weight:700; }
   .foundtag {
     display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px;
     border-radius:999px; margin-bottom:10px;
@@ -974,7 +994,7 @@
 
   <div id="outInfoPop" class="outinfopop">
     <div class="outinfobox">
-      <div class="outinfohd"><b>🔥 מאיפה מגיע היצא</b><button type="button" id="outInfoClose" aria-label="סגור">✕</button></div>
+      <div class="outinfohd"><b>מאיפה הקלוריות שנשרפו?</b><button type="button" id="outInfoClose" aria-label="סגור">✕</button></div>
       <div id="outInfoBody"></div>
     </div>
   </div>
@@ -1142,6 +1162,7 @@
         <span id="qtyUnit" class="qtyunit">גרם</span>
       </div>
       <div id="scaleLive" style="display:none">⚖️ <b id="scaleLiveG">0</b> גרם <span id="scaleLiveHint">— הנח על המשקל…</span></div>
+      <div id="portionHint"></div>
       <div id="portionAdmin"></div>
     </div>
 
@@ -1398,8 +1419,10 @@ const I18N_EN = {
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Morning weight (kg)",
   "⚖️ משקל היום": "⚖️ Today's weight",
   "ק\"ג": "kg",
-  "🔥 מאיפה מגיע היצא": "🔥 Where 'out' comes from",
-  "פעילות (ידני)": "Activity (manual)",
+  "מאיפה הקלוריות שנשרפו?": "Where do the burned calories come from?",
+  "כמות הקלוריות שהגוף שלך שורף במנוחה": "The amount of calories your body burns at rest",
+  "מחובר ל-Health Connect": "Connected to Health Connect",
+  "לא מחובר ל-Health Connect": "Not connected to Health Connect",
   "אימון": "Workout",
   "סה\"כ יצא": "Total out",
   "הוזן ידנית": "Entered manually",
@@ -1442,6 +1465,9 @@ const I18N_EN = {
   "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
   "הוסף מנה (שם + גרמים)": "Add a portion (name + grams)",
   "הוסף מנה": "Add a portion",
+  "הוסיפו מנה למוצר הזה": "Add a portion for this product",
+  "לחצו על \"➕ הוסף מנה\" ותנו שם ומשקל בגרמים, לדוגמה": "Tap \"➕ Add a portion\" and give a name and weight in grams, for example",
+  "אפשר גם לצלם תמונה — הכל יעבור לאישור תוך יום.": "You can also take a photo - everything goes to approval within a day.",
   "עריכת רישום": "Edit entry",
   "💾 עדכן": "💾 Update",
   "➕ הוסף לרשימה": "➕ Add to the log",
@@ -1603,6 +1629,10 @@ const I18N_EN = {
   "דלג": "Skip",
   "זהו, אתה מוכן 🎉": "That is it, you are ready 🎉",
   "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך": "Tap the yellow button to scan your first product",
+  "✏️ קלוריות מפעילות גופנית": "✏️ Calories from physical activity",
+  "כאן אפשר להזין ידנית כמה קלוריות שרפת מפעילות (בלי ה-BMR), בלי לחכות לסנכרון": "Here you can manually enter how many calories you burned from activity (not counting BMR), without waiting for a sync",
+  "ⓘ מאיפה הקלוריות שנשרפו": "ⓘ Where the burned calories come from",
+  "לחץ כאן כדי לראות בדיוק מאיפה מגיע מספר השריפה היומי, ולערוך צעדים ואימון": "Tap here to see exactly where today's burn number comes from, and edit steps and training",
   "הזן גובה בסנטימטרים (100-230) ס\\\"מ": "Enter your height in centimetres (100-230)",
   "הזן את הגיל שלך (10-100)": "Enter your age (10-100)",
   "הזן את המשקל שלך היום": "Enter your weight today",
@@ -1873,8 +1903,10 @@ const I18N_AR = {
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ وزن الصباح (كغ)",
   "⚖️ משקל היום": "⚖️ وزن اليوم",
   "ק\"ג": "كغ",
-  "🔥 מאיפה מגיע היצא": "🔥 من أين يأتي الصادر",
-  "פעילות (ידני)": "نشاط (يدوي)",
+  "מאיפה הקלוריות שנשרפו?": "من أين تأتي السعرات المحروقة؟",
+  "כמות הקלוריות שהגוף שלך שורף במנוחה": "كمية السعرات التي يحرقها جسمك أثناء الراحة",
+  "מחובר ל-Health Connect": "متصل بـ Health Connect",
+  "לא מחובר ל-Health Connect": "غير متصل بـ Health Connect",
   "אימון": "تمرين",
   "סה\"כ יצא": "إجمالي الصادر",
   "הוזן ידנית": "أُدخل يدويًا",
@@ -1917,6 +1949,9 @@ const I18N_AR = {
   "בחר מנה או שקול בגרמים": "اختر حصة أو زِن بالغرام",
   "הוסף מנה (שם + גרמים)": "أضف حصة (اسم + غرام)",
   "הוסף מנה": "أضف حصة",
+  "הוסיפו מנה למוצר הזה": "أضف حصة لهذا المنتج",
+  "לחצו על \"➕ הוסף מנה\" ותנו שם ומשקל בגרמים, לדוגמה": "اضغط \"➕ أضف حصة\" وأدخل اسمًا ووزنًا بالغرام، مثلًا",
+  "אפשר גם לצלם תמונה — הכל יעבור לאישור תוך יום.": "يمكنك أيضًا تصوير صورة - كل شيء سيُرسل للموافقة خلال يوم.",
   "עריכת רישום": "تعديل السجل",
   "💾 עדכן": "💾 تحديث",
   "➕ הוסף לרשימה": "➕ أضف إلى السجل",
@@ -2075,6 +2110,10 @@ const I18N_AR = {
   "דלג": "تخطٍّ",
   "זהו, אתה מוכן 🎉": "هذا كل شيء، أنت جاهز 🎉",
   "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך": "اضغط الزر الأصفر لمسح منتجك الأول",
+  "✏️ קלוריות מפעילות גופנית": "✏️ سعرات من النشاط البدني",
+  "כאן אפשר להזין ידנית כמה קלוריות שרפת מפעילות (בלי ה-BMR), בלי לחכות לסנכרון": "هنا يمكنك إدخال عدد السعرات التي حرقتها من النشاط يدويًا (بدون BMR)، دون انتظار المزامنة",
+  "ⓘ מאיפה הקלוריות שנשרפו": "ⓘ من أين تأتي السعرات المحروقة",
+  "לחץ כאן כדי לראות בדיוק מאיפה מגיע מספר השריפה היומי, ולערוך צעדים ואימון": "اضغط هنا لترى بالضبط من أين يأتي رقم الحرق اليومي، ولتعديل الخطوات والتمرين",
   "הזן גובה בסנטימטרים (100-230) ס\"מ": "أدخل طولك بالسنتيمتر (100–230)",
   "הזן את הגיל שלך (10-100)": "أدخل عمرك (10–100)",
   "הזן את המשקל שלך היום": "أدخل وزنك اليوم",
@@ -2320,8 +2359,10 @@ const I18N_RU = {
   "⚖️ משקל הבוקר (ק\"ג)": "⚖️ Утренний вес (кг)",
   "⚖️ משקל היום": "⚖️ Вес сегодня",
   "ק\"ג": "кг",
-  "🔥 מאיפה מגיע היצא": "🔥 Из чего складывается расход",
-  "פעילות (ידני)": "Активность (вручную)",
+  "מאיפה הקלוריות שנשרפו?": "Откуда берутся сожжённые калории?",
+  "כמות הקלוריות שהגוף שלך שורף במנוחה": "Количество калорий, которое ваше тело сжигает в состоянии покоя",
+  "מחובר ל-Health Connect": "Подключено к Health Connect",
+  "לא מחובר ל-Health Connect": "Не подключено к Health Connect",
   "אימון": "Тренировка",
   "סה\"כ יצא": "Всего потрачено",
   "הוזן ידנית": "Введено вручную",
@@ -2364,6 +2405,9 @@ const I18N_RU = {
   "בחר מנה או שקול בגרמים": "Выберите порцию или взвесьте в граммах",
   "הוסף מנה (שם + גרמים)": "Добавить порцию (название + граммы)",
   "הוסף מנה": "Добавить порцию",
+  "הוסיפו מנה למוצר הזה": "Добавьте порцию для этого продукта",
+  "לחצו על \"➕ הוסף מנה\" ותנו שם ומשקל בגרמים, לדוגמה": "Нажмите «➕ Добавить порцию» и укажите название и вес в граммах, например",
+  "אפשר גם לצלם תמונה — הכל יעבור לאישור תוך יום.": "Можно также сфотографировать - всё уйдёт на проверку в течение дня.",
   "עריכת רישום": "Изменить запись",
   "💾 עדכן": "💾 Обновить",
   "➕ הוסף לרשימה": "➕ Добавить в дневник",
@@ -2522,6 +2566,10 @@ const I18N_RU = {
   "דלג": "Пропустить",
   "זהו, אתה מוכן 🎉": "Всё, вы готовы 🎉",
   "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך": "Нажмите жёлтую кнопку, чтобы отсканировать первый продукт",
+  "✏️ קלוריות מפעילות גופנית": "✏️ Калории от физической активности",
+  "כאן אפשר להזין ידנית כמה קלוריות שרפת מפעילות (בלי ה-BMR), בלי לחכות לסנכרון": "Здесь можно вручную указать, сколько калорий вы сожгли от активности (без BMR), не дожидаясь синхронизации",
+  "ⓘ מאיפה הקלוריות שנשרפו": "ⓘ Откуда берутся сожжённые калории",
+  "לחץ כאן כדי לראות בדיוק מאיפה מגיע מספר השריפה היומי, ולערוך צעדים ואימון": "Нажмите здесь, чтобы увидеть, откуда берётся дневное число расхода, и изменить шаги и тренировку",
   "הזן גובה בסנטימטרים (100-230) ס\"מ": "Введите рост в сантиметрах (100–230)",
   "הזן את הגיל שלך (10-100)": "Введите свой возраст (10–100)",
   "הזן את המשקל שלך היום": "Введите свой вес сегодня",
@@ -2905,31 +2953,57 @@ function renderEnergy(kcalIn) {
   $("enOut").textContent = e.out.toLocaleString("he-IL");
 }
 
-// the ⓘ popup: a pure-information breakdown of the "out" number for the day
+/* the ⓘ popup: a breakdown of the "out" number for the day, AND a place to
+   set steps/training directly by hand - not just a read-only explanation
+   (Ido, 2026-09-12). BMR stays fixed (it is the profile formula, not a daily
+   input); steps and training each get their own editable field, pre-filled
+   with whatever is already known (synced or previously typed) so editing is
+   a nudge, not starting from zero. Typing into either marks the day manual -
+   same d.activityManual flag the pencil button already used - but now the
+   breakdown (d.manSteps/d.manWork) survives independently of the synced
+   d.burnSteps/d.burnWork, so "חזרה לסנכרון" can still recover the real
+   synced numbers afterwards. */
 function openOutInfo() {
   const d = DAYDATA[viewDay] || {};
   const e = dayEnergy(viewDay, 0);   // in-independent: bmr, act, out
-  const manual = !!d.activityManual;
-  const rows = [`<div class="oiRow"><span>BMR</span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`];
-  if (manual) {
-    rows.push(`<div class="oiRow"><span>✍️ ${T("פעילות (ידני)")}</span><b>${e.act.toLocaleString("he-IL")}</b></div>`);
-  } else {
-    const s = Number(d.burnSteps) || 0, w = Number(d.burnWork) || 0;
-    rows.push(`<div class="oiRow"><span>👟 ${T("צעדים")}</span><b>${s.toLocaleString("he-IL")}</b></div>`);
-    rows.push(`<div class="oiRow"><span>🏋️ ${T("אימון")}</span><b>${w.toLocaleString("he-IL")}</b></div>`);
-  }
-  rows.push(`<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b>${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`);
-  const foot = [];
-  if (d.steps) foot.push(`👟 ${Number(d.steps).toLocaleString("he-IL")} ${T("צעדים")}`);
-  foot.push(manual
-    ? '✍️ ' + T("הוזן ידנית") + ' · <u id="oiSync">' + T("חזרה לסנכרון") + '</u>'
-    : ((d.burnSteps || d.burnWork) ? '🔄 ' + T("מסונכרן מ-Health Connect") : '⚪ ' + T("לא מסונכרן")));
-  $("outInfoBody").innerHTML = `<div class="oiRows">${rows.join("")}</div><div class="oiFoot">${foot.join("<br>")}</div>`;
+  const effSteps = d.manSteps != null ? d.manSteps : (Number(d.steps) || 0);
+  const effWork = d.manWork != null ? d.manWork : (Number(d.burnWork) || 0);
+  const rows = [
+    `<div class="oiRow"><span>BMR</span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`,
+    `<div class="oiSub">${T("כמות הקלוריות שהגוף שלך שורף במנוחה")}</div>`,
+    `<div class="oiRow"><span>👟 ${T("צעדים")}</span><input type="number" id="oiSteps" inputmode="numeric" value="${effSteps}"></div>`,
+    `<div class="oiRow"><span>🏋️ ${T("אימון")} (${T("קק\"ל")})</span><input type="number" id="oiWork" inputmode="numeric" value="${effWork}"></div>`,
+    `<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b id="oiTotalVal">${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
+  ];
+  const hcOn = !!localStorage.getItem("fl_hc");
+  const showConnect = !!HB() && !hcOn;
+  const foot = [hcOn ? "🔗 " + T("מחובר ל-Health Connect") : "⚪ " + T("לא מחובר ל-Health Connect")];
+  if (d.activityManual) foot.push('✍️ ' + T("הוזן ידנית") + ' · <u id="oiSync">' + T("חזרה לסנכרון") + '</u>');
+  let body = `<div class="oiRows">${rows.join("")}</div><div class="oiFoot">${foot.join("<br>")}</div>`;
+  if (showConnect) body += `<button type="button" class="oiHcBtn" id="oiHcBtn">${T("🩺 חבר ל-Health Connect")}</button>`;
+  $("outInfoBody").innerHTML = body;
+  const applyManual = () => {
+    const dd = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
+    const steps = num($("oiSteps").value), work = num($("oiWork").value);
+    dd.manSteps = steps; dd.manWork = work;
+    const w = dayEnergy(viewDay, 0).w || 105;   // same calibrated formula hcSync uses
+    dd.activity = Math.round(steps * w * 0.00048) + Math.round(work);
+    dd.activityManual = true;
+    store.set(LS_DAY, DAYDATA); scheduleAutoPush();
+    $("oiTotalVal").textContent = dayEnergy(viewDay, 0).out.toLocaleString("he-IL") + " " + T("קק\"ל");
+  };
+  $("oiSteps").addEventListener("input", applyManual);
+  $("oiWork").addEventListener("input", applyManual);
   const sy = document.getElementById("oiSync");
-  if (sy) sy.onclick = () => { clearManual(); closeOutInfo(); };
+  if (sy) sy.onclick = () => { clearManual(); openOutInfo(); };
+  const hb = document.getElementById("oiHcBtn");
+  if (hb) hb.onclick = () => { closeOutInfo(); openSettings(); hcConnect(); };
   $("outInfoPop").classList.add("on");
 }
-function closeOutInfo() { $("outInfoPop").classList.remove("on"); }
+function closeOutInfo() {
+  $("outInfoPop").classList.remove("on");
+  renderTotals();   // reflect any manual steps/training edits made while it was open
+}
 
 function saveDayData() {
   scheduleAutoPush();
@@ -2953,6 +3027,7 @@ function setManual(v) {
 function clearManual() {
   const d = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
   delete d.activityManual;
+  delete d.manSteps; delete d.manWork;
   const s = (Number(d.burnSteps) || 0) + (Number(d.burnWork) || 0);
   if (s) d.activity = s; else delete d.activity;
   store.set(LS_DAY, DAYDATA); scheduleAutoPush(); renderTotals();
@@ -3249,7 +3324,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.1";
+const APP_BUILD = "2026.09.12.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5104,8 +5179,14 @@ function effGrams() {
   const v = num($("grams").value);
   return selPortion >= 0 ? Math.round(v * curPortionG()) : Math.round(v);
 }
+// shown once ever, the first time a regular (non-admin) user reaches a
+// new/unknown product and can define its portion himself (Ido, 2026-09-12)
+const LS_PORTION_HINT = "fl_portion_hint_seen";
 function renderPortions() {
-  const admin = isAdmin();
+  // a new/unknown product is editable by anyone (it is crowdsourced, same
+  // gate as the name/macros fields) - a curated or verified-OFF product
+  // stays admin-only, exactly like entryEditable() already governs above
+  const canEditPortions = entryEditable();
   const sel = $("portionSel");
   sel.innerHTML = entryPortions.map((p, i) =>
     `<option value="${i}">${esc(p.n)} (${p.g} ${T("ג׳")})</option>`).join("")
@@ -5114,10 +5195,18 @@ function renderPortions() {
   // grams input shows only in weigh mode; for a portion it's the quantity
   $("qtyUnit").textContent = selPortion >= 0 ? T("יחידות") : T("גרם");
   $("grams").placeholder = selPortion >= 0 ? T("כמות") : T("כמה גרם?");
-  // admin can add a portion, and delete the one currently selected
+  const firstTime = canEditPortions && !isAdmin() && !localStorage.getItem(LS_PORTION_HINT);
+  $("portionHint").innerHTML = firstTime
+    ? `<div class="portHint"><b>💡 ${T("הוסיפו מנה למוצר הזה")}</b>
+        <p>${T('לחצו על "➕ הוסף מנה" ותנו שם ומשקל בגרמים, לדוגמה')}: <span class="ex">חטיף 80</span>.
+        ${T("אפשר גם לצלם תמונה — הכל יעבור לאישור תוך יום.")}</p></div>`
+    : "";
+  if (firstTime) localStorage.setItem(LS_PORTION_HINT, "1");
+  // anyone editing a new product can propose a portion (+ delete their own
+  // pick before saving); a curated/verified product stays locked for non-admins
   let adm = "";
-  if (admin) {
-    adm = `<button type="button" class="padd" id="paddBtn">➕ ${T("הוסף מנה")}</button>`;
+  if (canEditPortions) {
+    adm = `<button type="button" class="padd${firstTime ? " hintGlow" : ""}" id="paddBtn">➕ ${T("הוסף מנה")}</button>`;
     if (selPortion >= 0) adm += `<button type="button" class="padd pdelbtn" id="pdelBtn">🗑 ${T("מחק מנה זו")}</button>`;
   }
   $("portionAdmin").innerHTML = adm;
@@ -5158,7 +5247,12 @@ function persistPortions() {
     portions: entryPortions.slice(),
   });
   store.set(LS_PROD, PRODUCTS);
-  if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
+  // admin (or a verified OFF hit) publishes straight to everyone; a regular
+  // user proposing a portion on a new product queues for approval instead -
+  // the same one pending record already carries the photo, so both reach
+  // Ido's inbox together (Ido, 2026-09-12: "יחד עם התמונה שהועלתה והמנה")
+  if (isAdmin() || (pending && pending.fromDB)) sharedContribute(code, PRODUCTS[code]);
+  else pendingSubmit(code, PRODUCTS[code]);
 }
 // load a product's portions into the entry (migrates a legacy single unit)
 function setEntryProduct(portions, legacyUnit) {
@@ -5166,8 +5260,7 @@ function setEntryProduct(portions, legacyUnit) {
   if (!entryPortions.length && +legacyUnit > 0) entryPortions = [{ n: T("יחידה"), g: +legacyUnit }];
   selPortion = entryPortions.length ? 0 : -1;
   document.body.style.overflow = "hidden";
-  applyAdminLock();
-  renderPortions();
+  applyAdminLock();   // also re-renders the portion admin section (same gate)
 }
 
 /* Tapping a log row opens THIS popup to change how much was eaten (Ido,
@@ -5218,6 +5311,12 @@ function applyAdminLock() {
   // a new product can get a photo from anyone (it is crowdsourced); a curated
   // product's photo stays admin-only
   $("picBtn").style.display = editable ? "" : "none";
+  // the add-portion button/hint share this exact gate - without this, a
+  // barcode that resolves to a verified hit AFTER the first render (the
+  // catalog/OFF lookups in onBarcode() call applyAdminLock() again once they
+  // know) left the portion button showing stale, still-editable state
+  // (real bug caught in testing, 2026-09-12)
+  renderPortions();
 }
 
 function preview() {
@@ -5878,6 +5977,38 @@ function obRenderKg() {
   $("obBank").textContent = (obKg * 10000).toLocaleString("he-IL");
 }
 
+/* the end-of-onboarding tour: three stops, one tap each - the scan button,
+   then two things on the main energy card he'd otherwise never notice: the
+   pencil (manual activity, no BMR) and the ⓘ (where the burn number comes
+   from). Tapping the dark background OR the spotlighted element itself both
+   advance to the next stop; the element's own normal click still fires too,
+   same as the scan button always did (Ido, 2026-09-12). */
+const COACH_STEPS = ["fab", "man", "info"];
+const COACH_TEXT = {
+  fab: ["זהו, אתה מוכן 🎉", "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך"],
+  man: ["✏️ קלוריות מפעילות גופנית", "כאן אפשר להזין ידנית כמה קלוריות שרפת מפעילות (בלי ה-BMR), בלי לחכות לסנכרון"],
+  info: ["ⓘ מאיפה הקלוריות שנשרפו", "לחץ כאן כדי לראות בדיוק מאיפה מגיע מספר השריפה היומי, ולערוך צעדים ואימון"],
+};
+let coachIdx = 0;
+function coachRender() {
+  const key = COACH_STEPS[coachIdx];
+  document.body.dataset.coachtarget = key;
+  const [t, p] = COACH_TEXT[key];
+  document.querySelector("#coach .coachtxt b").textContent = T(t);
+  document.querySelector("#coach .coachtxt p").textContent = T(p);
+}
+function coachStart() {
+  coachIdx = 0;
+  document.body.classList.add("coaching");
+  $("coach").classList.add("on");
+  coachRender();
+}
+function coachAdvance() {
+  coachIdx++;
+  if (coachIdx >= COACH_STEPS.length) { obEndCoach(); return; }
+  coachRender();
+}
+
 function obFinish() {
   const firstLog = [...new Set(LOG.map(e => e.day))].sort()[0] || todayKey();
   BANK = { kg: obKg, total: obKg * 10000, startDay: firstLog, at: new Date().toISOString() };
@@ -5886,13 +6017,12 @@ function obFinish() {
   $("ob").classList.remove("on");
   document.body.style.overflow = "";
   renderLog();
-  // spotlight the scan button so the first product is one tap away
-  document.body.classList.add("coaching");
-  $("coach").classList.add("on");
+  coachStart();   // spotlight scan -> manual activity -> the ⓘ breakdown, in order
 }
 
 function obEndCoach() {
   document.body.classList.remove("coaching");
+  delete document.body.dataset.coachtarget;
   $("coach").classList.remove("on");
 }
 
@@ -5994,8 +6124,10 @@ $("obHc").addEventListener("click", async () => {
   $("obHcState").textContent = localStorage.getItem("fl_hc") ? T("מחובר ✓") : T("אפשר גם מאוחר יותר, בהגדרות");
   obHcGateRefresh();   // reveal the mandatory "המשך" button the moment the connection succeeds
 });
-$("coach").addEventListener("click", obEndCoach);
-$("fab").addEventListener("click", obEndCoach);
+$("coach").addEventListener("click", coachAdvance);
+$("fab").addEventListener("click", () => { if (document.body.dataset.coachtarget === "fab") coachAdvance(); });
+$("manBtn").addEventListener("click", () => { if (document.body.dataset.coachtarget === "man") coachAdvance(); });
+$("outInfo").addEventListener("click", () => { if (document.body.dataset.coachtarget === "info") coachAdvance(); });
 
 
 applyDir();
