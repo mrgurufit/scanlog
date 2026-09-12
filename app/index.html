@@ -3368,7 +3368,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.6";
+const APP_BUILD = "2026.09.12.7";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7098,22 +7098,29 @@ const SCALE_SVCS = ["ffb0", "fff0", "1910"];
 
 /* ---------------- glanceable dashboard notification (Android only) ----------------
    Ido, 2026-09-12: "כשמחליקים מלמעלה למטה" - pull the notification shade down
-   while the app is open and see the ring + in/out/bank numbers. Opt-in (off by
-   default; Android 13+ requires the user to grant notification permission
-   anyway). The web side owns every number and formats them; the native side
-   only draws the ring bitmap and posts/updates the one ongoing notification -
-   see HealthBridge.kt updateDashboardNotification/cancelDashboardNotification. */
+   while the app is open and see the ring + in/out/bank numbers. Confirmed
+   working on a real device, then made ON BY DEFAULT (his call) - so the
+   stored flag is now tri-state: "0" = explicitly turned off, "1" = explicitly
+   on, absent (never touched, including every pre-existing install before
+   this change) = on. The web side owns every number and formats them; the
+   native side only draws the ring bitmap and posts/updates the one ongoing
+   notification - see HealthBridge.kt updateDashboardNotification/
+   cancelDashboardNotification. */
 const LS_DASH_NOTIF = "fl_dashnotif";
+function dashNotifOn() { return localStorage.getItem(LS_DASH_NOTIF) !== "0"; }
 function dashNotifSupported() { const hb = HB(); return !!(hb && hb.updateDashboardNotification); }
 function updateDashNotifRow() {
   const show = dashNotifSupported();
   $("dashNotifRow").style.display = show ? "block" : "none";
-  if (show) $("dashNotifChk").checked = !!localStorage.getItem(LS_DASH_NOTIF);
+  if (show) $("dashNotifChk").checked = dashNotifOn();
 }
 let dashNotifLastKey = "";
+// stop retrying mid-session once the permission prompt has been declined,
+// so a denial doesn't re-trigger the system dialog on every single render
+let dashNotifPermDenied = false;
 async function updateDashboardNotif() {
   const hb = HB(); if (!hb || !hb.updateDashboardNotification) return;
-  if (!localStorage.getItem(LS_DASH_NOTIF)) return;
+  if (!dashNotifOn() || dashNotifPermDenied) return;
   const day = todayKey();
   const kcalIn = entriesFor(day).reduce((a, e) => a + computed(e).kcal, 0);
   const e = dayEnergy(day, kcalIn);
@@ -7141,6 +7148,7 @@ async function updateDashboardNotif() {
     // now shows the actual native error text instead of guessing.
     const msg = String((err && err.message) || err || "");
     if (msg === "need_notif_permission") {
+      dashNotifPermDenied = true;   // don't re-trigger the system prompt on every render this session
       $("dashNotifMsg").textContent = T("אשר התראות בחלון שנפתח, ואז סמן שוב.");
     } else {
       $("dashNotifMsg").textContent = T("שגיאה:") + " " + msg.slice(0, 280);
@@ -7150,10 +7158,11 @@ async function updateDashboardNotif() {
 $("dashNotifChk").addEventListener("change", async e => {
   if (e.target.checked) {
     localStorage.setItem(LS_DASH_NOTIF, "1");
-    dashNotifLastKey = "";   // force a real post even if the numbers are unchanged
+    dashNotifLastKey = ""; dashNotifPermDenied = false;   // a fresh manual retry always tries again
     await updateDashboardNotif();
   } else {
-    localStorage.removeItem(LS_DASH_NOTIF);
+    localStorage.setItem(LS_DASH_NOTIF, "0");
+    $("dashNotifMsg").textContent = "";
     const hb = HB(); if (hb && hb.cancelDashboardNotification) hb.cancelDashboardNotification().catch(() => {});
   }
 });
@@ -7385,7 +7394,7 @@ testModeBarInit();
     scaleListen(); scaleConnectTo(localStorage.getItem(LS_SCALE));
   }
   if (isSignedIn()) await cloudMergeSync();
-  if (localStorage.getItem(LS_DASH_NOTIF)) updateDashboardNotif();
+  updateDashboardNotif();   // on by default - the function itself checks the opt-out flag
 })();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
 // The tutorial ends by spotlighting the + button so the first scan is a
