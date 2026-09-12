@@ -270,10 +270,7 @@
   .oiFoot { margin-top:12px; font-size:12px; color:var(--muted); line-height:1.8; }
   .oiFoot u { cursor:pointer; color:var(--accentText); }
   .oiSub { font-size:11px; color:var(--muted); margin:-3px 0 6px; line-height:1.4; }
-  .oiRow input[type=number] {
-    width:78px; text-align:center; background:var(--panel2); border:1px solid var(--line); color:var(--text);
-    border-radius:8px; padding:5px 6px; font-size:13.5px; font-family:inherit; font-variant-numeric:tabular-nums;
-  }
+  .oiRow .oiInline { color:var(--text); font-weight:600; margin-inline-start:4px; }
   .oiHcBtn { display:block; width:100%; margin-top:10px; padding:9px; border-radius:10px; font-family:inherit;
              background:#1d5c39; color:#d9ffe8; border:0; font-weight:700; font-size:13px; cursor:pointer; }
   .eprof { margin-top:9px; }
@@ -1454,6 +1451,7 @@ const I18N_EN = {
   "מחובר ל-Health Connect": "Connected to Health Connect",
   "לא מחובר ל-Health Connect": "Not connected to Health Connect",
   "אימון": "Workout",
+  "דקות": "min",
   "סה\"כ יצא": "Total out",
   "הוזן ידנית": "Entered manually",
   "מסונכרן מ-Health Connect": "Synced from Health Connect",
@@ -1944,6 +1942,7 @@ const I18N_AR = {
   "מחובר ל-Health Connect": "متصل بـ Health Connect",
   "לא מחובר ל-Health Connect": "غير متصل بـ Health Connect",
   "אימון": "تمرين",
+  "דקות": "دقيقة",
   "סה\"כ יצא": "إجمالي الصادر",
   "הוזן ידנית": "أُدخل يدويًا",
   "מסונכרן מ-Health Connect": "مُزامَن من Health Connect",
@@ -2406,6 +2405,7 @@ const I18N_RU = {
   "מחובר ל-Health Connect": "Подключено к Health Connect",
   "לא מחובר ל-Health Connect": "Не подключено к Health Connect",
   "אימון": "Тренировка",
+  "דקות": "мин",
   "סה\"כ יצא": "Всего потрачено",
   "הוזן ידנית": "Введено вручную",
   "מסונכרן מ-Health Connect": "Синхронизировано из Health Connect",
@@ -2997,26 +2997,23 @@ function renderEnergy(kcalIn) {
   $("enOut").textContent = e.out.toLocaleString("he-IL");
 }
 
-/* the ⓘ popup: a breakdown of the "out" number for the day, AND a place to
-   set steps/training directly by hand - not just a read-only explanation
-   (Ido, 2026-09-12). BMR stays fixed (it is the profile formula, not a daily
-   input); steps and training each get their own editable field, pre-filled
-   with whatever is already known (synced or previously typed) so editing is
-   a nudge, not starting from zero. Typing into either marks the day manual -
-   same d.activityManual flag the pencil button already used - but now the
-   breakdown (d.manSteps/d.manWork) survives independently of the synced
-   d.burnSteps/d.burnWork, so "חזרה לסנכרון" can still recover the real
-   synced numbers afterwards. */
+/* the ⓘ popup: a read-only breakdown of the "out" number for the day
+   (Ido, 2026-09-12: back to read-only for now - no manual editing here).
+   BMR is the profile formula; steps/training show the real synced numbers
+   (count + minutes) next to their own calories, so the total is explained
+   line by line instead of just handing over one lump sum. */
 function openOutInfo() {
   const d = DAYDATA[viewDay] || {};
   const e = dayEnergy(viewDay, 0);   // in-independent: bmr, act, out
-  const effSteps = d.manSteps != null ? d.manSteps : (Number(d.steps) || 0);
-  const effWork = d.manWork != null ? d.manWork : (Number(d.burnWork) || 0);
+  const steps = Number(d.steps) || 0;
+  const stepsKcal = Number(d.burnSteps) || 0;
+  const workMinutes = Number(d.workMinutes) || 0;
+  const workKcal = Number(d.burnWork) || 0;
   const rows = [
     `<div class="oiRow"><span>BMR</span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`,
     `<div class="oiSub">${T("כמות הקלוריות שהגוף שלך שורף במנוחה")}</div>`,
-    `<div class="oiRow"><span>👟 ${T("צעדים")}</span><input type="number" id="oiSteps" inputmode="numeric" value="${effSteps}"></div>`,
-    `<div class="oiRow"><span>🏋️ ${T("אימון")} (${T("קק\"ל")})</span><input type="number" id="oiWork" inputmode="numeric" value="${effWork}"></div>`,
+    `<div class="oiRow"><span>👟 ${T("צעדים")} <b class="oiInline">${steps.toLocaleString("he-IL")}</b></span><b>${stepsKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
+    `<div class="oiRow"><span>🏋️ ${T("אימון")} <b class="oiInline">${workMinutes.toLocaleString("he-IL")} ${T("דקות")}</b></span><b>${workKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
     `<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b id="oiTotalVal">${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
   ];
   const hcOn = !!localStorage.getItem("fl_hc");
@@ -3026,18 +3023,6 @@ function openOutInfo() {
   let body = `<div class="oiRows">${rows.join("")}</div><div class="oiFoot">${foot.join("<br>")}</div>`;
   if (showConnect) body += `<button type="button" class="oiHcBtn" id="oiHcBtn">${T("🩺 חבר ל-Health Connect")}</button>`;
   $("outInfoBody").innerHTML = body;
-  const applyManual = () => {
-    const dd = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
-    const steps = num($("oiSteps").value), work = num($("oiWork").value);
-    dd.manSteps = steps; dd.manWork = work;
-    const w = dayEnergy(viewDay, 0).w || 105;   // same calibrated formula hcSync uses
-    dd.activity = Math.round(steps * w * 0.00048) + Math.round(work);
-    dd.activityManual = true;
-    store.set(LS_DAY, DAYDATA); scheduleAutoPush();
-    $("oiTotalVal").textContent = dayEnergy(viewDay, 0).out.toLocaleString("he-IL") + " " + T("קק\"ל");
-  };
-  $("oiSteps").addEventListener("input", applyManual);
-  $("oiWork").addEventListener("input", applyManual);
   const sy = document.getElementById("oiSync");
   if (sy) sy.onclick = () => { clearManual(); openOutInfo(); };
   const hb = document.getElementById("oiHcBtn");
@@ -3368,7 +3353,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.8";
+const APP_BUILD = "2026.09.12.9";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3897,6 +3882,11 @@ async function hcSync(force) {
     const workoutKcal = Math.round(r.workoutKcal || 0);
     const workout = (stepsKcal + workoutKcal) || null;
     if (workout && !d.activityManual && d.activity !== workout) { d.activity = workout; changed = true; }
+    // training minutes = sum of each session's real duration (start/end from
+    // Health Connect), shown next to "אימון" in the ⓘ breakdown popup
+    const workMinutes = Math.round((r.sessions || []).reduce((sum, s) =>
+      sum + Math.max(0, (Number(s.endMs) || 0) - (Number(s.startMs) || 0)), 0) / 60000);
+    if (d.workMinutes !== workMinutes) { d.workMinutes = workMinutes; changed = true; }
     // the synced split is stored even when he typed his own number - the
     // hint labels it מסונכרן, so it never claims to explain the manual value
     if (workout) {
