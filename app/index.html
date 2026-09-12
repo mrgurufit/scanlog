@@ -580,6 +580,16 @@
              padding:8px 10px; font-size:13px; font-weight:700;
              align-items:center; justify-content:center; gap:10px; }
   #betaBar.on { display:flex; }
+  /* admin "test as a regular user" mode - a constant reminder while it's on,
+     since the whole point is that the app looks and behaves like a fresh
+     install (including onboarding); z-index above #ob (90) so it survives
+     into the onboarding screens too (Ido, 2026-09-12) */
+  #testModeBar { display:none; position:fixed; top:0; left:0; right:0; z-index:10000;
+                 background:#3a2d5c; color:#e6dcff; border-bottom:1px solid #52407a;
+                 padding:8px 10px; font-size:13px; font-weight:700;
+                 align-items:center; justify-content:center; gap:10px; text-align:center; }
+  #testModeBar.on { display:flex; }
+  #testModeBar u { cursor:pointer; color:#ffd21e; }
   #betaBar a { background:var(--accent); color:#141005; text-decoration:none;
                border-radius:7px; padding:4px 11px; font-weight:800; white-space:nowrap; }
   #betaBar button { background:none; border:0; color:#8b93a3; font-size:19px;
@@ -865,6 +875,8 @@
 <body>
 
 <div id="updBar">🔄 יש גרסה חדשה — הקש לעדכון</div>
+
+<div id="testModeBar">🧪 מצב בדיקה כמשתמש רגיל <u id="testModeBack">חזור לחשבון האדמין</u></div>
 
 <div id="betaBar">
   <span>אפליקציית אנדרואיד + בטא חינם לכל החיים</span>
@@ -1260,6 +1272,13 @@
           </div>
         </div>
         <div id="acctRow" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"></div>
+        <div id="testUserRow" style="display:none;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button id="testUserBtn" type="button" style="background:#3a2d5c;color:#e6dcff;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🧪 בחון כמשתמש רגיל</button>
+          <span style="font-size:12px;color:#9aa3b2">מדמה התקנה חדשה כולל אונבורדינג — אפשר לחזור בכל רגע</span>
+        </div>
+        <div id="testUserBackRow" style="display:none;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button id="testUserBackBtn" type="button" style="background:#5c2d2d;color:#ffd9d9;border:0;border-radius:10px;padding:8px 14px;font-weight:700;font-family:inherit;font-size:13px">🔙 חזור לחשבון האדמין</button>
+        </div>
         <div class="row" style="margin-top:12px">
           <button id="copyBtn" class="primary wide">📋 העתק דוח</button>
         </div>
@@ -3324,7 +3343,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.2";
+const APP_BUILD = "2026.09.12.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6321,6 +6340,12 @@ function cloudPush() {   // debounced; called on every change to the user's data
 }
 function renderAccount() {
   if (typeof renderAdminIcons === "function") renderAdminIcons();   // header 🍎/📬 follow admin state
+  // "test as a regular user" - admin-only entry, but the way BACK must show
+  // regardless of admin status, since test mode signs out and looks/behaves
+  // like a brand-new non-admin user (Ido, 2026-09-12)
+  const inTest = !!localStorage.getItem(LS_ADMIN_SNAPSHOT);
+  const tRow = $("testUserRow"); if (tRow) tRow.style.display = (isAdmin() && !inTest) ? "flex" : "none";
+  const tBack = $("testUserBackRow"); if (tBack) tBack.style.display = inTest ? "flex" : "none";
   const row = $("acctRow"); if (!row) return;
   const hb = CB();
   if (!hb || !hb.googleSignIn) { row.style.display = "none"; return; }  // neither native bridge nor web SDK ready yet
@@ -6337,6 +6362,47 @@ function renderAccount() {
     const b = $("acctIn"); if (b) b.onclick = cloudSignIn;
   }
 }
+
+/* ---------------- admin: "test as a regular user" ----------------
+   Ido, 2026-09-12: preview the app exactly as a brand-new non-admin sees
+   it, onboarding included, without any risk to his real account. The whole
+   of localStorage is snapshotted, a REAL sign-out runs first (Firebase's own
+   session survives a localStorage clear - skipping the sign-out would let
+   the very next boot silently pull his real cloud data straight back down
+   via cloudMergeSync, defeating the fresh-install illusion entirely), then
+   everything is wiped except the snapshot + a marker flag. Coming back
+   restores the snapshot byte-for-byte and reloads - nothing is ever
+   recomputed or merged, so there is no path that can corrupt his real data. */
+const LS_TESTMODE = "fl_testmode", LS_ADMIN_SNAPSHOT = "fl_admin_snapshot";
+async function startTestAsUser() {
+  if (!confirm(T("תעבור למצב בדיקה כמשתמש רגיל - כולל אונבורדינג מחדש. הנתונים שלך נשמרים ותחזרו בדיוק כמו שהיו. להמשיך?"))) return;
+  const snap = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); snap[k] = localStorage.getItem(k); }
+  await cloudSignOut();
+  localStorage.clear();
+  localStorage.setItem(LS_ADMIN_SNAPSHOT, JSON.stringify(snap));
+  localStorage.setItem(LS_TESTMODE, "1");
+  location.reload();
+}
+function endTestAsUser() {
+  const raw = localStorage.getItem(LS_ADMIN_SNAPSHOT);
+  if (!raw) return;
+  let snap; try { snap = JSON.parse(raw); } catch { return; }
+  localStorage.clear();
+  Object.keys(snap).forEach(k => localStorage.setItem(k, snap[k]));
+  location.reload();
+}
+function testModeBarInit() {
+  if (!localStorage.getItem(LS_TESTMODE)) return;
+  $("testModeBar").classList.add("on");
+  // both banners are fixed to the exact same top strip - the promo banner is
+  // dismissible clutter next to "you are in test mode", which must win
+  $("betaBar").classList.remove("on");
+  $("betaBar").style.display = "none";
+}
+$("testUserBtn").addEventListener("click", startTestAsUser);
+$("testUserBackBtn").addEventListener("click", endTestAsUser);
+$("testModeBack").addEventListener("click", endTestAsUser);
 
 /* ---------------- admin inbox: products awaiting approval ----------------
    Ido, 2026-09-08: a mailbox for the admin only. Non-admins' hand-typed new
@@ -7198,6 +7264,7 @@ $("syncIn").addEventListener("click", async () => {
   else msg("syncMsg", T("ההתחברות לא הושלמה — נסה שוב."), "err");
 });
 
+testModeBarInit();
 (async () => {
   await cloudRefreshUser();
   maybeAskSignIn();
