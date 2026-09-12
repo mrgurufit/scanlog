@@ -240,6 +240,7 @@
   .enOutHead b { font-variant-numeric:tabular-nums; font-size:14px; margin-inline-start:4px; }
   .enIcon { width:26px; height:26px; padding:0; font-size:13px; border-radius:7px; flex:0 0 auto;
     background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+  .enIcon[hidden] { display:none; }   /* .enIcon's own display:flex otherwise beats the browser's [hidden] default */
   #hcMini.enIcon { background:#1d5c39; color:#d9ffe8; border:0; }
   #hcMini.enIcon:disabled { opacity:.5; }
   .enOutSub { font-size:10.5px; color:var(--muted); line-height:1.5; }
@@ -1204,7 +1205,7 @@
           <div class="enOutHead">
             <span class="enOutLbl">🔥 יצא</span>
             <button type="button" id="hcMini" class="enIcon" title="סנכרן פעילות">🔄</button>
-            <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית">✏️</button>
+            <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית" hidden>✏️</button>
             <button type="button" id="outInfo" class="enIcon" title="מאיפה מגיע היצא">ⓘ</button>
             <b id="enOut">0</b>
           </div>
@@ -3367,7 +3368,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.12";
+const APP_BUILD = "2026.09.12.13";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6037,13 +6038,15 @@ function obRenderKg() {
   $("obBank").textContent = (obKg * 10000).toLocaleString("he-IL");
 }
 
-/* the end-of-onboarding tour: three stops, one tap each - the scan button,
-   then two things on the main energy card he'd otherwise never notice: the
-   pencil (manual activity, no BMR) and the ⓘ (where the burn number comes
-   from). Tapping the dark background OR the spotlighted element itself both
-   advance to the next stop; the element's own normal click still fires too,
-   same as the scan button always did (Ido, 2026-09-12). */
-const COACH_STEPS = ["fab", "man", "info"];
+/* the end-of-onboarding tour: two stops, one tap each - the scan button,
+   then the ⓘ (where the burn number comes from). Tapping the dark background
+   OR the spotlighted element itself both advance to the next stop; the
+   element's own normal click still fires too, same as the scan button always
+   did (Ido, 2026-09-12). The "man" (pencil/manual-activity) stop is dropped
+   for now since the button itself is hidden - see #manBtn's `hidden`
+   attribute above; COACH_TEXT.man is left in place so restoring the stop
+   later is just adding "man" back into COACH_STEPS. */
+const COACH_STEPS = ["fab", "info"];
 const COACH_TEXT = {
   fab: ["זהו, אתה מוכן 🎉", "לחץ על הכפתור הצהוב כדי לסרוק את המוצר הראשון שלך"],
   man: ["✏️ קלוריות מפעילות גופנית", "כאן אפשר להזין ידנית כמה קלוריות שרפת מפעילות (בלי ה-BMR), בלי לחכות לסנכרון"],
@@ -6077,7 +6080,7 @@ function obFinish() {
   $("ob").classList.remove("on");
   document.body.style.overflow = "";
   renderLog();
-  coachStart();   // spotlight scan -> manual activity -> the ⓘ breakdown, in order
+  coachStart();   // spotlight scan -> the ⓘ breakdown, in order
 }
 
 function obEndCoach() {
