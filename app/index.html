@@ -1006,6 +1006,10 @@
       <h2>ברוך הבא ל-SCAN // LOG</h2>
       <p>סורק ברקוד, כותב כמה גרם, וזהו. האפליקציה מחשבת קלוריות וחלבון, עוקבת אחרי המשקל, ומראה לך בכל רגע כמה נשאר לך לשרוף עד היעד.</p>
       <p class="obsmall">שתי דקות של הגדרה, ואתה בפנים.</p>
+      <div class="obgrid">
+        <label>איך קוראים לך?<input type="text" id="obName" placeholder="השם שלך" autocomplete="name"></label>
+      </div>
+      <div class="oberr" id="obErrName"></div>
       <button class="obnext" data-go="1">יאללה, מתחילים ←</button>
     </section>
 
@@ -1602,6 +1606,9 @@ const I18N_EN = {
   "הזן גובה בסנטימטרים (100-230) ס\\\"מ": "Enter your height in centimetres (100-230)",
   "הזן את הגיל שלך (10-100)": "Enter your age (10-100)",
   "הזן את המשקל שלך היום": "Enter your weight today",
+  "איך קוראים לך?": "What's your name?",
+  "השם שלך": "Your name",
+  "הזן את השם שלך": "Enter your name",
   "⚙️ הגדרות": "⚙️ Settings",
   "הגדרות": "Settings",
   "סגור": "Close",
@@ -2071,6 +2078,9 @@ const I18N_AR = {
   "הזן גובה בסנטימטרים (100-230) ס\"מ": "أدخل طولك بالسنتيمتر (100–230)",
   "הזן את הגיל שלך (10-100)": "أدخل عمرك (10–100)",
   "הזן את המשקל שלך היום": "أدخل وزنك اليوم",
+  "איך קוראים לך?": "ما اسمك؟",
+  "השם שלך": "اسمك",
+  "הזן את השם שלך": "أدخل اسمك",
   "⚙️ הגדרות": "⚙️ الإعدادات",
   "הגדרות": "الإعدادات",
   "סגור": "إغلاق",
@@ -2515,6 +2525,9 @@ const I18N_RU = {
   "הזן גובה בסנטימטרים (100-230) ס\"מ": "Введите рост в сантиметрах (100–230)",
   "הזן את הגיל שלך (10-100)": "Введите свой возраст (10–100)",
   "הזן את המשקל שלך היום": "Введите свой вес сегодня",
+  "איך קוראים לך?": "Как вас зовут?",
+  "השם שלך": "Ваше имя",
+  "הזן את השם שלך": "Введите ваше имя",
   "⚙️ הגדרות": "⚙️ Настройки",
   "הגדרות": "Настройки",
   "סגור": "Закрыть",
@@ -3236,7 +3249,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.11.105";
+const APP_BUILD = "2026.09.12.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5818,6 +5831,13 @@ function obShow(n) {
 // gets its own tiny validator instead of one combined obSaveBasics(). No
 // silent fallback in any of them - an empty field must not inherit whoever
 // built the app; every new user states their own numbers.
+function obSaveName() {
+  const name = $("obName").value.trim();
+  if (!name) { $("obErrName").textContent = T("הזן את השם שלך"); return false; }
+  PROFILE.name = name; store.set(LS_PROF, PROFILE);
+  $("obErrName").textContent = "";
+  return true;
+}
 function obSaveAge() {
   const a = parseFloat($("obA").value);
   if (!(a > 10 && a < 100)) { $("obErrA").textContent = T("הזן את הגיל שלך (10-100)"); return false; }
@@ -5879,6 +5899,7 @@ function obEndCoach() {
 function obStart() {
   $("ob").classList.add("on");
   document.body.style.overflow = "hidden";
+  $("obName").value = "";
   $("obH").value = "";
   $("obA").value = "";
   $("obW").value = "";
@@ -5892,6 +5913,7 @@ document.querySelectorAll("#ob .obnext, #ob .obskip").forEach(b => {
     if (go === "done") { obFinish(); return; }
     const n = Number(go);
     const curStep = Number((b.closest(".obstep") || {}).dataset && b.closest(".obstep").dataset.step);
+    if (curStep === 0 && !obSaveName()) return;
     if (curStep === 2 && !obSaveAge()) return;
     if (curStep === 3 && !obSaveHeight()) return;
     if (curStep === 4 && !obSaveWeight()) return;

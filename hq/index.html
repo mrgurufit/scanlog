@@ -70,11 +70,11 @@
     <div class="tblwrap">
       <table id="tbl">
         <thead><tr>
-          <th>מייל</th><th>סנכרון אחרון</th><th>משקל</th>
+          <th>שם</th><th>מייל</th><th>סנכרון אחרון</th><th>משקל</th>
           <th>נכנסו היום</th><th>יצאו היום</th><th>מאזן היום</th>
           <th>ממוצע 7 ימים</th><th>רשומות</th>
         </tr></thead>
-        <tbody id="rows"><tr><td colspan="8" class="load">טוען…</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="9" class="load">טוען…</td></tr></tbody>
       </table>
     </div>
     <p style="color:var(--muted);font-size:11.5px">מאזן שלילי (ירוק) = גירעון · חיובי (אדום) = עודף · "יצאו" = BMR לפי הפרופיל + אימון, בדיוק כמו באפליקציה. לחיצה על שורה פותחת 14 ימים אחורה.</p>
@@ -192,7 +192,7 @@ const balCell = b => b == null ? '<span class="na">—</span>'
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 async function load() {
-  $("rows").innerHTML = '<tr><td colspan="8" class="load">טוען…</td></tr>';
+  $("rows").innerHTML = '<tr><td colspan="9" class="load">טוען…</td></tr>';
   $("err").style.display = "none";
   let snap;
   try { snap = await F.getDocs(F.collection(db, "users")); }
@@ -233,6 +233,7 @@ async function load() {
     const upd = u.updated ? new Date(u.updated).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
     const active = u.updated && (Date.now() - u.updated < 26 * 3600e3);
     return '<tr class="u" data-i="' + i + '">' +
+      '<td>' + (u.prof.name ? esc(u.prof.name) : '<span class="na">—</span>') + '</td>' +
       '<td class="mail">' + (u.email ? esc(u.email) : '<span class="na">' + esc(u.uid.slice(0, 8)) + '… (טרם סונכרן מייל)</span>') + '</td>' +
       '<td>' + upd + ' <span class="chip' + (active ? " on" : "") + '">' + (active ? "פעיל" : "רדום") + '</span></td>' +
       '<td>' + (r0.w ? r0.w.toFixed(1) : "—") + '</td>' +
@@ -243,7 +244,7 @@ async function load() {
       '<td>' + u.log.length + "</td></tr>";
   }).join("");
 
-  $("rows").innerHTML = rows || '<tr><td colspan="8" class="load">אין עדיין משתמשים בענן.</td></tr>';
+  $("rows").innerHTML = rows || '<tr><td colspan="9" class="load">אין עדיין משתמשים בענן.</td></tr>';
   $("sTotal").textContent = users.length;
   $("sToday").textContent = today;
   $("sWeek").textContent = week;
@@ -264,7 +265,7 @@ async function load() {
     mini += "</table>";
     const det = document.createElement("tr");
     det.className = "detail";
-    det.innerHTML = '<td colspan="8">' + mini + "</td>";
+    det.innerHTML = '<td colspan="9">' + mini + "</td>";
     tr.after(det);
   }));
 }
