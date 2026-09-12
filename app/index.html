@@ -1043,6 +1043,8 @@
       </div>
       <div class="oberr" id="obErrName"></div>
       <button class="obnext" data-go="1">יאללה, מתחילים ←</button>
+      <button type="button" class="obact" id="obExisting">🔑 כבר נרשמת? הכנס באמצעות Gmail</button>
+      <div class="obsmall" id="obExistingState"></div>
     </section>
 
     <section class="obstep" data-step="1" hidden>
@@ -1644,6 +1646,7 @@ const I18N_EN = {
   "חיבורים שחוסכים זמן": "Connections that save you time",
   "הרשמה עם Google": "Sign up with Google",
   "🔐 הרשמה עם Google": "🔐 Sign up with Google",
+  "🔑 כבר נרשמת? הכנס באמצעות Gmail": "🔑 Already registered? Sign in with Gmail",
   "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "Sign in with your Gmail account to back up your data to the cloud — it is restored automatically on a new phone or after a reinstall.",
   "פתיחה מהירה בלחיצה כפולה": "Quick launch with a double press",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "Double-press your phone's side key to open the app from anywhere.",
@@ -2130,6 +2133,7 @@ const I18N_AR = {
   "חיבורים שחוסכים זמן": "اتصالات توفّر وقتك",
   "הרשמה עם Google": "التسجيل عبر Google",
   "🔐 הרשמה עם Google": "🔐 التسجيل عبر Google",
+  "🔑 כבר נרשמת? הכנס באמצעות Gmail": "🔑 هل سبق أن سجّلت؟ سجّل الدخول عبر Gmail",
   "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "سجّل الدخول بحساب Gmail لعمل نسخة احتياطية سحابية لبياناتك — تُستعاد تلقائيًا على هاتف جديد أو بعد إعادة التثبيت.",
   "פתיחה מהירה בלחיצה כפולה": "فتح سريع بضغطة مزدوجة",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "ضغطة مزدوجة على الزر الجانبي للهاتف تفتح التطبيق من أي مكان.",
@@ -2591,6 +2595,7 @@ const I18N_RU = {
   "חיבורים שחוסכים זמן": "Связки, которые экономят время",
   "הרשמה עם Google": "Регистрация через Google",
   "🔐 הרשמה עם Google": "🔐 Регистрация через Google",
+  "🔑 כבר נרשמת? הכנס באמצעות Gmail": "🔑 Уже зарегистрированы? Войти через Gmail",
   "מתחברים עם חשבון Gmail כדי לגבות את הנתונים שלך בענן — כך שהם משוחזרים אוטומטית במכשיר חדש או אחרי מחיקת האפליקציה.": "Войдите через аккаунт Gmail, чтобы сохранять данные в облаке — они восстановятся автоматически на новом телефоне или после переустановки.",
   "פתיחה מהירה בלחיצה כפולה": "Быстрый запуск двойным нажатием",
   "לחיצה כפולה על הכפתור הצידי של הטלפון תפתח את האפליקציה מכל מקום.": "Двойное нажатие боковой кнопки телефона откроет приложение откуда угодно.",
@@ -3363,7 +3368,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.4";
+const APP_BUILD = "2026.09.12.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6154,6 +6159,29 @@ $("obGoogle").addEventListener("click", async () => {
     $("obGoogleState").textContent = "✅ " + T("מחובר כ-") + " " + (cloudUser.email || "");
   } catch (e) {
     $("obGoogleState").textContent = T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 280);
+  }
+});
+// Ido, 2026-09-12: a returning user (new phone, reinstall) should never have
+// to re-answer the whole questionnaire just to get his real data back - sign
+// in, pull the cloud copy down, and skip straight past onboarding entirely.
+// Distinct from #obGoogle at the LAST step (that one is framed as "back up
+// what I just entered" for a brand-new account finishing setup).
+$("obExisting").addEventListener("click", async () => {
+  if (!CB()) { $("obExistingState").textContent = T("טוען…"); await ensureFirebaseWeb(); }
+  const hb = CB();
+  if (!hb || !hb.googleSignIn) { $("obExistingState").textContent = T("ההתחברות לא זמינה כרגע."); return; }
+  $("obExistingState").textContent = T("מתחבר…");
+  try {
+    cloudUser = await hb.googleSignIn();
+    await cloudMergeSync();
+    localStorage.setItem(LS_OB, "1");
+    $("ob").classList.remove("on");
+    document.body.style.overflow = "";
+    if (typeof renderAccount === "function") renderAccount();
+    renderLog();
+    renderTotals();
+  } catch (e) {
+    $("obExistingState").textContent = T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 280);
   }
 });
 $("obHc").addEventListener("click", async () => {
