@@ -34,6 +34,9 @@
 <meta name="apple-mobile-web-app-title" content="Scan & Log">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<!-- without this, "Add to Home Screen" on iOS uses a screenshot of the page
+     as the icon instead of the real logo (Ido, 2026-09-12: iPhone-parity pass) -->
+<link rel="apple-touch-icon" href="icon-512.png">
 <!-- set the saved light theme before paint so there is no dark flash -->
 <script>try{if(localStorage.getItem('fl_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
 <style>
@@ -886,8 +889,8 @@
 <div id="testModeBar">🧪 מצב בדיקה כמשתמש רגיל <u id="testModeBack">חזור לחשבון האדמין</u></div>
 
 <div id="betaBar">
-  <span>אפליקציית אנדרואיד + בטא חינם לכל החיים</span>
-  <a href="download.html">להתקנה</a>
+  <span id="betaBarTxt">אפליקציית אנדרואיד + בטא חינם לכל החיים</span>
+  <a id="betaBarLink" href="download.html">להתקנה</a>
   <button id="betaX" aria-label="סגירה">×</button>
 </div>
 
@@ -1392,6 +1395,7 @@
    forever.                                                        */
 const I18N_EN = {
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "Android app + beta, free for life",
+  "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "Add to Home Screen: tap Share ⬆️ then \"Add to Home Screen\"",
   "להתקנה": "Install",
   "סגירה": "Close",
   "→ חזרה": "← Back",
@@ -1883,6 +1887,7 @@ const I18N_EN = {
    one of them falls back to English, so a gap never shows a blank. */
 const I18N_AR = {
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "تطبيق أندرويد + نسخة تجريبية مجانية مدى الحياة",
+  "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "أضف إلى الشاشة الرئيسية: اضغط على مشاركة ⬆️ ثم \"أضف إلى الشاشة الرئيسية\"",
   "להתקנה": "تثبيت",
   "סגירה": "إغلاق",
   "→ חזרה": "← رجوع",
@@ -2346,6 +2351,7 @@ const I18N_AR = {
 };
 const I18N_RU = {
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "Приложение Android + бета, бесплатно навсегда",
+  "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "Добавить на главный экран: нажмите «Поделиться» ⬆️, затем «На экран Домой»",
   "להתקנה": "Установить",
   "סגירה": "Закрыть",
   "→ חזרה": "← Назад",
@@ -3368,7 +3374,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.13";
+const APP_BUILD = "2026.09.12.14";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7428,12 +7434,24 @@ if (PROFILE.autoScan !== false && localStorage.getItem(LS_OB) === "1" &&
 <script>
 /* The install bar only means anything to someone reading this in a browser:
    inside the native Android build there is nothing to install. Dismissed once,
-   it stays dismissed. */
+   it stays dismissed. On iPhone/iPad there is no APK to offer and no JS-driven
+   install prompt (Safari has no beforeinstallprompt) - the best equivalent
+   until a real App Store build exists is "Add to Home Screen" via Safari's
+   own Share sheet, so the same bar swaps to that message + drops the dead
+   Android download link instead (Ido, 2026-09-12: "כמה שיותר פיצ'רים... גם
+   בדפדפן של Safari עד שנשווה את האפליקציה לאייפון"). */
 (function () {
   var bar = document.getElementById("betaBar");
   if (!bar || window.Capacitor) return;
   try { if (localStorage.getItem("fl_betabar") === "off") return; } catch (e) {}
   if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return;
+  if (navigator.standalone) return;   // already added to the iOS home screen
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);   // iPadOS 13+ reports as a Mac
+  if (isIOS) {
+    document.getElementById("betaBarTxt").textContent = T("הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"");
+    document.getElementById("betaBarLink").remove();
+  }
   bar.classList.add("on");
   document.body.style.paddingTop = "38px";
   document.getElementById("betaX").addEventListener("click", function () {
