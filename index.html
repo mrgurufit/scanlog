@@ -15,6 +15,8 @@
     --text:#eef2f8; --muted:#8b95a7; --accent:#ffd21e; --green:#3ddc84;
   }
   * { box-sizing:border-box; }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+  .disclaim { display:block; margin-top:8px; color:#5b6474; font-size:11px; line-height:1.5; }
   .bank { margin-top:14px; }
   .bankhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
   .bankhead span { color:var(--muted); font-size:14px; }
@@ -274,7 +276,8 @@
     <a href="https://www.instagram.com/mrgurufit">Instagram</a> ·
     <a href="https://www.facebook.com/Mrgurufit">Facebook</a> ·
     <a href="https://www.tiktok.com/@mrgurufit">TikTok</a><br>
-    <a href="privacy/" data-t="priv"></a> · <span data-t="foot"></span>
+    <a href="privacy/" data-t="priv"></a> · <a href="terms/" data-t="terms"></a> · <a href="accessibility/" data-t="a11y"></a> · <span data-t="foot"></span><br>
+    <span class="disclaim" data-t="results"></span>
   </footer>
 
 </div>
@@ -399,6 +402,24 @@ const TXT = {
   "he": "פרטיות",
   "ru": "Конфиденциальность",
   "ar": "الخصوصية"
+ },
+ "terms": {
+  "en": "Terms",
+  "he": "תנאי שימוש",
+  "ru": "Условия",
+  "ar": "الشروط"
+ },
+ "a11y": {
+  "en": "Accessibility",
+  "he": "נגישות",
+  "ru": "Доступность",
+  "ar": "إمكانية الوصول"
+ },
+ "results": {
+  "en": "Individual results vary — this is one person's real journey, not a promise of your outcome.",
+  "he": "תוצאות אישיות משתנות מאדם לאדם — זה מסע אמיתי של אדם אחד, לא הבטחה לתוצאה שלכם.",
+  "ru": "Индивидуальные результаты различаются — это реальный путь одного человека, а не обещание вашего результата.",
+  "ar": "النتائج الفردية تختلف — هذه رحلة حقيقية لشخص واحد، وليست وعداً بنتيجتك."
  },
  "wt": {
   "en": "The weight, day by day",
@@ -1134,6 +1155,7 @@ window.addEventListener("resize", () => { clearTimeout(wRsz); wRsz = setTimeout(
 })();
 </script>
 <script src="/traffic.js" defer></script>
+<script src="/notice.js" defer></script>
 <script>
 renderBank();
 </script>

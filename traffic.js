@@ -19,6 +19,10 @@
   "use strict";
   var HOOK = "https://hook.us2.make.com/iwafet153pkallo64gaqd7ryoutllx4x";
   try {
+    // Honor the visitor's choice: if they declined the anonymous visit count
+    // in the first-visit notice (notice.js), never send anything.
+    try { if (localStorage.getItem("mgf_analytics") === "off") return; } catch (e) {}
+
     // No sessionStorage (private mode, some in-app browsers) means we cannot
     // tell a first page from a fifth. Counting once and moving on beats
     // counting every page, so this path also sends at most one per page load
