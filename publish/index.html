@@ -660,6 +660,7 @@
     <button class="tab" data-view="followers">👥 עוקבים</button>
     <button class="tab" data-view="improve">🚀 מה לשפר</button>
     <button class="tab" data-view="autos">⚙️ אוטומציות</button>
+    <button class="tab" data-view="hq">🎛️ HQ</button>
   </nav>
 
   <!-- ============ VIEW: PUBLISH ============ -->
@@ -865,6 +866,12 @@
   </div><!-- /viewAutos -->
 
 
+
+  <!-- ============ VIEW: HQ ============ -->
+  <div class="view" id="viewHq">
+    <iframe id="hqFrame" data-src="https://mrgurufit.com/hq/" title="HQ"
+            style="width:100%;height:calc(100dvh - 130px);min-height:520px;border:0;border-radius:14px;background:#0A0C11"></iframe>
+  </div><!-- /viewHq -->
 
   <!-- ============ VIEW: DAY FLOW ============ -->
   <div class="view" id="viewDay">
@@ -3663,6 +3670,7 @@ function showView(name) {
     v.classList.toggle("on", v.id === "view" + name[0].toUpperCase() + name.slice(1)));
   document.querySelectorAll(".tab").forEach(t =>
     t.classList.toggle("on", t.dataset.view === name));
+  if (name === "hq") { const f = document.getElementById("hqFrame"); if (f && !f.getAttribute("src")) f.src = f.dataset.src; }
   store.set("pc_view", name);
   window.scrollTo({ top: 0, behavior: "instant" });
 }
