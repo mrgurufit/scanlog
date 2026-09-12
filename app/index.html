@@ -101,6 +101,10 @@
   }
   .sr .srs.mine { background:#12301f; color:var(--green); border-color:#1d5c39; }
   .sr .srs.gen  { background:#2a2410; color:var(--accentText); border-color:#6b5a12; }
+  .sr .srs.new  { background:#2a1030; color:#e07be0; border-color:#5c1d5c; }
+  .catBar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
+  .catSortSeg { margin:0; }
+  .catSortSeg .segb { flex:0 0 auto; padding:5px 10px; font-size:11.5px; }
   .sr.dim { color:var(--muted); font-size:12.5px; justify-content:center; }
   /* catalog browse page: a thumbnail (tap to replace) + the usual text, plus a
      small add-portion shortcut, all on one row - built to stay light at
@@ -1364,7 +1368,13 @@
         </div>
         <div class="progBody">
           <input type="text" id="catalogSearch" class="catSearch" placeholder="🔎 חפש בקטלוג…" autocomplete="off">
-          <div class="catCount" id="catalogCount"></div>
+          <div class="catBar">
+            <div class="catCount" id="catalogCount"></div>
+            <div class="obsex catSortSeg">
+              <button type="button" class="segb on" data-cat-sort="name">לפי שם</button>
+              <button type="button" class="segb" data-cat-sort="new">🆕 החדשים</button>
+            </div>
+          </div>
           <div id="catalogList"></div>
         </div>
       </div>
@@ -3357,7 +3367,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.11";
+const APP_BUILD = "2026.09.12.12";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3550,8 +3560,12 @@ function sharedContribute(code, p) {
   const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0)
     && JSON.stringify(ex.pt || []) === JSON.stringify(portions)
     && (ex.img || "") === photo;
+  // "when" is for the catalog page's newest-first sort - only bump it on a
+  // REAL change, or re-logging an unchanged product would look freshly added
+  // every time (Ido, 2026-09-12: wants to see what's genuinely new).
+  const t = already ? (ex && ex.t) || new Date().toISOString() : new Date().toISOString();
   try {
-    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who };
+    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who, t };
     if (portions.length) CATALOG.codes[code].pt = portions;
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
@@ -5644,32 +5658,38 @@ function srcLabel(s) {
 function catalogRowData(code) {
   const own = PRODUCTS[code];
   const shared = CATALOG.codes[code];
-  if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit, s: shared && shared.s };
+  if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit, s: shared && shared.s, t: shared && shared.t };
   return shared;
 }
+let catalogSort = "name";   // "name" | "new" - toggled by the catalog page's own segmented control
 function renderCatalogList() {
   const q = $("catalogSearch").value.trim().toLowerCase();
   const codes = Object.keys((CATALOG && CATALOG.codes) || {})
     .map(code => ({ code, p: catalogRowData(code) })).filter(x => x.p);
   $("catalogCount").textContent = codes.length + " " + T("מוצרים בקטלוג הקהילתי");
-  const rows = codes
-    .filter(({ p }) => !q || (p.n || "").toLowerCase().includes(q))
-    .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
-    .slice(0, 300);
-  $("catalogList").innerHTML = rows.map(({ code, p }) =>
-    `<div class="sr" data-code="${esc(code)}">
+  const filtered = codes.filter(({ p }) => !q || (p.n || "").toLowerCase().includes(q));
+  const rows = (catalogSort === "new"
+    ? filtered.sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0))
+    : filtered.sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
+  ).slice(0, 300);
+  const NEW_MS = 48 * 3600 * 1000;   // "🆕" badge window - two days, so a product added yesterday still shows as new
+  $("catalogList").innerHTML = rows.map(({ code, p }) => {
+    const isNew = p.t && (Date.now() - (Date.parse(p.t) || 0)) < NEW_MS;
+    return `<div class="sr" data-code="${esc(code)}">
        <button type="button" class="catThumbBtn" data-thumb="${esc(code)}" aria-label="${T("תמונת המוצר")}">
          ${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}
        </button>
        <button type="button" class="catMain" data-open="${esc(code)}">
          <span class="catMainTop">
            <span class="srs mine">${T("קהילתי")}</span>
+           ${isNew ? `<span class="srs new">🆕</span>` : ""}
            <span class="srn">${esc(displayName(p.n, true))}</span>
          </span>
-         <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}${p.s ? " · 👤 " + esc(srcLabel(p.s)) : ""}</span>
+         <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}${p.s ? " · 👤 " + esc(srcLabel(p.s)) : ""}${p.t ? " · 🕒 " + esc(timeAgo(p.t)) : ""}</span>
        </button>
        <button type="button" class="catAddPortion" data-portion="${esc(code)}" aria-label="${T("הוסף מנה")}">➕</button>
-     </div>`).join("") ||
+     </div>`;
+  }).join("") ||
     `<div class="sr dim">${q ? T("לא נמצא") : T("הקטלוג ריק כרגע")}</div>`;
   $("catalogList").querySelectorAll(".catMain[data-open]").forEach(b => {
     b.addEventListener("click", () => {
@@ -5697,6 +5717,11 @@ function renderCatalogList() {
   });
 }
 $("catalogSearch").addEventListener("input", () => renderCatalogList());
+document.querySelectorAll("[data-cat-sort]").forEach(b => b.addEventListener("click", () => {
+  catalogSort = b.dataset.catSort;
+  document.querySelectorAll("[data-cat-sort]").forEach(x => x.classList.toggle("on", x === b));
+  renderCatalogList();
+}));
 
 // pull every catalog product into the admin's own PRODUCTS too, so his phone
 // mirrors the shared catalog in both directions (shareAllMine does mine→there,

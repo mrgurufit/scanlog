@@ -210,6 +210,9 @@ jobs:
               src = (r.get('src', '') or '').strip()
               if src:
                   code['s'] = src   # who added it (Ido, 2026-09-12: wants this visible per product)
+              at_val = (r.get('at', '') or '').strip()
+              if at_val:
+                  code['t'] = at_val   # when it was added/last changed - drives the catalog page's "newest" sort + 🆕 badge
               pt = r.get('pt', '')
               if isinstance(pt, str) and pt.strip():
                   try:
