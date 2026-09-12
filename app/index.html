@@ -3368,7 +3368,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.7";
+const APP_BUILD = "2026.09.12.8";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5581,6 +5581,13 @@ function openSettings() {
   ovPush();
   msg("setMsg", "");
   if (typeof renderAccount === "function") renderAccount();
+  // these two are admin/hardware-gated and were only ever evaluated once at
+  // boot - if sign-in or the native bridge wasn't fully ready at that exact
+  // moment, the row stayed wrong (hidden or stale) until a full app
+  // restart, with no way to notice from inside Settings (Ido, 2026-09-12:
+  // "נעלם לי האופציה לשקילה האלחוטית"). Re-check every time Settings opens.
+  if (typeof updateScaleRow === "function") updateScaleRow();
+  if (typeof updateDashNotifRow === "function") updateDashNotifRow();
   $("setModal").classList.add("on");
   document.body.style.overflow = "hidden";
 }
