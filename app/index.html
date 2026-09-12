@@ -3368,7 +3368,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.5";
+const APP_BUILD = "2026.09.12.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7134,13 +7134,16 @@ async function updateDashboardNotif() {
     $("dashNotifMsg").textContent = "";
   } catch (err) {
     // most likely need_notif_permission on Android 13+ - the native side already
-    // triggered the system prompt; uncheck so the toggle reflects reality
-    if (String(err && err.message) === "need_notif_permission") {
+    // triggered the system prompt; leave the toggle on and ask him to retry.
+    // Any OTHER failure used to fail silently (uncheck + clear the message,
+    // no trace of why) - that hid the real cause the first time this broke on
+    // a real device (Ido, 2026-09-12: "לא רואה את זה כשגוללים מלמעלה"), so it
+    // now shows the actual native error text instead of guessing.
+    const msg = String((err && err.message) || err || "");
+    if (msg === "need_notif_permission") {
       $("dashNotifMsg").textContent = T("אשר התראות בחלון שנפתח, ואז סמן שוב.");
     } else {
-      $("dashNotifChk").checked = false;
-      localStorage.removeItem(LS_DASH_NOTIF);
-      $("dashNotifMsg").textContent = "";
+      $("dashNotifMsg").textContent = T("שגיאה:") + " " + msg.slice(0, 280);
     }
   }
 }
