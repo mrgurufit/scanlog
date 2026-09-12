@@ -578,8 +578,8 @@
   #manState { font-size:11.5px; color:var(--accentText); margin-top:3px; }
   #manBtn { margin-top:6px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
             border-radius:9px; padding:6px 10px; font-size:12px; font-family:inherit; cursor:pointer; }
-  #manRow { display:none; gap:6px; margin-top:6px; align-items:center; }
-  #manRow input { width:90px; }
+  #manRow { display:none; gap:6px; margin-top:6px; align-items:center; flex-wrap:wrap; }
+  #manRow input { width:72px; min-width:0; flex:1 1 72px; }
   #manRow button { background:var(--panel2); border:1px solid var(--line); color:var(--text);
                    border-radius:9px; padding:6px 10px; font-size:13px; font-family:inherit; cursor:pointer; }
   #updBar { display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
@@ -1208,12 +1208,13 @@
           <div class="enOutHead">
             <span class="enOutLbl">🔥 יצא</span>
             <button type="button" id="hcMini" class="enIcon" title="סנכרן פעילות">🔄</button>
-            <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית" hidden>✏️</button>
+            <button type="button" id="manBtn" class="enIcon" title="הזן פעילות ידנית">✏️</button>
             <button type="button" id="outInfo" class="enIcon" title="מאיפה מגיע היצא">ⓘ</button>
             <b id="enOut">0</b>
           </div>
           <div id="manRow">
-            <input type="number" id="manIn" inputmode="numeric" placeholder='קק"ל'>
+            <input type="number" id="manSteps" inputmode="numeric" placeholder="צעדים">
+            <input type="number" id="manWork" inputmode="numeric" placeholder='קק"ל אימון'>
             <button type="button" id="manOk">✓</button>
             <button type="button" id="manCancel">✕</button>
           </div>
@@ -3023,18 +3024,25 @@ function renderEnergy(kcalIn) {
    (Ido, 2026-09-12: back to read-only for now - no manual editing here).
    BMR is the profile formula; steps/training show the real synced numbers
    (count + minutes) next to their own calories, so the total is explained
-   line by line instead of just handing over one lump sum. */
+   line by line instead of just handing over one lump sum. When there is no
+   Health Connect sync (the pencil's manual entry is web/Safari-only, see
+   #manBtn), fall back to the typed steps/training-kcal instead of showing
+   zeros next to a real total - a manual entry has no minutes figure at all
+   (training is typed directly in kcal), so that inline count is only shown
+   when real synced minutes exist. */
 function openOutInfo() {
   const d = DAYDATA[viewDay] || {};
   const e = dayEnergy(viewDay, 0);   // in-independent: bmr, act, out
-  const steps = Number(d.steps) || 0;
-  const stepsKcal = Number(d.burnSteps) || 0;
+  const steps = d.manSteps != null ? d.manSteps : (Number(d.steps) || 0);
+  const stepsKcal = d.manSteps != null
+    ? Math.round(d.manSteps * (dayEnergy(viewDay, 0).w || 105) * 0.00048)
+    : (Number(d.burnSteps) || 0);
   const workMinutes = Number(d.workMinutes) || 0;
-  const workKcal = Number(d.burnWork) || 0;
+  const workKcal = d.manWork != null ? d.manWork : (Number(d.burnWork) || 0);
   const rows = [
     `<div class="oiRow oiBmrRow"><span>BMR <i class="oiCap">${T("כמות הקלוריות שהגוף שלך שורף במנוחה")}</i></span><b>${e.bmr.toLocaleString("he-IL")}</b></div>`,
     `<div class="oiRow"><span>👟 ${T("צעדים")} <b class="oiInline">${steps.toLocaleString("he-IL")}</b></span><b>${stepsKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
-    `<div class="oiRow"><span>🏋️ ${T("אימון")} <b class="oiInline">${workMinutes.toLocaleString("he-IL")} ${T("דקות")}</b></span><b>${workKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
+    `<div class="oiRow"><span>🏋️ ${T("אימון")}${workMinutes ? ` <b class="oiInline">${workMinutes.toLocaleString("he-IL")} ${T("דקות")}</b>` : ""}</span><b>${workKcal.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
     `<div class="oiRow oiTot"><span>${T("סה\"כ יצא")}</span><b id="oiTotalVal">${e.out.toLocaleString("he-IL")} ${T("קק\"ל")}</b></div>`,
   ];
   const hcOn = !!localStorage.getItem("fl_hc");
@@ -3374,7 +3382,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.14";
+const APP_BUILD = "2026.09.12.15";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5880,6 +5888,10 @@ let updLast = 0, updErr = "";
 const IN_APK = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
   || navigator.userAgent.includes("ScanLogAPK");
 const VERSION_URL = IN_APK ? "https://mrgurufit.com/app/version.json" : "./version.json";
+// the pencil (manual steps/training entry) is web/Safari-only - native Android
+// gets the real numbers from Health Connect, so showing it there would just
+// invite typing over good data (Ido, 2026-09-12)
+$("manBtn").hidden = !!HB();
 async function checkForUpdate() {
   if (Date.now() - updLast < 60 * 1000) return;
   updLast = Date.now();
@@ -6276,17 +6288,32 @@ $("searchRes").addEventListener("click", e => {
 });
 $("pName").addEventListener("blur", () => autoImage($("pName").value.trim()));
 $("wIn").addEventListener("change", saveDayData);
+/* the pencil is web/Safari-only (see its `hidden` gating near IN_APK below) -
+   on native Android Health Connect already supplies steps + training, so this
+   is the one manual path an iPhone/Safari user (no Health Connect at all) has
+   for entering them (Ido, 2026-09-12). Same split + same calibrated formula
+   the old editable ⓘ popup used before it went read-only: steps -> kcal via
+   steps x weight x 0.00048, training entered directly in kcal. */
 $("manBtn").addEventListener("click", () => {
   const d = DAYDATA[viewDay] || {};
-  $("manIn").value = d.activityManual ? (d.activity || "") : "";
+  $("manSteps").value = d.manSteps != null ? d.manSteps : (Number(d.steps) || "");
+  $("manWork").value = d.manWork != null ? d.manWork : (Number(d.burnWork) || "");
   $("manRow").style.display = "flex";
-  $("manIn").focus();
+  $("manSteps").focus();
 });
 $("manOk").addEventListener("click", () => {
-  const v = parseFloat($("manIn").value);
-  if (isFinite(v) && v >= 0) { setManual(v); $("manRow").style.display = "none"; }
+  const steps = num($("manSteps").value), work = num($("manWork").value);
+  const dd = DAYDATA[viewDay] || (DAYDATA[viewDay] = {});
+  dd.manSteps = steps; dd.manWork = work;
+  const w = dayEnergy(viewDay, 0).w || 105;
+  dd.activity = Math.round(steps * w * 0.00048) + Math.round(work);
+  dd.activityManual = true;
+  store.set(LS_DAY, DAYDATA); scheduleAutoPush(); renderTotals();
+  $("manRow").style.display = "none";
 });
-$("manIn").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("manOk").click(); } });
+function manEnterKey(e) { if (e.key === "Enter") { e.preventDefault(); $("manOk").click(); } }
+$("manSteps").addEventListener("keydown", manEnterKey);
+$("manWork").addEventListener("keydown", manEnterKey);
 $("manCancel").addEventListener("click", () => { $("manRow").style.display = "none"; });
 $("hIn").addEventListener("change", saveProfile);
 $("aIn").addEventListener("change", saveProfile);
