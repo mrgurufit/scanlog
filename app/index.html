@@ -112,7 +112,9 @@
     overflow:hidden; padding:0; font-size:16px; color:var(--muted);
   }
   .catThumbBtn img { width:100%; height:100%; object-fit:cover; display:block; }
-  .catMain { flex:1; min-width:0; display:flex; align-items:flex-start; gap:8px; text-align:start; background:none; border:0; padding:0; font-size:inherit; color:inherit; }
+  .catMain { flex:1; min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:2px; text-align:start; background:none; border:0; padding:0; font-size:inherit; color:inherit; }
+  .catMainTop { display:flex; align-items:center; gap:8px; }
+  .catMain .srv { white-space:normal; }
   .catAddPortion {
     flex:0 0 auto; width:30px; height:30px; border-radius:50%; align-self:center;
     background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:15px; padding:0;
@@ -3355,7 +3357,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.10";
+const APP_BUILD = "2026.09.12.11";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3538,6 +3540,10 @@ function sharedContribute(code, p) {
   const ptStr = portions.length ? JSON.stringify(portions) : "";
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
+  // who sent it, so a wrong value in the shared catalog can be traced back
+  // (Ido, 2026-09-12: "אני רוצה לדעת בדיוק מה יש בקטלוג מי הכניס אותו")
+  const who = (!isAdmin() && isSignedIn() && cloudUser && cloudUser.email)
+    ? "app:" + cloudUser.email : (p.src || "app");
   // Already in the catalog with the same values (name, kcal, portions, picture)?
   // Then the cloud already has it - do NOT send again. Including the picture here
   // means ADDING or CHANGING a photo counts as a real change and gets sent.
@@ -3545,7 +3551,7 @@ function sharedContribute(code, p) {
     && JSON.stringify(ex.pt || []) === JSON.stringify(portions)
     && (ex.img || "") === photo;
   try {
-    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo };
+    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who };
     if (portions.length) CATALOG.codes[code].pt = portions;
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
@@ -3553,9 +3559,6 @@ function sharedContribute(code, p) {
   // queue for the cloud (durable + retried) and flush now. status:"approved"
   // means it is published to everyone as soon as the next compile runs - this is
   // the admin path and the trusted-external-data path (a complete OFF hit).
-  // who sent it, so a wrong value in the shared catalog can be traced back
-  const who = (!isAdmin() && isSignedIn() && cloudUser && cloudUser.email)
-    ? "app:" + cloudUser.email : (p.src || "app");
   contribEnqueue({ barcode: code, name: p.name,
     kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: who, status: "approved" });
   contribFlush();
@@ -5283,12 +5286,8 @@ function persistPortions() {
     portions: entryPortions.slice(),
   });
   store.set(LS_PROD, PRODUCTS);
-  // admin (or a verified OFF hit) publishes straight to everyone; a regular
-  // user proposing a portion on a new product queues for approval instead -
-  // the same one pending record already carries the photo, so both reach
-  // Ido's inbox together (Ido, 2026-09-12: "יחד עם התמונה שהועלתה והמנה")
-  if (isAdmin() || (pending && pending.fromDB)) sharedContribute(code, PRODUCTS[code]);
-  else pendingSubmit(code, PRODUCTS[code]);
+  // full sync, no gate - same 2026-09-12 decision as addEntry() above
+  sharedContribute(code, PRODUCTS[code]);
 }
 // load a product's portions into the entry (migrates a legacy single unit)
 function setEntryProduct(portions, legacyUnit) {
@@ -5424,36 +5423,17 @@ function addEntry() {
     // one product, one picture: bring every existing row of this product up to
     // the picture just saved
     applyProductPhoto(e.barcode, e.name, e.photo);
-    /* MODERATION (Ido, 2026-09-08): only the admin publishes straight to the
-       shared catalog. Everyone else's new/edited product stays on THEIR phone
-       and is queued to the PENDING review queue - it reaches everyone only after
-       Ido approves it in the admin inbox, to keep wrong/spam data out of the
-       shared catalog. A product already in the catalog is never re-sent. */
-    const inCatalog = !!(CATALOG && CATALOG.codes && CATALOG.codes[e.barcode]);
-    if (/^\d{6,}$/.test(e.barcode)) {
-      // Admin, or verified external data (a COMPLETE Open Food Facts hit, which
-      // is locked and not hand-typed) -> straight to the shared catalog, EVEN
-      // when the barcode is already there - sharedContribute no-ops on its own
-      // if nothing actually changed, but a photo/value the admin just edited on
-      // an existing catalog product needs to re-send, or the edit never leaves
-      // this phone (bug hit 2026-09-11: a photo added to an already-known
-      // product "saved" locally but silently never reached the shared catalog).
-      // A non-admin's hand-typed NEW product -> the pending queue for Ido to
-      // approve, but only when it is genuinely new; a non-admin can't touch an
-      // already-catalogued product's data at all (entryEditable() locks the UI).
-      // Ido, 2026-09-11: "everything users scan uploads to the community
-      // catalog automatically, so everyone is in sync". Pre-moderation was
-      // holding hand-typed products back, so the trust boundary moves from
-      // "is this the admin" to "is there an account behind this" - the
-      // contributor's email rides along in `src`, and a bad value can be
-      // rejected, which now really removes it (the compile deletes rejected
-      // barcodes from the catalog it carries forward).
-      if (isAdmin() || isSignedIn() || (pending && pending.fromDB)) {
-        sharedContribute(e.barcode, PRODUCTS[e.barcode]);
-      } else if (!inCatalog) {
-        pendingSubmit(e.barcode, PRODUCTS[e.barcode]);
-      }
-    }
+    /* FULL SYNC, NO GATE (Ido, 2026-09-12): "כרגע אני רוצה סנכרון מלא של כל
+       היוזרים... שיתעדכן אצל כולם" - every scan/entry from ANY user, signed
+       in or not, publishes straight to everyone so the shared catalog grows
+       every day. This replaces the 2026-09-08/09-11 moderation gate (admin
+       or a signed-in account required, anonymous held for approval) - the
+       pendingSubmit()/admin-inbox machinery below is left in place, untouched,
+       specifically so it can be wired back in with one `if` the moment
+       filtering is needed again ("אם בהמשך יצטרך לעבור סינון אסנן"). Still
+       no-ops on its own if nothing actually changed (sharedContribute's
+       `already` check), so re-saving an unmodified product costs nothing. */
+    if (/^\d{6,}$/.test(e.barcode)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
@@ -5652,10 +5632,20 @@ $("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop()
 // the freshest copy of anything he has touched - prefer it, so browsing right
 // after an edit shows what he just did instead of "it disappeared" (real bug
 // hit 2026-09-11: this page was reading CATALOG.codes only).
+// "who added this" (Ido, 2026-09-12): "app:<email>" for a traced signed-in
+// contributor, "app" for the admin/baseline seed, "" when never contributed
+// through this path (e.g. an OFF hit adopted before this field existed).
+function srcLabel(s) {
+  if (!s) return "";
+  if (s.startsWith("app:")) return s.slice(4);
+  if (s === "app") return T("מנהל");
+  return s;
+}
 function catalogRowData(code) {
   const own = PRODUCTS[code];
-  if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit };
-  return CATALOG.codes[code];
+  const shared = CATALOG.codes[code];
+  if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit, s: shared && shared.s };
+  return shared;
 }
 function renderCatalogList() {
   const q = $("catalogSearch").value.trim().toLowerCase();
@@ -5672,9 +5662,11 @@ function renderCatalogList() {
          ${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}
        </button>
        <button type="button" class="catMain" data-open="${esc(code)}">
-         <span class="srs mine">${T("קהילתי")}</span>
-         <span class="srn">${esc(displayName(p.n, true))}</span>
-         <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}</span>
+         <span class="catMainTop">
+           <span class="srs mine">${T("קהילתי")}</span>
+           <span class="srn">${esc(displayName(p.n, true))}</span>
+         </span>
+         <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}${p.s ? " · 👤 " + esc(srcLabel(p.s)) : ""}</span>
        </button>
        <button type="button" class="catAddPortion" data-portion="${esc(code)}" aria-label="${T("הוסף מנה")}">➕</button>
      </div>`).join("") ||

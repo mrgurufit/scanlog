@@ -207,6 +207,9 @@ jobs:
                   img = ''
               code = {'n': nm, 'k': num(r.get('kcal', 0)), 'p': num(r.get('pro', 0)),
                       'c': num(r.get('carb', 0)), 'f': num(r.get('fat', 0)), 'img': img}
+              src = (r.get('src', '') or '').strip()
+              if src:
+                  code['s'] = src   # who added it (Ido, 2026-09-12: wants this visible per product)
               pt = r.get('pt', '')
               if isinstance(pt, str) and pt.strip():
                   try:
