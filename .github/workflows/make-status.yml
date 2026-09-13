@@ -10,8 +10,6 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch: {}
-  push:
-    paths: [".github/workflows/make-status.yml"]   # TEMP: keep until this exact fix is verified live
 
 permissions:
   contents: write
