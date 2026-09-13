@@ -283,7 +283,31 @@ async function load() {
     document.querySelectorAll("tr.detail").forEach(x => x.remove());
     if (open) return;
     const u = users[+tr.dataset.i];
-    let mini = '<table class="mini"><tr><th>יום</th><th>נכנסו</th><th>יצאו</th><th>מאזן</th><th>משקל</th><th>ארוחות</th></tr>';
+    const nm = u.prof.name ? esc(u.prof.name) : "המשתמש/ת";
+
+    /* --- what did this user eat TODAY --- */
+    const meals = u.log.filter(e => e.day === t0)
+      .slice().sort((a, b) => String(a.t || "").localeCompare(String(b.t || "")));
+    let food = '<div style="font-weight:700;color:var(--gold);margin-bottom:6px">🍽️ מה ' + nm + ' אכל/ה היום (' + t0.slice(5) + ')</div>';
+    if (!meals.length) {
+      food += '<div class="na" style="margin-bottom:6px">לא תיעד/ה אוכל היום.</div>';
+    } else {
+      food += '<table class="mini"><tr><th>שעה</th><th>מוצר</th><th>כמות</th><th>קק״ל</th><th>ח</th><th>פ</th><th>ש</th></tr>';
+      let tK = 0, tP = 0, tC = 0, tF = 0;
+      for (const e of meals) {
+        const g = e.grams || 0;
+        const kc = (e.k100 || 0) * g / 100, pr = (e.pro100 || 0) * g / 100, cb = (e.carb100 || 0) * g / 100, ft = (e.fat100 || 0) * g / 100;
+        tK += kc; tP += pr; tC += cb; tF += ft;
+        food += "<tr><td>" + (e.t ? esc(e.t) : "—") + "</td><td>" + (e.name ? esc(e.name) : '<span class="na">—</span>') +
+          "</td><td>" + fmt(g) + " ג׳</td><td>" + fmt(kc) + "</td><td>" + pr.toFixed(1) + "</td><td>" + cb.toFixed(1) + "</td><td>" + ft.toFixed(1) + "</td></tr>";
+      }
+      food += '<tr><td colspan="3" style="font-weight:700">סה״כ ' + meals.length + ' פריטים</td><td style="font-weight:700;color:var(--gold)">' +
+        fmt(tK) + "</td><td>" + tP.toFixed(0) + "</td><td>" + tC.toFixed(0) + "</td><td>" + tF.toFixed(0) + "</td></tr>";
+      food += "</table>";
+    }
+
+    let mini = '<div style="font-weight:700;color:var(--muted);margin:14px 0 6px">📅 14 ימים אחרונים</div>' +
+      '<table class="mini"><tr><th>יום</th><th>נכנסו</th><th>יצאו</th><th>מאזן</th><th>משקל</th><th>ארוחות</th></tr>';
     for (let d = 0; d < 14; d++) {
       const r = dayRow(u, dayKey(d));
       if (!r.n && !(u.dd[r.day] && u.dd[r.day].weight)) continue;
@@ -293,7 +317,7 @@ async function load() {
     mini += "</table>";
     const det = document.createElement("tr");
     det.className = "detail";
-    det.innerHTML = '<td colspan="9">' + mini + "</td>";
+    det.innerHTML = '<td colspan="9">' + food + mini + "</td>";
     tr.after(det);
   }));
 }
