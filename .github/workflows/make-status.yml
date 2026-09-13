@@ -11,7 +11,7 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch: {}
   push:
-    paths: [".github/workflows/make-status.yml"]   # TEMP: removed right after the next verified run
+    paths: [".github/workflows/make-status.yml"]   # TEMP: keep until this exact fix is verified live
 
 permissions:
   contents: write
@@ -58,13 +58,15 @@ jobs:
           })
           try:
               with urllib.request.urlopen(req, timeout=30) as r:
-                  raw = r.read()
-                  print("RAW RESPONSE (temp diagnostic):", raw.decode("utf-8", "replace")[:2000])
-                  d = json.loads(raw)
+                  d = json.loads(r.read())
           except urllib.error.HTTPError as e:
               body = e.read().decode("utf-8", "replace")[:300]
               print(f"HTTP {e.code} from Make organizations API: {body}")
               sys.exit(0 if e.code in (401, 403) else 1)
+
+          # the real payload is nested under "organization" - confirmed
+          # 2026-09-13 via a raw-body dump; everything read fine once unwrapped
+          d = d.get("organization") or d
 
           used = int(d.get("operations", 0) or 0)
           limit = int((d.get("license") or {}).get("operations", 0) or 0)
