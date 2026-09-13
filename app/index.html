@@ -1369,7 +1369,7 @@
         <div class="progHead">
           <button type="button" id="catalogClose" aria-label="סגור">✕</button>
           <b>🗂️ קטלוג קהילתי</b>
-          <span style="width:34px"></span>
+          <button type="button" id="catalogAddBtn" aria-label="הוסף מוצר חדש">➕</button>
         </div>
         <div class="progBody">
           <input type="text" id="catalogSearch" class="catSearch" placeholder="🔎 חפש בקטלוג…" autocomplete="off">
@@ -1552,6 +1552,8 @@ const I18N_EN = {
   "חסר משקל בגרמים": "The weight in grams is missing",
   "חסרות קלוריות ל-100 גרם": "Calories per 100 g are missing",
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "Type the barcode number (or leave it empty for a product without one):",
+  "הקלד את מספר הברקוד של המוצר החדש:": "Type the barcode number of the new product:",
+  "צריך ברקוד תקין (לפחות 6 ספרות)": "A valid barcode is needed (at least 6 digits)",
   "התמונה הוחלפה.": "Photo replaced.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "I could not read that image.",
   "השתמש בתמונה שצילמתי": "Use the photo I took",
@@ -2045,6 +2047,8 @@ const I18N_AR = {
   "חסר משקל בגרמים": "الوزن بالغرام ناقص",
   "חסרות קלוריות ל-100 גרם": "السعرات لكل 100 غ ناقصة",
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "اكتب رقم الباركود (أو اتركه فارغًا لمنتج بلا باركود):",
+  "הקלד את מספר הברקוד של המוצר החדש:": "اكتب رقم الباركود للمنتج الجديد:",
+  "צריך ברקוד תקין (לפחות 6 ספרות)": "نحتاج باركود صالح (6 أرقام على الأقل)",
   "התמונה הוחלפה.": "تم استبدال الصورة.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "تعذّر قراءة هذه الصورة.",
   "השתמש בתמונה שצילמתי": "استخدم الصورة التي التقطتها",
@@ -2512,6 +2516,8 @@ const I18N_RU = {
   "חסר משקל בגרמים": "Не указан вес в граммах",
   "חסרות קלוריות ל-100 גרם": "Не указаны калории на 100 г",
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "Введите номер штрихкода (или оставьте пустым для продукта без него):",
+  "הקלד את מספר הברקוד של המוצר החדש:": "Введите номер штрихкода нового продукта:",
+  "צריך ברקוד תקין (לפחות 6 ספרות)": "Нужен действительный штрихкод (не менее 6 цифр)",
   "התמונה הוחלפה.": "Фото заменено.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "Не удалось прочитать это изображение.",
   "השתמש בתמונה שצילמתי": "Использовать сделанное фото",
@@ -3391,7 +3397,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.13.2";
+const APP_BUILD = "2026.09.13.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5761,6 +5767,46 @@ function closeCatalogPage() {
   document.body.style.overflow = "";
 }
 $("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop(); });
+/* Ido, 2026-09-13: "כפתור של הוספת מוצר חדש לקטלוג הקהילתי... ברגע שאני מוסיף
+   שם ידנית שייתווסף לכולם אוטומטית" - a way to add a brand-new product
+   straight into the shared catalog without scanning it first. The catalog is
+   keyed by barcode (p-<barcode> in the Make store), so a barcode is asked up
+   front, same prompt() pattern the scan screen's own "בלי ברקוד" button
+   already uses. Reuses the entry sheet exactly like tapping an existing
+   catalog row does (closeCatalogPage + entryFromCatalog=true), so ✕ or the
+   "add" button both save straight to PRODUCTS + sharedContribute (via
+   persistCatalogEdit/addEntry) with no grams/log-row required, then return
+   to the catalog list. */
+function openNewCatalogProduct() {
+  if (!isAdmin()) return;
+  const code = prompt(T("הקלד את מספר הברקוד של המוצר החדש:"));
+  if (code === null) return;
+  const bc = code.trim();
+  if (!/^\d{6,}$/.test(bc)) { showToast(T("צריך ברקוד תקין (לפחות 6 ספרות)")); return; }
+  closeCatalogPage();
+  entryFromSearch = false;
+  entryFromCatalog = true;
+  stopScan();
+  const known = PRODUCTS[bc];
+  pending = { barcode: bc, photo: "" };
+  $("foundTag").textContent = known ? T("✓ מוכר — הערכים מולאו") : T("מוצר חדש · ") + bc;
+  $("foundTag").className = "foundtag " + (known ? "known" : "newp");
+  $("pName").value = known ? known.name : "";
+  setMacroField("p100kcal", known ? known.kcal : "");
+  setMacroField("p100pro", known ? known.pro : "");
+  setMacroField("p100carb", known ? known.carb : "");
+  setMacroField("p100fat", known ? known.fat : "");
+  setShot((known && known.photo) || "");
+  $("grams").value = "";
+  setEntryProduct(known && known.portions, known && known.unit);
+  $("calcPreview").textContent = T("בחר מנה או שקול בגרמים");
+  $("entry").classList.add("on");
+  document.body.style.overflow = "hidden";
+  msg("scanMsg", ""); msg("entryMsg", "");
+  $("pName").focus();
+  $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("catalogAddBtn").addEventListener("click", openNewCatalogProduct);
 // The shared catalog only recompiles once a day (see [[make-operations-budget]]
 // scale fix, 2026-09-09), so right after the admin edits a product (a new
 // photo, say) CATALOG.codes can be up to 24h stale. His own PRODUCTS is always
