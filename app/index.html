@@ -1554,7 +1554,7 @@ const I18N_EN = {
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "Type the barcode number (or leave it empty for a product without one):",
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "Type the barcode number of the new product (or leave it empty for a product without one):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "A valid barcode is needed (at least 6 digits), or leave it empty",
-  "מוצר בלי ברקוד — יישמר רק אצלך, לא יגיע לשאר המשתמשים": "Product without a barcode — saved only for you, won't reach other users",
+  "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "Product without a barcode — will be published to everyone by name",
   "התמונה הוחלפה.": "Photo replaced.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "I could not read that image.",
   "השתמש בתמונה שצילמתי": "Use the photo I took",
@@ -2050,7 +2050,7 @@ const I18N_AR = {
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "اكتب رقم الباركود (أو اتركه فارغًا لمنتج بلا باركود):",
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "اكتب رقم الباركود للمنتج الجديد (أو اتركه فارغًا لمنتج بلا باركود):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "نحتاج باركود صالح (6 أرقام على الأقل)، أو اتركه فارغًا",
-  "מוצר בלי ברקוד — יישמר רק אצלך, לא יגיע לשאר המשתמשים": "منتج بلا باركود — يُحفظ عندك فقط، لن يصل لبقية المستخدمين",
+  "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "منتج بلا باركود — سيُنشر للجميع بالاسم",
   "התמונה הוחלפה.": "تم استبدال الصورة.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "تعذّر قراءة هذه الصورة.",
   "השתמש בתמונה שצילמתי": "استخدم الصورة التي التقطتها",
@@ -2520,7 +2520,7 @@ const I18N_RU = {
   "הקלד את מספר הברקוד (או השאר ריק למוצר בלי ברקוד):": "Введите номер штрихкода (или оставьте пустым для продукта без него):",
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "Введите номер штрихкода нового продукта (или оставьте пустым для продукта без него):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "Нужен действительный штрихкод (не менее 6 цифр), либо оставьте пустым",
-  "מוצר בלי ברקוד — יישמר רק אצלך, לא יגיע לשאר המשתמשים": "Продукт без штрихкода — сохранится только у вас, не дойдёт до других пользователей",
+  "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "Продукт без штрихкода — будет опубликован для всех по названию",
   "התמונה הוחלפה.": "Фото заменено.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "Не удалось прочитать это изображение.",
   "השתמש בתמונה שצילמתי": "Использовать сделанное фото",
@@ -3400,7 +3400,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.13.4";
+const APP_BUILD = "2026.09.13.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3665,6 +3665,31 @@ function pollEnrichment(barcode, name, needPortion, needPhoto) {
   };
   setTimeout(tick, 5000);
 }
+
+/* SHARING A PRODUCT WITH NO BARCODE (Ido, 2026-09-13: "יש מוצרים שאין להם
+   ברקוד אני רוצה לשתף אותם גם. מוצרים לפי משקל למיניהם תאפשר לי גם לשתף
+   אותם") - the shared Make store only understands a p-<key> record, and a
+   scanned barcode was the only key format ever used. A product sold loose or
+   by weight often has none at all, so it needs a DIFFERENT stable key - minted
+   from its name, not a real barcode, but otherwise indistinguishable to the
+   rest of the pipeline (contribute/export/compile never actually validate
+   barcode format, only the app's own client-side gates did). Same name always
+   mints the same key, so re-adding/re-editing it later updates the one record
+   instead of creating a duplicate every time. */
+function nameKey(name) {
+  let h = 5381;
+  const s = (name || "").trim().toLowerCase();
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return "n" + h.toString(36);
+}
+// true for anything that can become a real shared-catalog record: a real
+// scanned barcode, or one of the name-minted keys above. Everywhere in this
+// file that used to check "is this a real barcode" before contributing now
+// checks this instead, so a barcode-less product is never silently excluded
+// just because it has no barcode - only because it truly has no code at all
+// (an ordinary quick log entry typed with nothing to identify it by stays
+// private, exactly as before).
+function isShareable(code) { return /^\d{6,}$/.test(code || "") || /^n[0-9a-z]+$/.test(code || ""); }
 
 /* MODERATION (Ido, 2026-09-08): a non-admin's hand-typed new product does NOT
    go live. It is queued to the SAME shared store but marked "pending", so the
@@ -4445,6 +4470,20 @@ function localMatches(q) {
     for (const g of uh.slice(0, 12))
       add({ name: g[0], k: g[1], p: g[2], c: g[3], f: g[4], src: "USDA" });
   }
+  // the shared community catalog (downloaded free in catalog.json) - this is
+  // what makes a barcode-less shared product (nameKey/isShareable above)
+  // findable by anyone at all, since there is no barcode to scan for it.
+  // Skip anything already in "שלי" above - his own copy is always the
+  // freshest for a product he has personally touched.
+  for (const [code, cp] of Object.entries((CATALOG && CATALOG.codes) || {})) {
+    if (PRODUCTS[code]) continue;
+    const nm = cp.n || "";
+    if (!nm) continue;
+    const alt = (trCache()[LANG + ":" + nm] || "").toLowerCase();
+    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)))
+      add({ name: nm, k: cp.k || 0, p: cp.p || 0, c: cp.c || 0, f: cp.f || 0, barcode: code,
+            photo: cp.img || "", portions: Array.isArray(cp.pt) ? cp.pt : [], src: "קהילתי" });
+  }
   return res;
 }
 
@@ -4664,13 +4703,14 @@ function openProduct(r) {
   msg("scanMsg", ""); msg("entryMsg", "");
   /* A world-database hit was paid for with a Make operation. Keep it here so
      the same food is found locally next time and never costs a second one.
-     Products without a barcode get a name key - always non-numeric, so it can
-     never collide with a real scan. */
+     A barcode-less hit gets the same stable name-key nameKey() mints
+     elsewhere - shareable (isShareable) too now, not just a local cache key
+     (Ido, 2026-09-13: barcode-less products should reach everyone as well). */
   if (r.src === "עולמי") {
-    const key = r.barcode || ("name:" + r.name);
+    const key = r.barcode || nameKey(r.name);
     PRODUCTS[key] = { name: r.name, kcal: r.k, pro: r.p, carb: r.c, fat: r.f, photo: r.photo || "" };
     store.set(LS_PROD, PRODUCTS);
-    pending.barcode = r.barcode || "";
+    pending.barcode = key;
   }
   $("searchRes").className = ""; $("searchRes").innerHTML = "";
   $("searchIn").value = "";
@@ -5523,7 +5563,7 @@ function addEntry() {
       else { delete ex.portion; delete ex.qty; }
       const ph = /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "";
       if (ph) { ex.photo = ph; applyProductPhoto(ex.barcode, ex.name, ph); }
-      if (/^\d{6,}$/.test(ex.barcode || "")) {
+      if (isShareable(ex.barcode || "")) {
         PRODUCTS[ex.barcode] = Object.assign(PRODUCTS[ex.barcode] || {}, { name, kcal: k100, pro: ex.pro100, carb: ex.carb100, fat: ex.fat100 });
         if (entryPortions.length) PRODUCTS[ex.barcode].portions = entryPortions.slice();
         store.set(LS_PROD, PRODUCTS);
@@ -5571,7 +5611,7 @@ function addEntry() {
        filtering is needed again ("אם בהמשך יצטרך לעבור סינון אסנן"). Still
        no-ops on its own if nothing actually changed (sharedContribute's
        `already` check), so re-saving an unmodified product costs nothing. */
-    if (/^\d{6,}$/.test(e.barcode)) {
+    if (isShareable(e.barcode)) {
       sharedContribute(e.barcode, PRODUCTS[e.barcode]);
       // right after logging, see if the AI finds what's missing for THIS
       // phone too - not just tomorrow's community catalog compile (see
@@ -5656,24 +5696,22 @@ function closeEntry() {
 // a serving of it.
 function persistCatalogEdit() {
   let code = pending && pending.barcode;
-  const hasBarcode = /^\d{6,}$/.test(code || "");
   const name = $("pName").value.trim(), k = num($("p100kcal").value);
   if (!name || !k) return;
-  // a product added with no barcode (Ido, 2026-09-13: "תאפשר לי להכניס ללא
-  // ברקוד") has nothing to key the SHARED store by - p-<barcode> is the only
-  // key format the Make side understands, and there is no barcode to scan on
-  // another phone anyway. So it saves under the same "name:<name>" local-only
-  // key openProduct() already uses for a barcode-less world hit, and is never
-  // contributed - exactly the same barcode-required rule addEntry()/
-  // pickedPicture() already enforce everywhere else in this file.
-  if (!hasBarcode) code = "name:" + name;
+  // no code at all yet (a brand-new product added with the barcode field left
+  // empty) - mint a stable name-based one now (nameKey/isShareable, defined
+  // near sharedContribute above); a real barcode or an already-minted key
+  // stays untouched, so editing the name later never orphans the record under
+  // a second key (Ido, 2026-09-13: "יש מוצרים שאין להם ברקוד... תאפשר לי גם
+  // לשתף אותם" - products without a barcode should be shareable too).
+  if (!isShareable(code)) code = nameKey(name);
   PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, {
     name, kcal: k, pro: num($("p100pro").value), carb: num($("p100carb").value), fat: num($("p100fat").value),
     photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : ((PRODUCTS[code] && PRODUCTS[code].photo) || ""),
     portions: entryPortions.slice(),
   });
   store.set(LS_PROD, PRODUCTS);
-  if (isAdmin() && hasBarcode) sharedContribute(code, PRODUCTS[code]);
+  if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
 }
 // reopen the scanner in name-search mode and restore the exact list the user
 // picked from, so cancelling a product does not force a fresh manual search
@@ -5780,28 +5818,24 @@ function closeCatalogPage() {
 $("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop(); });
 /* Ido, 2026-09-13: "כפתור של הוספת מוצר חדש לקטלוג הקהילתי... ברגע שאני מוסיף
    שם ידנית שייתווסף לכולם אוטומטית" - a way to add a brand-new product
-   straight into the shared catalog without scanning it first. The catalog is
-   keyed by barcode (p-<barcode> in the Make store), so a barcode is asked up
-   front, same prompt() pattern the scan screen's own "בלי ברקוד" button
-   already uses - leaving it empty is allowed too ("תאפשר לי להכניס ללא
-   ברקוד"), but then persistCatalogEdit() saves it locally only (a name-key,
-   same as any other barcode-less product elsewhere in this file): there is
-   no p-<barcode> to write, and no barcode for another phone to ever scan, so
-   "reaches everyone" only holds for a real barcode - the foundTag below says
-   so plainly the moment he leaves it blank, not just in a code comment.
-   Reuses the entry sheet exactly like tapping an existing
-   catalog row does (closeCatalogPage + entryFromCatalog=true), so ✕ or the
-   "add" button both save straight to PRODUCTS + sharedContribute (via
-   persistCatalogEdit/addEntry) with no grams/log-row required, then return
-   to the catalog list. */
+   straight into the shared catalog without scanning it first. A real barcode
+   is asked up front, same prompt() pattern the scan screen's own "בלי ברקוד"
+   button already uses - but leaving it empty is fully supported too (a later
+   ask, "יש מוצרים שאין להם ברקוד... תאפשר לי גם לשתף אותם", e.g. anything
+   sold by weight): persistCatalogEdit() then mints a stable name-based key
+   (nameKey/isShareable above) and shares it exactly the same way. Reuses the
+   entry sheet exactly like tapping an existing catalog row does
+   (closeCatalogPage + entryFromCatalog=true), so ✕ or the "add" button both
+   save straight to PRODUCTS + sharedContribute (via persistCatalogEdit/
+   addEntry) with no grams/log-row required, then return to the catalog list. */
 function openNewCatalogProduct() {
   if (!isAdmin()) return;
   const code = prompt(T("הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):"));
   if (code === null) return;
   const bc = code.trim();
   // an EMPTY barcode is allowed (Ido, 2026-09-13) - persistCatalogEdit()
-  // below saves it locally under a name-key instead; only a non-empty but
-  // malformed one is rejected, since that could never become a real p-<code>
+  // mints a name-based key for it instead; only a non-empty but malformed one
+  // is rejected, since that could never become a real p-<code>
   // record either way
   if (bc && !/^\d{6,}$/.test(bc)) { showToast(T("צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק")); return; }
   closeCatalogPage();
@@ -5812,7 +5846,7 @@ function openNewCatalogProduct() {
   pending = { barcode: bc, photo: "" };
   $("foundTag").textContent = known ? T("✓ מוכר — הערכים מולאו")
     : bc ? T("מוצר חדש · ") + bc
-    : T("מוצר בלי ברקוד — יישמר רק אצלך, לא יגיע לשאר המשתמשים");
+    : T("מוצר בלי ברקוד — יתפרסם לכולם לפי השם");
   $("foundTag").className = "foundtag " + (known ? "known" : "newp");
   $("pName").value = known ? known.name : "";
   setMacroField("p100kcal", known ? known.kcal : "");
@@ -5922,7 +5956,7 @@ async function catalogAdoptAll() {
   try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
   let changed = false;
   for (const code of Object.keys((CATALOG && CATALOG.codes) || {})) {
-    if (!/^\d{6,}$/.test(code) || PRODUCTS[code]) continue;
+    if (!isShareable(code) || PRODUCTS[code]) continue;
     const hit = catalogGet(code);
     if (hit && hit.name) { PRODUCTS[code] = hit; changed = true; }
   }
@@ -6800,7 +6834,7 @@ async function shareAllMine() {
   if (!isAdmin()) return;
   try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
   for (const [code, p] of Object.entries(PRODUCTS || {})) {
-    if (!/^\d{6,}$/.test(code) || !p || !p.name) continue;
+    if (!isShareable(code) || !p || !p.name) continue;
     sharedContribute(code, p);   // skipped automatically if already in the catalog unchanged
   }
 }
@@ -7104,7 +7138,7 @@ function applyPickedPhoto(photo) {
   // admin: push the photo to the shared catalog so it reaches everyone
   // (the pipeline hosts it as-is - no background removal)
   let shared = false;
-  if (isAdmin() && /^\d{6,}$/.test(e.barcode || "") && PRODUCTS[e.barcode]) {
+  if (isAdmin() && isShareable(e.barcode || "") && PRODUCTS[e.barcode]) {
     sharedContribute(e.barcode, PRODUCTS[e.barcode]);
     shared = true;
   }
