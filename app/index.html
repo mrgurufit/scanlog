@@ -3382,7 +3382,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.12.15";
+const APP_BUILD = "2026.09.13.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4953,6 +4953,31 @@ function offName(p) {
   return out.trim();
 }
 
+/* Turns OFF's free-text "quantity" ("150 g", "1.5 l", "6 x 40 g", "5.2 oz")
+   into one total-package gram figure, so a brand-new scan can offer "the
+   whole package" as a ready-made portion instead of forcing a weigh-in.
+   Volume is treated as 1 ml = 1 g (same approximation the community-catalog
+   research already used) - close enough for portion SIZING, never used for
+   the actual nutrition numbers. Ido, 2026-09-13: free, instant, no search. */
+function parseQtyGrams(q) {
+  const s = String(q || "").toLowerCase().replace(/,/g, ".");
+  if (!s) return 0;
+  const UNIT = { kg: 1000, kgs: 1000, lb: 453.592, lbs: 453.592, oz: 28.3495,
+                 ml: 1, l: 1000, liter: 1000, liters: 1000, litre: 1000, litres: 1000,
+                 g: 1, gr: 1, gram: 1, grams: 1 };
+  const U = "kg|kgs|lbs|lb|oz|ml|liters|litres|liter|litre|l|grams|gram|gr|g";
+  // multipack "6 x 40 g" - count, then unit weight - total across the pack
+  let m = s.match(new RegExp("(\\d+(?:\\.\\d+)?)\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*(" + U + ")\\b"));
+  if (m && UNIT[m[3]]) return Math.round(+m[1] * +m[2] * UNIT[m[3]]);
+  // multipack the other way round: "40 g x 6"
+  m = s.match(new RegExp("(\\d+(?:\\.\\d+)?)\\s*(" + U + ")\\s*x\\s*(\\d+(?:\\.\\d+)?)\\b"));
+  if (m && UNIT[m[2]]) return Math.round(+m[1] * +m[3] * UNIT[m[2]]);
+  // plain single value: "150 g", "1.5 l", "5.2 oz"
+  m = s.match(new RegExp("(\\d+(?:\\.\\d+)?)\\s*(" + U + ")\\b"));
+  if (m && UNIT[m[2]]) return Math.round(+m[1] * UNIT[m[2]]);
+  return 0;
+}
+
 async function offFetch(host, code) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 6000);
@@ -4982,6 +5007,7 @@ async function lookupOFF(code) {
     carb: n.carbohydrates_100g ?? "",
     fat:  n.fat_100g ?? "",
     photo: p.image_small_url || p.image_url || "",
+    qtyGrams: parseQtyGrams(p.quantity || ""),
   };
 }
 
@@ -5209,6 +5235,16 @@ async function onBarcode(code, photo) {
       if (!$("p100carb").value && off.carb !== "") setMacroField("p100carb", off.carb);
       if (!$("p100fat").value && off.fat !== "") setMacroField("p100fat", off.fat);
       if (!shotSrc() && off.photo) setShot(off.photo);
+      // free auto-fill: OFF's own package-size field becomes a ready "whole
+      // package" portion, so a brand-new product isn't a bare weigh-in the
+      // first time anyone scans it. The gram amount picked when LOGGING is
+      // still entirely up to the user - this only saves typing the package
+      // size from scratch, and it rides the same contribution below, so the
+      // whole community gets it too (Ido, 2026-09-13).
+      if (!entryPortions.length && off.qtyGrams > 0) {
+        entryPortions = [{ n: T("האריזה כולה"), g: off.qtyGrams }];
+        selPortion = 0;
+      }
       const complete = off.name && off.kcal !== "";
       // a COMPLETE OFF product needs no contribution - OFF already serves it to
       // everyone for free, so storing it in Make would only burn an operation.
