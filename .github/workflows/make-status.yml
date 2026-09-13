@@ -10,8 +10,6 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch: {}
-  push:
-    paths: [".github/workflows/make-status.yml"]   # TEMP: removed right after the first verified run
 
 permissions:
   contents: write
