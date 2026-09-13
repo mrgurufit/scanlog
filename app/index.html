@@ -1509,6 +1509,9 @@ const I18N_EN = {
   "יחידות": "units",
   "יחידה": "unit",
   "מנה": "portion",
+  "תמונה": "photo",
+  "מנה ותמונה": "portion and photo",
+  "מצאנו": "Found",
   "שקילה בגרמים": "weigh in grams",
   "כמות": "amount",
   "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
@@ -2001,6 +2004,9 @@ const I18N_AR = {
   "יחידות": "وحدات",
   "יחידה": "وحدة",
   "מנה": "حصة",
+  "תמונה": "صورة",
+  "מנה ותמונה": "حصة وصورة",
+  "מצאנו": "وجدنا",
   "שקילה בגרמים": "وزن بالغرام",
   "כמות": "الكمية",
   "בחר מנה או שקול בגרמים": "اختر حصة أو زِن بالغرام",
@@ -2465,6 +2471,9 @@ const I18N_RU = {
   "יחידות": "шт.",
   "יחידה": "штука",
   "מנה": "порция",
+  "תמונה": "фото",
+  "מנה ותמונה": "порцию и фото",
+  "מצאנו": "Нашли",
   "שקילה בגרמים": "взвесить в граммах",
   "כמות": "количество",
   "בחר מנה או שקול בגרמים": "Выберите порцию или взвесьте в граммах",
@@ -3382,7 +3391,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.13.1";
+const APP_BUILD = "2026.09.13.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3442,6 +3451,9 @@ const SHARED_GET = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg";
 // "כתוב לנו" - user feedback goes here (bug / missing product / suggestion),
 // reaches Ido with who sent it and an optional screenshot
 const FEEDBACK_HOOK = "https://hook.us2.make.com/kwmm5bcpb3deisjydcpt4odyygdapqqd";
+// one record, not the whole store - used only to poll for the AI's answer
+// right after logging a product missing a portion or photo (see pollEnrichment)
+const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7ykaje";
 
 /* ---------------- community catalog (bulk, on the phone) ----------------
    Ido, 2026-09-02: every product every user enters, on every phone. Each
@@ -3591,6 +3603,58 @@ function sharedContribute(code, p) {
   contribEnqueue({ barcode: code, name: p.name,
     kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: who, status: "approved" });
   contribFlush();
+}
+
+/* AI ENRICHMENT LOOKBACK (Ido, 2026-09-13): "שאלה למשתמש יוכל לראות את זה
+   באותו רגע על המסך שלו" - a contribution missing a portion or a photo gets
+   searched by Gemini server-side (Make scenario "AI Enrichment"), usually
+   done within 5-40s. The community catalog only refreshes once a day (his
+   own call - that stays as is) but the SAME phone that just logged the
+   product shouldn't have to wait for that: poll one lightweight Make webhook
+   (a single record, not the whole store - cheap) every 5s for up to ~40s,
+   and the moment an answer lands, update this phone's own copy live - the
+   photo on every log row, the portion on the product itself - with a toast.
+   Fires only when something is actually missing, so a normal scan that
+   already has both costs zero extra Make calls. */
+function lookupOne(barcode) {
+  return fetch(LOOKUP_ONE_URL + "?barcode=" + encodeURIComponent(barcode), { cache: "no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null);
+}
+function pollEnrichment(barcode, name, needPortion, needPhoto) {
+  if (!needPortion && !needPhoto) return;
+  let tries = 0;
+  const maxTries = 8;   // ~40s total - well past Gemini's usual answer time
+  const tick = async () => {
+    tries++;
+    const rec = await lookupOne(barcode);
+    let gotPortion = false, gotPhoto = false;
+    if (rec && rec.found) {
+      if (needPortion && rec.pt) {
+        let portions = [];
+        try { portions = JSON.parse(rec.pt); } catch { /* ignore */ }
+        if (Array.isArray(portions) && portions.length) {
+          PRODUCTS[barcode] = Object.assign(PRODUCTS[barcode] || {}, { portions });
+          CATALOG.codes[barcode] = Object.assign(CATALOG.codes[barcode] || {}, { pt: portions });
+          store.set(LS_PROD, PRODUCTS); store.set(LS_CAT, CATALOG);
+          needPortion = false; gotPortion = true;
+        }
+      }
+      if (needPhoto && rec.photo && /^https?:/.test(rec.photo)) {
+        applyProductPhoto(barcode, name, rec.photo);
+        CATALOG.codes[barcode] = Object.assign(CATALOG.codes[barcode] || {}, { img: rec.photo });
+        store.set(LS_CAT, CATALOG);
+        renderLog();
+        needPhoto = false; gotPhoto = true;
+      }
+    }
+    if (gotPortion || gotPhoto) {
+      const what = gotPortion && gotPhoto ? T("מנה ותמונה") : gotPortion ? T("מנה") : T("תמונה");
+      showToast("🤖 " + T("מצאנו") + " " + what + " ל" + name);
+    }
+    if ((needPortion || needPhoto) && tries < maxTries) setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 5000);
 }
 
 /* MODERATION (Ido, 2026-09-08): a non-admin's hand-typed new product does NOT
@@ -5498,7 +5562,13 @@ function addEntry() {
        filtering is needed again ("אם בהמשך יצטרך לעבור סינון אסנן"). Still
        no-ops on its own if nothing actually changed (sharedContribute's
        `already` check), so re-saving an unmodified product costs nothing. */
-    if (/^\d{6,}$/.test(e.barcode)) sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+    if (/^\d{6,}$/.test(e.barcode)) {
+      sharedContribute(e.barcode, PRODUCTS[e.barcode]);
+      // right after logging, see if the AI finds what's missing for THIS
+      // phone too - not just tomorrow's community catalog compile (see
+      // pollEnrichment above)
+      pollEnrichment(e.barcode, name, !entryPortions.length, !e.photo);
+    }
   }
   viewDay = e.day;
   $("entry").classList.remove("on");
