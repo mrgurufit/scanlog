@@ -3400,7 +3400,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.13.5";
+const APP_BUILD = "2026.09.13.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3690,6 +3690,13 @@ function nameKey(name) {
 // (an ordinary quick log entry typed with nothing to identify it by stays
 // private, exactly as before).
 function isShareable(code) { return /^\d{6,}$/.test(code || "") || /^n[0-9a-z]+$/.test(code || ""); }
+// an EXACT name match against the built-in reference lists this app already
+// ships to everyone (staples/national/USDA) - pointless to also push into the
+// shared catalog under a name-key. An edited/more specific name no longer
+// matches, so it IS shared - only an untouched pick from these lists is skipped.
+function isBuiltinStapleName(name) {
+  return GENERIC.some(g => g.n === name) || GOV.some(g => g[0] === name) || USDA.some(g => g[0] === name);
+}
 
 /* MODERATION (Ido, 2026-09-08): a non-admin's hand-typed new product does NOT
    go live. It is queued to the SAME shared store but marked "pending", so the
@@ -5563,6 +5570,9 @@ function addEntry() {
       else { delete ex.portion; delete ex.qty; }
       const ph = /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "";
       if (ph) { ex.photo = ph; applyProductPhoto(ex.barcode, ex.name, ph); }
+      // same name-key mint as the new-entry path below, so re-saving an old
+      // barcode-less row can also start sharing it
+      if (!ex.barcode && name && !isBuiltinStapleName(name)) ex.barcode = nameKey(name);
       if (isShareable(ex.barcode || "")) {
         PRODUCTS[ex.barcode] = Object.assign(PRODUCTS[ex.barcode] || {}, { name, kcal: k100, pro: ex.pro100, carb: ex.carb100, fat: ex.fat100 });
         if (entryPortions.length) PRODUCTS[ex.barcode].portions = entryPortions.slice();
@@ -5590,6 +5600,13 @@ function addEntry() {
     photo: /^(data:|https:)/.test(shotSrc()) ? shotSrc() : "",
   };
   if (selPortion >= 0 && entryPortions[selPortion]) { e.portion = entryPortions[selPortion].n; e.qty = num($("grams").value); }
+  // a genuinely new product typed with no barcode at all (Ido, 2026-09-13,
+  // after "קבב" he typed manually didn't show up in the catalog) gets the
+  // same stable name-key persistCatalogEdit() mints - so it is shared too,
+  // not just something added through the catalog's own ➕ button. Skipped
+  // for an untouched pick off the built-in staple/national/USDA lists (those
+  // are already in the app for everyone - nothing new to share).
+  if (!e.barcode && name && !isBuiltinStapleName(name)) e.barcode = nameKey(name);
   LOG.push(e);
   save();
   hcWriteEntry(e);
