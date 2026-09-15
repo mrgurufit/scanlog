@@ -1421,6 +1421,7 @@ const I18N_EN = {
   "פותח את סורק הברקודים…": "Opening the barcode scanner…",
   "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.": "Scan cancelled. Tap + to scan again, or search by name below.",
   "הסורק לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.": "The scanner is unavailable right now. Photograph the barcode or search by name.",
+  "אשר גישה למצלמה בחלון שנפתח, ואז לחץ שוב על ה-+ לסריקה.": "Allow camera access in the window that opened, then tap + again to scan.",
   "הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).": "This browser blocks the camera here (the connection is not secure).",
   "המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.": "The camera is blocked for this site. Tap the 🔒 next to the address, then Permissions, Camera, Allow.",
   "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.": "The request was denied, or this embedded page is not allowed to use the camera, so no prompt appeared.",
@@ -1920,6 +1921,7 @@ const I18N_AR = {
   "פותח את סורק הברקודים…": "جارٍ فتح ماسح الباركود…",
   "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.": "أُلغي المسح. اضغط + للمسح مجددًا، أو ابحث بالاسم بالأسفل.",
   "הסורק לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.": "الماسح غير متاح الآن. صوّر الباركود أو ابحث بالاسم.",
+  "אשר גישה למצלמה בחלון שנפתח, ואז לחץ שוב על ה-+ לסריקה.": "اسمح بالوصول إلى الكاميرا في النافذة التي فُتحت، ثم اضغط على + مرة أخرى للمسح.",
   "הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).": "المتصفح يحظر الكاميرا هنا (الاتصال غير آمن).",
   "המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.": "الكاميرا محظورة لهذا الموقع. اضغط القفل 🔒 بجانب العنوان ← الأذونات ← الكاميرا ← السماح.",
   "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.": "رُفض الطلب، أو أن هذه الصفحة المضمّنة غير مسموح لها باستخدام الكاميرا، لذلك لم يظهر أي طلب.",
@@ -2391,6 +2393,7 @@ const I18N_RU = {
   "פותח את סורק הברקודים…": "Открываю сканер штрихкодов…",
   "הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.": "Сканирование отменено. Нажмите + ещё раз или найдите по названию ниже.",
   "הסורק לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.": "Сканер сейчас недоступен. Сфотографируйте штрихкод или найдите по названию.",
+  "אשר גישה למצלמה בחלון שנפתח, ואז לחץ שוב על ה-+ לסריקה.": "Разрешите доступ к камере в открывшемся окне, затем снова нажмите + для сканирования.",
   "הדפדפן חוסם מצלמה בדף הזה (חיבור לא מאובטח).": "Браузер блокирует камеру на этой странице (небезопасное соединение).",
   "המצלמה חסומה לאתר הזה בהגדרות הדפדפן. פתח את המנעול 🔒 שליד הכתובת ← הרשאות ← מצלמה ← אפשר.": "Камера заблокирована для этого сайта. Нажмите замок 🔒 рядом с адресом → Разрешения → Камера → Разрешить.",
   "הבקשה נדחתה, או שהדף המוטמע לא מורשה לגשת למצלמה — ולכן לא הופיעה בכלל בקשה.": "Запрос отклонён, либо встроенной странице запрещён доступ к камере — поэтому запрос не появился.",
@@ -3404,7 +3407,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.5";
+const APP_BUILD = "2026.09.16.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4103,26 +4106,51 @@ function hcWriteEntry(e) {
 // camera's own reported range wherever it's actually applied
 const DEFAULT_SCAN_ZOOM = 3;
 
-/* Native CameraX scan screen (BarcodeScanActivity) - the default inside the
-   APK (see startScan() above): it's the only path that can actually zoom. */
+/* Native CameraX scan card (BarcodeScanOverlay) - the default inside the APK
+   (see startScan() above): it's the only path that can actually zoom. It's a
+   self-contained native view, not the web #cam markup, so the FAB itself
+   becomes the close (✕) control (Ido, 2026-09-16) - tapping it again while
+   this is open calls HB().cancelScan() below via toggleScan(). */
+let nativeScanActive = false;
 async function nativeScan() {
   ovPush();
-  $("cam").classList.add("on");
-  document.body.style.overflow = "hidden";
-  $("video").classList.add("off");
-  $("camHint").textContent = T("פותח את סורק הברקודים…");
+  nativeScanActive = true;
+  $("fab").classList.add("scanon");
   try {
     const r = await HB().scanBarcode();
-    stopScan();
+    nativeScanActive = false;
+    $("fab").classList.remove("scanon");
     if (r && r.value) onBarcode(r.value, "");
   } catch (err) {
+    nativeScanActive = false;
+    $("fab").classList.remove("scanon");
     const m = String((err && err.message) || err);
-    if (/cancel/i.test(m)) {
-      $("camHint").textContent = T("הסריקה בוטלה — לחץ שוב על ה-+ לסריקה, או חפש בשם למטה.");
+    if (/search_requested/i.test(m)) {
+      openNameSearchOnly();
+    } else if (/cancel/i.test(m)) {
+      /* closed via the FAB - nothing more to say */
+    } else if (/camera_permission_requested/i.test(m)) {
+      msg("scanMsg", T("אשר גישה למצלמה בחלון שנפתח, ואז לחץ שוב על ה-+ לסריקה."));
     } else {
-      $("camHint").textContent = T("הסורק לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם.");
+      msg("scanMsg", T("הסורק לא זמין כרגע — אפשר לצלם תמונה של הברקוד או לחפש בשם."));
     }
   }
+}
+
+/* Reached from the native scan card's "🔎 חפש בשם" button: the text-search
+   UI is pure web/JS already (searches PRODUCTS/GENERIC/GOV/USDA), so there's
+   no reason to rebuild it natively - just hand off to the classic #cam
+   markup already wired for it, camera-less (Ido, 2026-09-16). */
+function openNameSearchOnly() {
+  ovPush();
+  $("cam").classList.add("on");
+  $("fab").classList.add("scanon");
+  document.body.style.overflow = "hidden";
+  $("video").classList.add("off");
+  document.querySelector(".campanel").classList.add("searching");
+  $("searchArea").style.display = "block";
+  $("searchToggle").classList.add("on");
+  setTimeout(() => $("searchIn").focus(), 30);
 }
 
 /* ---------------- camera + barcode ---------------- */
@@ -5860,6 +5888,7 @@ function report(day) {
 /* ---------------- wiring ---------------- */
 // one button toggles the scanner: tap to open, tap again to close
 function toggleScan() {
+  if (nativeScanActive) { HB().cancelScan().catch(() => {}); return; }
   if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); }
   else startScan();
 }
