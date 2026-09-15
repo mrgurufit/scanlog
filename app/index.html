@@ -1328,6 +1328,7 @@
             </button>
             <button type="button" class="drawerItem" id="drawerCatalog">
               <span class="drawerIco">🗂️</span><span class="drawerLbl">קטלוג קהילתי</span>
+              <span class="drawerBadge" id="drawerCatalogBadge" hidden></span>
               <span class="drawerArrow">›</span>
             </button>
             <div class="drawerDiv"></div>
@@ -1555,6 +1556,7 @@ const I18N_EN = {
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "Type the barcode number of the new product (or leave it empty for a product without one):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "A valid barcode is needed (at least 6 digits), or leave it empty",
   "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "Product without a barcode — will be published to everyone by name",
+  "מוצרים חדשים בקטלוג הקהילתי": "new products in the community catalog",
   "התמונה הוחלפה.": "Photo replaced.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "I could not read that image.",
   "השתמש בתמונה שצילמתי": "Use the photo I took",
@@ -2051,6 +2053,7 @@ const I18N_AR = {
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "اكتب رقم الباركود للمنتج الجديد (أو اتركه فارغًا لمنتج بلا باركود):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "نحتاج باركود صالح (6 أرقام على الأقل)، أو اتركه فارغًا",
   "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "منتج بلا باركود — سيُنشر للجميع بالاسم",
+  "מוצרים חדשים בקטלוג הקהילתי": "منتجات جديدة في الكتالوج المجتمعي",
   "התמונה הוחלפה.": "تم استبدال الصورة.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "تعذّر قراءة هذه الصورة.",
   "השתמש בתמונה שצילמתי": "استخدم الصورة التي التقطتها",
@@ -2521,6 +2524,7 @@ const I18N_RU = {
   "הקלד את מספר הברקוד של המוצר החדש (או השאר ריק למוצר בלי ברקוד):": "Введите номер штрихкода нового продукта (или оставьте пустым для продукта без него):",
   "צריך ברקוד תקין (לפחות 6 ספרות), או השאר ריק": "Нужен действительный штрихкод (не менее 6 цифр), либо оставьте пустым",
   "מוצר בלי ברקוד — יתפרסם לכולם לפי השם": "Продукт без штрихкода — будет опубликован для всех по названию",
+  "מוצרים חדשים בקטלוג הקהילתי": "новых продуктов в общем каталоге",
   "התמונה הוחלפה.": "Фото заменено.",
   "לא הצלחתי לקרוא את התמונה הזאת.": "Не удалось прочитать это изображение.",
   "השתמש בתמונה שצילמתי": "Использовать сделанное фото",
@@ -3400,7 +3404,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.13.6";
+const APP_BUILD = "2026.09.15.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3475,6 +3479,18 @@ const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7yka
    CDN - free and unlimited to read); the APK reads it over native HTTP
    because the WebView's own fetch to that host fails on some devices. */
 const LS_CAT = "fl_catalog", LS_CAT_AT = "fl_catalog_at", LS_CONTRIB = "fl_contrib";
+// last time the admin actually opened the catalog page - the in-app stand-in
+// for a push notification (Ido, 2026-09-15: "אני רק יקבל התראה שנכנס מוצר
+// חדש"; a real system notification needs a native Android rebuild he chose
+// to defer). Anything with a newer `t` than this counts as "not seen yet".
+const LS_CAT_SEEN = "fl_catalog_seen_at";
+function newCatalogCount() {
+  const seen = Number(localStorage.getItem(LS_CAT_SEEN)) || 0;
+  let n = 0;
+  for (const p of Object.values((CATALOG && CATALOG.codes) || {}))
+    if ((Date.parse(p.t || "") || 0) > seen) n++;
+  return n;
+}
 // the app is served from the custom domain mrgurufit.com (github.io just
 // redirects there, which breaks a cross-origin fetch), so the canonical host
 // is mrgurufit.com; raw.githubusercontent is the mirror the APK falls back to
@@ -3518,6 +3534,7 @@ async function catalogPull(force) {
     if (!text) return;
     const data = JSON.parse(text);
     if (!data || typeof data.codes !== "object") return;
+    const beforeNew = isAdmin() ? newCatalogCount() : 0;
     CATALOG = { v: data.v || "", codes: Object.assign({}, CATALOG.codes, data.codes) };
     store.set(LS_CAT, CATALOG);
     localStorage.setItem(LS_CAT_AT, String(Date.now()));
@@ -3530,6 +3547,13 @@ async function catalogPull(force) {
       if (!url || !/^https?:/.test(url)) continue;
       const cur = PRODUCTS[c] && PRODUCTS[c].photo;
       if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
+    }
+    // the in-app "notification": tell the admin right away if this pull
+    // actually brought in products he hasn't seen yet
+    if (isAdmin()) {
+      const gained = newCatalogCount() - beforeNew;
+      if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים בקטלוג הקהילתי"));
+      if (typeof updateInboxBadge === "function") updateInboxBadge();
     }
   } catch { /* offline or malformed - keep whatever is already on the phone */ }
 }
@@ -5827,6 +5851,9 @@ function openCatalogPage() {
   $("catalogSearch").value = "";
   $("catalogPage").classList.add("on");
   document.body.style.overflow = "hidden";
+  // opening the page IS "I saw it" - clears the 🆕 badge/dot right away
+  localStorage.setItem(LS_CAT_SEEN, String(Date.now()));
+  updateInboxBadge();
 }
 function closeCatalogPage() {
   $("catalogPage").classList.remove("on");
@@ -6814,8 +6841,10 @@ function setBadge(id, n) {
 function updateInboxBadge() {
   setBadge("drawerApproveBadge", PENDING.length);   // 🍎 new products to approve
   setBadge("drawerInboxBadge", FEEDBACK.length);    // 📬 unread messages/feedback
+  const newCat = isAdmin() ? newCatalogCount() : 0;
+  setBadge("drawerCatalogBadge", newCat);           // 🗂️ community products he hasn't seen yet
   const dot = $("menuDot");
-  if (dot) dot.classList.toggle("on", isAdmin() && (PENDING.length + FEEDBACK.length) > 0);
+  if (dot) dot.classList.toggle("on", isAdmin() && (PENDING.length + FEEDBACK.length + newCat) > 0);
 }
 
 // the admin-only rows live inside the drawer; show them for the admin only,
