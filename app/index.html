@@ -3404,7 +3404,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.1";
+const APP_BUILD = "2026.09.16.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4099,6 +4099,10 @@ function hcWriteEntry(e) {
   } catch { /* never block adding food */ }
 }
 
+// default camera zoom on scan open (Ido, 2026-09-16) - clamped to each
+// camera's own reported range wherever it's actually applied
+const DEFAULT_SCAN_ZOOM = 3;
+
 /* in the APK the Google scan sheet replaces the in-page camera loop
    (the Android WebView has no BarcodeDetector) */
 async function nativeScan() {
@@ -4180,7 +4184,7 @@ async function startScan() {
       // after the stream exists (both are tried below); without it a phone can
       // default to a fixed/slow focus that never sharpens on a small, close-up
       // barcode (Ido, 2026-09-11: "יש ברקודים ממש קטנים וזה לא מצליח לתפוס")
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, focusMode: { ideal: "continuous" } }, audio: false
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, focusMode: { ideal: "continuous" }, zoom: { ideal: DEFAULT_SCAN_ZOOM } }, audio: false
     }).then(s => {
       if (timedOut) { s.getTracks().forEach(t => t.stop()); return null; }
       return s;
@@ -4234,6 +4238,13 @@ async function startScan() {
     // getUserMedia itself but do honour applyConstraints afterwards
     if (caps.focusMode && caps.focusMode.includes("continuous")) {
       track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+    }
+    // ideal:3 above gets silently dropped when out of the device's reported
+    // range - clamp explicitly so the default zoom still lands as close to 3x
+    // as the camera allows (Ido, 2026-09-16: default zoom wasn't applying)
+    if (caps.zoom) {
+      const z = Math.min(DEFAULT_SCAN_ZOOM, caps.zoom.max ?? DEFAULT_SCAN_ZOOM);
+      track.applyConstraints({ advanced: [{ zoom: Math.max(z, caps.zoom.min ?? z) }] }).catch(() => {});
     }
   } catch { if (IN_APK) $("torchBtn").classList.add("avail"); }
   loop();
