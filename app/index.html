@@ -3404,7 +3404,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.15.1";
+const APP_BUILD = "2026.09.15.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4511,7 +4511,11 @@ function localMatches(q) {
     const nm = cp.n || "";
     if (!nm) continue;
     const alt = (trCache()[LANG + ":" + nm] || "").toLowerCase();
-    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)))
+    // an English-labeled product gets a Hebrew alias baked in at compile
+    // time (see catalog.yml) precisely so a Hebrew query still finds it -
+    // "גם אם רשום על האריזה באנגלית" (Ido, 2026-09-15)
+    const heAlias = (cp.a || "").toLowerCase();
+    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)) || (heAlias && heAlias.includes(q)))
       add({ name: nm, k: cp.k || 0, p: cp.p || 0, c: cp.c || 0, f: cp.f || 0, barcode: code,
             photo: cp.img || "", portions: Array.isArray(cp.pt) ? cp.pt : [], src: "קהילתי" });
   }

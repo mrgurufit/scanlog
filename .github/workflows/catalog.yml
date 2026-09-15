@@ -257,6 +257,56 @@ jobs:
           print('built pending list with', len(pend), 'items')
           PY
 
+      # Ido, 2026-09-15: "שיהיה ניתן למצוא כל מאכל בקלות ובעברית גם אם רשום
+      # על האריזה באנגלית" - a product whose name has no Hebrew at all (many
+      # of the Open Food Facts imports, and anything a user contributes from
+      # an English label) is invisible to a Hebrew search, since the app only
+      # matches the stored name itself. MyMemory (the same free, no-key
+      # translator the app already uses for DISPLAY) fills in a Hebrew alias
+      # here, once, at compile time - free of any Make/app-runtime cost. Only
+      # entries that don't already carry one from a previous run are
+      # translated, and the run is capped so the catalog keeps growing
+      # without this step ever taking long or tripping MyMemory's rate limit;
+      # anything left over just gets picked up by the next compile.
+      - name: Add Hebrew aliases for non-Hebrew product names
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re, time, urllib.request, urllib.parse
+
+          HEB = re.compile(r'[֐-׿]')
+          MAX_PER_RUN = 200
+
+          catalog = json.load(open('catalog.new'))
+          codes = catalog['codes']
+
+          todo = [bc for bc, c in codes.items()
+                  if c.get('n') and not HEB.search(c['n']) and not c.get('a')]
+          todo = todo[:MAX_PER_RUN]
+          print(f'{len(todo)} product(s) need a Hebrew alias this run '
+                f'(of {sum(1 for c in codes.values() if c.get("n") and not HEB.search(c["n"]))} total without one)')
+
+          done = 0
+          for bc in todo:
+              name = codes[bc]['n']
+              url = ('https://api.mymemory.translated.net/get?q=' +
+                     urllib.parse.quote(name[:120]) + '&langpair=en|he')
+              try:
+                  req = urllib.request.Request(url, headers={'User-Agent': 'scanlog-catalog-compile/1.0'})
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      d = json.loads(r.read())
+                  t = (d.get('responseData', {}).get('translatedText') or '').strip()
+                  if t and HEB.search(t) and 'MYMEMORY WARNING' not in t.upper() and 'QUOTA' not in t.upper():
+                      codes[bc]['a'] = t
+                      done += 1
+              except Exception as e:
+                  print('translate failed', bc, repr(e))
+              time.sleep(0.3)   # be gentle with the free API
+
+          print(f'aliased {done}/{len(todo)}')
+          json.dump(catalog, open('catalog.new', 'w'), ensure_ascii=False, separators=(',', ':'))
+          PY
+
       - name: Commit only if the products or photos changed
         run: |
           set -euo pipefail
