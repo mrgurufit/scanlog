@@ -3404,7 +3404,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.3";
+const APP_BUILD = "2026.09.16.4";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4248,8 +4248,8 @@ async function startScan() {
     const zMin = caps.zoom && caps.zoom.min != null ? caps.zoom.min : 0;
     const z = Math.max(zMin, Math.min(DEFAULT_SCAN_ZOOM, zMax));
     track.applyConstraints({ advanced: [{ zoom: z }] })
-      .then(() => console.log("[scan-zoom] applied", z, "caps.zoom=", caps.zoom))
-      .catch(e => console.log("[scan-zoom] rejected", z, "caps.zoom=", caps.zoom, String(e)));
+      .then(() => { $("camHint").textContent = "ZOOMDIAG applied z=" + z + " settings.zoom=" + (track.getSettings && track.getSettings().zoom) + " caps.zoom=" + JSON.stringify(caps.zoom); })
+      .catch(e => { $("camHint").textContent = "ZOOMDIAG rejected z=" + z + " caps.zoom=" + JSON.stringify(caps.zoom) + " err=" + String(e); });
   } catch { if (IN_APK) $("torchBtn").classList.add("avail"); }
   loop();
 }
