@@ -3407,7 +3407,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.8";
+const APP_BUILD = "2026.09.16.9";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4146,7 +4146,12 @@ function openNameSearchOnly() {
   $("cam").classList.add("on");
   $("fab").classList.add("scanon");
   document.body.style.overflow = "hidden";
-  $("video").classList.add("off");
+  // No live camera behind this (the native one already tore down) - hide the
+  // scanner's own little preview box entirely rather than just shrinking it,
+  // so this reads as a plain search screen (Ido, 2026-09-16).
+  $("vidwrap").style.display = "none";
+  $("camHint").style.display = "none";
+  $("torchBtn").style.display = "none";
   document.querySelector(".campanel").classList.add("searching");
   $("searchArea").style.display = "block";
   $("searchToggle").classList.add("on");
@@ -4378,6 +4383,11 @@ function stopScan() {
   $("cam").classList.remove("on");
   $("fab").classList.remove("scanon");   // back to the camera icon
   $("vidwrap").classList.remove("live");
+  // undo openNameSearchOnly()'s "no live camera behind this" hiding, so a
+  // real scan afterwards shows its preview box again
+  $("vidwrap").style.display = "";
+  $("camHint").style.display = "";
+  $("torchBtn").style.display = "";
   document.querySelector(".campanel").classList.remove("searching");
   $("searchArea").style.display = "none";
   $("searchToggle").classList.remove("on");
