@@ -1514,6 +1514,8 @@ const I18N_EN = {
   "תמונה": "photo",
   "מנה ותמונה": "portion and photo",
   "מצאנו": "Found",
+  "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 Trying to identify the product automatically…",
+  "זוהה אוטומטית:": "Auto-identified:",
   "שקילה בגרמים": "weigh in grams",
   "כמות": "amount",
   "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
@@ -2014,6 +2016,8 @@ const I18N_AR = {
   "תמונה": "صورة",
   "מנה ותמונה": "حصة وصورة",
   "מצאנו": "وجدنا",
+  "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 نحاول التعرف على المنتج تلقائيًا…",
+  "זוהה אוטומטית:": "تم التعرف تلقائيًا:",
   "שקילה בגרמים": "وزن بالغرام",
   "כמות": "الكمية",
   "בחר מנה או שקול בגרמים": "اختر حصة أو زِن بالغرام",
@@ -2486,6 +2490,8 @@ const I18N_RU = {
   "תמונה": "фото",
   "מנה ותמונה": "порцию и фото",
   "מצאנו": "Нашли",
+  "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 Пытаемся автоматически определить продукт…",
+  "זוהה אוטומטית:": "Определено автоматически:",
   "שקילה בגרמים": "взвесить в граммах",
   "כמות": "количество",
   "בחר מנה או שקול בגרמים": "Выберите порцию или взвесьте в граммах",
@@ -3407,7 +3413,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.9";
+const APP_BUILD = "2026.09.16.10";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3470,6 +3476,11 @@ const FEEDBACK_HOOK = "https://hook.us2.make.com/kwmm5bcpb3deisjydcpt4odyygdapqq
 // one record, not the whole store - used only to poll for the AI's answer
 // right after logging a product missing a portion or photo (see pollEnrichment)
 const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7ykaje";
+// the SAME "AI Enrichment" scenario as above, called with ONLY a barcode (no
+// name) - its router recognizes that shape and runs full identification
+// instead of just portion/photo (see tryAutoIdentify below)
+const AI_IDENTIFY_URL = "https://hook.us2.make.com/ox184eru6jsyxnjij06vcg86o57tx4ii";
+const LS_AI_ASKED = "fl_ai_asked";
 
 /* ---------------- community catalog (bulk, on the phone) ----------------
    Ido, 2026-09-02: every product every user enters, on every phone. Each
@@ -3691,6 +3702,89 @@ function pollEnrichment(barcode, name, needPortion, needPhoto) {
     if ((needPortion || needPhoto) && tries < maxTries) setTimeout(tick, 5000);
   };
   setTimeout(tick, 5000);
+}
+
+/* AUTOMATIC PRODUCT IDENTIFICATION ON A TRUE MISS (Ido, 2026-09-16): "אם לא
+   נמצא במאגר הוא מחפש בגוגל, מבין לאיזה מוצר הברקוד שייך ומוצא גם תמונה
+   וממלא את הערכים התזונתיים שלו וגם את המנות" - a barcode neither this
+   phone, the shared catalog, nor Open Food Facts knows gets ONE automatic
+   Gemini+Google-Search identification (name, macros, photo, and realistic
+   size variants like "בקבוק 1.5 ליטר"/"בקבוק אישי 500 מ״ל"/"פחית"). Cost is
+   bounded to once per never-before-seen barcode, system-wide, not once per
+   scan: a live check against the shared store (lookupOne, the same cheap
+   webhook the portion/photo poll above already uses) runs FIRST, so a
+   barcode any other user already triggered this for is answered instantly
+   and for free. The AI's answer is written straight to the shared store as
+   "pending" (Ido reviews it in the admin inbox before it reaches everyone)
+   regardless of whether THIS user ends up saving their own entry - exactly
+   so the shared catalog grows and the AI is asked about a given product at
+   most once, ever, not once per scan. */
+function aiAskedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(LS_AI_ASKED) || "[]")); }
+  catch { return new Set(); }
+}
+function aiMarkAsked(code) {
+  const s = aiAskedSet(); s.add(code);
+  try { localStorage.setItem(LS_AI_ASKED, JSON.stringify([...s].slice(-500))); } catch {}
+}
+function applyAiRecord(code, rec) {
+  if (!pending || pending.barcode !== code) return false;
+  let got = false;
+  if (rec.name && !$("pName").value) { $("pName").value = rec.name; got = true; }
+  if (rec.kcal && !$("p100kcal").value) { setMacroField("p100kcal", rec.kcal); got = true; }
+  if (rec.pro && !$("p100pro").value) { setMacroField("p100pro", rec.pro); got = true; }
+  if (rec.carb && !$("p100carb").value) { setMacroField("p100carb", rec.carb); got = true; }
+  if (rec.fat && !$("p100fat").value) { setMacroField("p100fat", rec.fat); got = true; }
+  if (rec.photo && !shotSrc()) { setShot(rec.photo); got = true; }
+  if (rec.pt && !entryPortions.length) {
+    try {
+      const arr = JSON.parse(rec.pt);
+      if (Array.isArray(arr) && arr.length) { setEntryProduct(arr); got = true; }
+    } catch { /* ignore */ }
+  }
+  if (got) {
+    $("foundTag").textContent = "🤖 " + T("זוהה אוטומטית:") + " " + (rec.name || code);
+    $("foundTag").className = "foundtag known";
+    preview();
+    msg("scanMsg", "", "");
+  }
+  return got;
+}
+function pollAiIdentify(code) {
+  let tries = 0;
+  const maxTries = 8;   // ~40s, same window as pollEnrichment above
+  const tick = async () => {
+    tries++;
+    if (!pending || pending.barcode !== code) return;
+    const rec = await lookupOne(code);
+    if (rec && rec.found && rec.name) { applyAiRecord(code, rec); return; }
+    if (tries < maxTries) setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 5000);
+}
+async function aiIdentifyPost(code) {
+  const hb = HB();
+  try {
+    if (hb && hb.httpPost) {
+      await hb.httpPost({ url: AI_IDENTIFY_URL, body: JSON.stringify({ barcode: code }),
+        contentType: "application/json; charset=utf-8" });
+    } else {
+      await fetch(AI_IDENTIFY_URL, { method: "POST", mode: "no-cors",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ barcode: code }), keepalive: true });
+    }
+  } catch { /* best-effort - a lost request just leaves this a manual entry */ }
+}
+async function tryAutoIdentify(code) {
+  // someone else already triggered this - free, instant, no new AI call
+  const existing = await lookupOne(code);
+  if (existing && existing.found && existing.name) { applyAiRecord(code, existing); return; }
+  if (aiAskedSet().has(code)) return;   // this phone already asked once
+  aiMarkAsked(code);
+  if (!pending || pending.barcode !== code) return;
+  msg("scanMsg", T("🤖 מנסה לזהות את המוצר אוטומטית…"), "");
+  await aiIdentifyPost(code);
+  pollAiIdentify(code);
 }
 
 /* SHARING A PRODUCT WITH NO BARCODE (Ido, 2026-09-13: "יש מוצרים שאין להם
@@ -5612,6 +5706,7 @@ async function onBarcode(code, photo) {
       $("foundTag").textContent = T("לא במאגר · ") + code;
       $("foundTag").className = "foundtag newp";
       missSearch(code, photo);
+      tryAutoIdentify(code);
     }
   }
 }
