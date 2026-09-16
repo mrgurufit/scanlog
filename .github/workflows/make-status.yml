@@ -79,6 +79,29 @@ jobs:
               "lastReset": d.get("lastReset", ""),
               "nextReset": d.get("nextReset", ""),
           }
+
+          # Ido, 2026-09-17: "show me the AI usage specifically" - the single
+          # scenario running the barcode-miss AI identification and the
+          # portion/photo enrichment. Same free REST API, same token, one more
+          # call (still 0 operations - only scenario RUNS cost anything).
+          AI_SCENARIO_ID = 6258320
+          try:
+              req2 = urllib.request.Request(
+                  f"https://{zone}/api/v2/scenarios/{AI_SCENARIO_ID}",
+                  headers={"Authorization": "Token " + tok,
+                           "User-Agent": "mrgurufit-make-status/1.0",
+                           "Accept": "application/json"})
+              with urllib.request.urlopen(req2, timeout=30) as r2:
+                  s = json.loads(r2.read())
+              s = s.get("scenario") or s
+              out["aiEnrichment"] = {
+                  "executions": int(s.get("executions", 0) or 0),
+                  "operations": int(s.get("operations", 0) or 0),
+                  "credits": round(int(s.get("centicredits", 0) or 0) / 100, 2),
+                  "errors": int(s.get("errors", 0) or 0),
+              }
+          except Exception as e:
+              print("AI Enrichment scenario stats fetch failed (non-fatal):", repr(e))
           os.makedirs("app", exist_ok=True)
           # only touch the file (and only commit) if something actually changed -
           # same discipline as the catalog compile, so this never spams history

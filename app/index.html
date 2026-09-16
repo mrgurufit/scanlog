@@ -572,6 +572,14 @@
   .inboxSec { font-size:12px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
               margin:14px 2px 2px; padding-top:8px; }
   .inboxSec:first-child { margin-top:2px; padding-top:0; }
+  .inboxItem.inboxEdit { align-items:flex-start; }
+  .inboxIn { font-family:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px;
+             color:var(--text); padding:5px 8px; font-size:13px; width:100%; box-sizing:border-box; }
+  .inboxIn.inboxName { font-weight:700; margin-bottom:5px; }
+  .inboxMacEdit { display:flex; gap:6px; align-items:center; margin-bottom:5px; }
+  .inboxMacEdit .inboxNum { width:52px; flex:0 0 auto; text-align:center; padding:5px 3px; }
+  .inboxMacEdit small { color:var(--muted); font-size:10.5px; margin-inline-end:4px; }
+  .inboxIn.inboxPhoto { font-size:11px; direction:ltr; text-align:right; margin-bottom:5px; }
   .inboxItem.fb { align-items:flex-start; }
   .inboxMsg { font-size:13px; color:var(--text); margin-top:2px; white-space:pre-wrap; word-break:break-word; }
   .inboxFrom { font-size:11.5px; color:var(--accentText); margin-top:4px; font-weight:700; word-break:break-all; unicode-bidi:plaintext; }
@@ -3413,7 +3421,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.10";
+const APP_BUILD = "2026.09.16.11";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3764,14 +3772,19 @@ function pollAiIdentify(code) {
 }
 async function aiIdentifyPost(code) {
   const hb = HB();
+  // Ido, 2026-09-17: "אם אני סורק זה נכנס ישר" - his own scans skip the
+  // review queue (status "approved" straight away); anyone else's scan
+  // still lands as "pending" for him to check, exactly like every other
+  // contribution path in this file already distinguishes admin from not.
+  const body = JSON.stringify({ barcode: code, admin: isAdmin() ? "1" : "" });
   try {
     if (hb && hb.httpPost) {
-      await hb.httpPost({ url: AI_IDENTIFY_URL, body: JSON.stringify({ barcode: code }),
+      await hb.httpPost({ url: AI_IDENTIFY_URL, body,
         contentType: "application/json; charset=utf-8" });
     } else {
       await fetch(AI_IDENTIFY_URL, { method: "POST", mode: "no-cors",
         headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ barcode: code }), keepalive: true });
+        body, keepalive: true });
     }
   } catch { /* best-effort - a lost request just leaves this a manual entry */ }
 }
@@ -7271,16 +7284,26 @@ function renderInbox() {
     if (!PENDING.length) {
       html = `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`;
     } else {
+      // Ido, 2026-09-17: "תאפשר לי להכנס לכרטיס המוצר ולא רק לעשות עליו
+      // אישור או ביטול" - every field here is a real input straight into
+      // PENDING[i], so a wrong AI/user value can be fixed in place before
+      // approving, instead of only a binary accept/reject.
       html = PENDING.map((r, i) => {
         const pt = ptSummary(r.pt);
         const img = /^https?:/.test(r.photo || "")
           ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
           : `<div class="inboxImg noimg">📦</div>`;
-        return `<div class="inboxItem">${img}<div class="inboxInfo">`
-          + `<div class="inboxName">${esc(r.name || "")}</div>`
-          + `<div class="inboxMac"><b>${Math.round(+r.kcal || 0)}</b> ${T("קק״ל")} · ${T("חלבון")} ${(+r.pro || 0)} · ${T("פחמימה")} ${(+r.carb || 0)} · ${T("שומן")} ${(+r.fat || 0)}</div>`
+        return `<div class="inboxItem inboxEdit">${img}<div class="inboxInfo">`
+          + `<input type="text" class="inboxIn inboxName" data-f="name" data-i="${i}" value="${esc(r.name || "")}" placeholder="${T('שם המוצר')}">`
+          + `<div class="inboxMacEdit">`
+          + `<input type="number" class="inboxIn inboxNum" data-f="kcal" data-i="${i}" value="${+r.kcal || 0}"><small>${T("קק״ל")}</small>`
+          + `<input type="number" class="inboxIn inboxNum" data-f="pro" data-i="${i}" value="${+r.pro || 0}"><small>${T("חלבון")}</small>`
+          + `<input type="number" class="inboxIn inboxNum" data-f="carb" data-i="${i}" value="${+r.carb || 0}"><small>${T("פחמימה")}</small>`
+          + `<input type="number" class="inboxIn inboxNum" data-f="fat" data-i="${i}" value="${+r.fat || 0}"><small>${T("שומן")}</small>`
+          + `</div>`
+          + `<input type="text" class="inboxIn inboxPhoto" data-f="photo" data-i="${i}" value="${esc(r.photo || "")}" placeholder="${T('כתובת תמונה (URL)')}">`
           + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
-          + `<div class="inboxWhen">${esc(r.barcode || "")} · ${timeAgo(r.at)}</div>`
+          + `<div class="inboxWhen">${esc(r.barcode || "")} · ${esc(r.src || "")} · ${timeAgo(r.at)}</div>`
           + `</div><div class="inboxAct">`
           + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
           + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
@@ -7292,6 +7315,12 @@ function renderInbox() {
   list.querySelectorAll("[data-ok]").forEach(b => b.onclick = () => inboxApprove(+b.dataset.ok));
   list.querySelectorAll("[data-no]").forEach(b => b.onclick = () => inboxReject(+b.dataset.no));
   list.querySelectorAll("[data-fb]").forEach(b => b.onclick = () => fbHandle(+b.dataset.fb));
+  list.querySelectorAll(".inboxIn").forEach(inp => inp.addEventListener("change", () => {
+    const r = PENDING[+inp.dataset.i]; if (!r) return;
+    const f = inp.dataset.f;
+    r[f] = inp.type === "number" ? (+inp.value || 0) : inp.value;
+    if (f === "photo") renderInbox();   // refresh the thumbnail to match the new URL
+  }));
 }
 
 function inboxApprove(i) {
