@@ -3437,7 +3437,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.7";
+const APP_BUILD = "2026.09.17.8";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3570,6 +3570,20 @@ async function catalogText() {
   return null;
 }
 
+// Ido, 2026-09-17: every fresh photo for the same barcode is hosted at the
+// SAME filename (mrgurufit.com/app/img/<barcode>.jpg), and that URL is
+// CDN-cached for 10 minutes (Cache-Control: max-age=600). So re-editing a
+// photo twice in a row - exactly the "חלב 1%" test - looked like it kept
+// reverting: the data was correct end to end, but the phone (and the CDN
+// edge) kept serving the OLD cached bytes for the unchanged URL. Appending
+// the record's own edit time as a query string forces a fresh fetch
+// whenever the photo actually changed, while leaving an unchanged photo
+// cacheable as before.
+function bustCacheUrl(url, t) {
+  if (!url || !t || !url.startsWith("https://mrgurufit.com/")) return url;
+  return url.split("?")[0] + "?v=" + encodeURIComponent(t);
+}
+
 async function catalogPull(force) {
   const last = Number(localStorage.getItem(LS_CAT_AT)) || 0;
   // Ido, 2026-09-17: "כל שינוי שאני עורך גובר על הכל ומופיע מיידית אצל כולם" -
@@ -3598,6 +3612,12 @@ async function catalogPull(force) {
     for (const [c, sv] of Object.entries(data.codes)) {
       const lv = mergedCodes[c];
       if (!lv || !lv.t || !sv.t || sv.t >= lv.t) mergedCodes[c] = sv;
+    }
+    // cache-bust every hosted photo URL against its own edit time (see
+    // bustCacheUrl above) - keeps a re-edited photo from hiding behind the
+    // CDN's 10-minute cache under the same fixed per-barcode filename
+    for (const rec of Object.values(mergedCodes)) {
+      if (rec && rec.img) rec.img = bustCacheUrl(rec.img, rec.t);
     }
     CATALOG = { v: data.v || "", codes: mergedCodes };
     store.set(LS_CAT, CATALOG);
