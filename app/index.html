@@ -3437,7 +3437,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.6";
+const APP_BUILD = "2026.09.17.7";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3587,7 +3587,19 @@ async function catalogPull(force) {
     const data = JSON.parse(text);
     if (!data || typeof data.codes !== "object") return;
     const beforeNew = isAdmin() ? newCatalogCount() : 0;
-    CATALOG = { v: data.v || "", codes: Object.assign({}, CATALOG.codes, data.codes) };
+    // Ido, 2026-09-17: "שינוי שאני עורך גובר על הכל" - a blind merge let a
+    // stale catalog.json (the compile that predates this edit is still
+    // publishing) clobber a local edit the moment the next pull ran, which
+    // got a lot more likely once the throttle above dropped to 2 minutes.
+    // Keep the local record whenever it is the newer one (both sides carry
+    // the edit time in "t"); only accept the server's value when it is at
+    // least as fresh, or there is no local record to protect yet.
+    const mergedCodes = Object.assign({}, CATALOG.codes);
+    for (const [c, sv] of Object.entries(data.codes)) {
+      const lv = mergedCodes[c];
+      if (!lv || !lv.t || !sv.t || sv.t >= lv.t) mergedCodes[c] = sv;
+    }
+    CATALOG = { v: data.v || "", codes: mergedCodes };
     store.set(LS_CAT, CATALOG);
     localStorage.setItem(LS_CAT_AT, String(Date.now()));
     // The pipeline hosts the uploaded camera photo as-is (no background removal)
