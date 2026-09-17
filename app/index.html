@@ -1378,7 +1378,10 @@
         <div class="progHead">
           <button type="button" id="catalogClose" aria-label="סגור">✕</button>
           <b>🗂️ קטלוג קהילתי</b>
-          <button type="button" id="catalogAddBtn" aria-label="הוסף מוצר חדש">➕</button>
+          <div style="display:flex;gap:8px">
+            <button type="button" id="catalogRefreshBtn" aria-label="רענן קטלוג">🔄</button>
+            <button type="button" id="catalogAddBtn" aria-label="הוסף מוצר חדש">➕</button>
+          </div>
         </div>
         <div class="progBody">
           <input type="text" id="catalogSearch" class="catSearch" placeholder="🔎 חפש בקטלוג…" autocomplete="off">
@@ -3421,7 +3424,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.16.11";
+const APP_BUILD = "2026.09.17.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6175,6 +6178,17 @@ function closeCatalogPage() {
   document.body.style.overflow = "";
 }
 $("catalogClose").addEventListener("click", () => { closeCatalogPage(); ovDrop(); });
+// Ido, 2026-09-17: "למה אני לא רואה את התמונות שהתחלפו?" - catalogPull only
+// re-fetches at most once an hour per device, and there was no way to force
+// it sooner. A real fix landing on the server (a repaired photo, a new AI
+// enrichment) is invisible here until that hour is up - this button skips
+// the wait on demand instead of only ever waiting it out.
+$("catalogRefreshBtn").addEventListener("click", async () => {
+  const btn = $("catalogRefreshBtn");
+  btn.disabled = true; btn.textContent = "⏳";
+  try { await catalogPull(true); renderCatalogList(); showToast("🔄 " + T("הקטלוג עודכן")); }
+  finally { btn.disabled = false; btn.textContent = "🔄"; }
+});
 /* Ido, 2026-09-13: "כפתור של הוספת מוצר חדש לקטלוג הקהילתי... ברגע שאני מוסיף
    שם ידנית שייתווסף לכולם אוטומטית" - a way to add a brand-new product
    straight into the shared catalog without scanning it first. A real barcode
