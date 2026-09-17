@@ -3437,7 +3437,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.5";
+const APP_BUILD = "2026.09.17.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3503,7 +3503,7 @@ const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7yka
 // the SAME "AI Enrichment" scenario as above, called with ONLY a barcode (no
 // name) - its router recognizes that shape and runs full identification
 // instead of just portion/photo (see tryAutoIdentify below)
-const AI_IDENTIFY_URL = "https://hook.us2.make.com/cst3g0cpe3nshevi6kgy2dfs7ojd0teu";
+const AI_IDENTIFY_URL = "https://hook.us2.make.com/go3qhoh9uaee2siep9l19x03jnmi63xa";
 const LS_AI_ASKED = "fl_ai_asked";
 // manual name search (Ido, 2026-09-17): "AI חיפוש" instead of the OFF text
 // search - one query returns several realistic variants (e.g. "סושי" -> with/
@@ -3572,7 +3572,15 @@ async function catalogText() {
 
 async function catalogPull(force) {
   const last = Number(localStorage.getItem(LS_CAT_AT)) || 0;
-  if (!force && Date.now() - last < 3600 * 1000) return;   // at most once an hour, so cleaned photos + new products propagate within the hour
+  // Ido, 2026-09-17: "כל שינוי שאני עורך גובר על הכל ומופיע מיידית אצל כולם" -
+  // an admin edit already pushes to the shared datastore and kicks off a
+  // catalog.json compile within ~1-2 minutes (see sharedContribute), so the
+  // only remaining lag was this client-side pull throttle. Shortened from an
+  // hour to two minutes - catalogPull already fires opportunistically (app
+  // open/resume, catalog page, search, scan), so any user who touches the
+  // app sees an admin edit almost immediately, at near-zero cost (a static
+  // GitHub Pages fetch, not a Make operation).
+  if (!force && Date.now() - last < 120 * 1000) return;
   try {
     const text = await catalogText();
     if (!text) return;
