@@ -105,6 +105,7 @@
   .sr .srs.mine { background:#12301f; color:var(--green); border-color:#1d5c39; }
   .sr .srs.gen  { background:#2a2410; color:var(--accentText); border-color:#6b5a12; }
   .sr .srs.new  { background:#2a1030; color:#e07be0; border-color:#5c1d5c; }
+  .sr .srs.ai   { background:#1a1030; color:#a78bfa; border-color:#4c3a7a; }
   .catBar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
   .catSortSeg { margin:0; }
   .catSortSeg .segb { flex:0 0 auto; padding:5px 10px; font-size:11.5px; }
@@ -1527,6 +1528,10 @@ const I18N_EN = {
   "מצאנו": "Found",
   "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 Trying to identify the product automatically…",
   "זוהה אוטומטית:": "Auto-identified:",
+  "🤖 חיפוש AI": "🤖 AI search",
+  "🤖 מחפש עם AI…": "🤖 Searching with AI…",
+  "🤖 חפש שוב עם AI": "🤖 Search again with AI",
+  "לא נמצא גם ב-AI": "Not found with AI either",
   "שקילה בגרמים": "weigh in grams",
   "כמות": "amount",
   "בחר מנה או שקול בגרמים": "Pick a portion or weigh in grams",
@@ -2029,6 +2034,10 @@ const I18N_AR = {
   "מצאנו": "وجدنا",
   "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 نحاول التعرف على المنتج تلقائيًا…",
   "זוהה אוטומטית:": "تم التعرف تلقائيًا:",
+  "🤖 חיפוש AI": "🤖 بحث بالذكاء الاصطناعي",
+  "🤖 מחפש עם AI…": "🤖 يبحث بالذكاء الاصطناعي…",
+  "🤖 חפש שוב עם AI": "🤖 ابحث مجددًا بالذكاء الاصطناعي",
+  "לא נמצא גם ב-AI": "لم يُعثر عليه حتى بالذكاء الاصطناعي",
   "שקילה בגרמים": "وزن بالغرام",
   "כמות": "الكمية",
   "בחר מנה או שקול בגרמים": "اختر حصة أو زِن بالغرام",
@@ -2503,6 +2512,10 @@ const I18N_RU = {
   "מצאנו": "Нашли",
   "🤖 מנסה לזהות את המוצר אוטומטית…": "🤖 Пытаемся автоматически определить продукт…",
   "זוהה אוטומטית:": "Определено автоматически:",
+  "🤖 חיפוש AI": "🤖 Поиск через AI",
+  "🤖 מחפש עם AI…": "🤖 Ищем через AI…",
+  "🤖 חפש שוב עם AI": "🤖 Искать снова через AI",
+  "לא נמצא גם ב-AI": "Не найдено даже через AI",
   "שקילה בגרמים": "взвесить в граммах",
   "כמות": "количество",
   "בחר מנה או שקול בגרמים": "Выберите порцию или взвесьте в граммах",
@@ -3424,7 +3437,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.1";
+const APP_BUILD = "2026.09.17.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3492,6 +3505,12 @@ const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7yka
 // instead of just portion/photo (see tryAutoIdentify below)
 const AI_IDENTIFY_URL = "https://hook.us2.make.com/ox184eru6jsyxnjij06vcg86o57tx4ii";
 const LS_AI_ASKED = "fl_ai_asked";
+// manual name search (Ido, 2026-09-17): "AI חיפוש" instead of the OFF text
+// search - one query returns several realistic variants (e.g. "סושי" -> with/
+// without panko, different fillings), synchronous (the user is waiting), and
+// every result is written straight to the shared catalog via sharedContribute
+// so the NEXT search for the same thing - by anyone - is free and instant.
+const AI_TEXT_SEARCH_URL = "https://hook.us2.make.com/3cgy5oe4ozyluj3up4r7a9gzwtcvo5mj";
 
 /* ---------------- community catalog (bulk, on the phone) ----------------
    Ido, 2026-09-02: every product every user enters, on every phone. Each
@@ -4826,7 +4845,38 @@ function doSearch(q) {
   renderSearch(localMatches(q), token, false);
   btn.style.display = "block";
   btn.disabled = false;
-  btn.textContent = T("🌐 חפש באינטרנט");
+  btn.textContent = T("🤖 חיפוש AI");
+}
+
+async function aiTextSearch(q) {
+  try {
+    // a plain GET, no custom headers - same shape as offSearch()/SEARCH_PROXY
+    // above, specifically so the browser treats it as a "simple" CORS request
+    // and never sends a preflight OPTIONS (which this webhook doesn't answer)
+    const r = await fetch(AI_TEXT_SEARCH_URL + "?query=" + encodeURIComponent(q));
+    if (!r.ok) return [];
+    const arr = await r.json();
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+// every AI result is a real, permanent catalog entry from the moment it comes
+// back - not just for whichever one gets picked - keyed the same barcode-less
+// way any other name-only product already is (nameKey/isShareable), so it is
+// found locally (free) by this exact same search from now on, for everyone.
+function contributeAiResults(items) {
+  const out = [];
+  for (const it of items || []) {
+    const name = (it && it.name || "").trim();
+    if (!name) continue;
+    const code = nameKey(name);
+    const portions = Array.isArray(it.pt) ? it.pt.filter(p => p && +p.g > 0) : [];
+    const photo = /^https?:/.test(it.photo || "") ? it.photo : "";
+    const kcal = +it.kcal || 0, pro = +it.pro || 0, carb = +it.carb || 0, fat = +it.fat || 0;
+    sharedContribute(code, { name, kcal, pro, carb, fat, photo, portions, src: "ai" });
+    out.push({ name, k: kcal, p: pro, c: carb, f: fat, barcode: code, photo, portions, src: "AI" });
+  }
+  return out;
 }
 
 async function webSearch() {
@@ -4834,21 +4884,22 @@ async function webSearch() {
   if (q.length < 2) return;
   const btn = $("webSearchBtn");
   btn.disabled = true;
-  btn.textContent = T("מחפש במאגר העולמי…");
+  btn.textContent = T("🤖 מחפש עם AI…");
   const token = searchToken;
-  const hits = await offSearch(q);
+  const items = await aiTextSearch(q);
   if (token !== searchToken) return;          /* he kept typing */
-  /* what came back from the internet goes FIRST. He pressed the button because
-     the local list did not have it, and the list only shows ten - appending
-     world hits under ten local ones made the button look like it did nothing. */
+  const aiHits = contributeAiResults(items);
+  /* what AI found goes FIRST. He pressed the button because the local list did
+     not have it, and the list only shows ten - appending AI hits under ten
+     local ones made the button look like it did nothing. */
   const local = localMatches(q);
   const seen = new Set();
   const res = [];
-  for (const h of hits) { if (!seen.has(h.name)) { seen.add(h.name); res.push(h); } }
+  for (const h of aiHits) { if (!seen.has(h.name)) { seen.add(h.name); res.push(h); } }
   for (const l of local) { if (!seen.has(l.name)) { seen.add(l.name); res.push(l); } }
   renderSearch(res, token, false);
   btn.disabled = false;
-  btn.textContent = hits.length ? T("🌐 חפש שוב באינטרנט") : T("לא נמצא גם באינטרנט");
+  btn.textContent = aiHits.length ? T("🤖 חפש שוב עם AI") : T("לא נמצא גם ב-AI");
 }
 
 /* ---------------- unknown-barcode rescue ----------------
@@ -4977,7 +5028,7 @@ function renderSearch(res, token, stillLoading) {
   box.className = "on";
   box.innerHTML = lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
-       <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${T(r.src)}</span>
+       <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : r.src === "AI" ? " ai" : ""}">${T(r.src)}</span>
        <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
        <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
      </button>`).join("") +
