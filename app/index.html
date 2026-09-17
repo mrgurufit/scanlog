@@ -3437,7 +3437,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.4";
+const APP_BUILD = "2026.09.17.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5790,6 +5790,12 @@ let selPortion = -1;      // index into entryPortions, or -1 = weigh in grams
 const ADMIN_EMAIL = "mr.guru.fit@gmail.com";
 function isAdmin() { return isSignedIn() && (cloudUser.email || "").toLowerCase() === ADMIN_EMAIL; }
 
+// emails let into the BLE wireless-scale beta beyond the admin account
+const SCALE_BETA_EMAILS = ["yaelidoron89@gmail.com"];
+function scaleBetaAllowed() {
+  return isAdmin() || (isSignedIn() && SCALE_BETA_EMAILS.includes((cloudUser.email || "").toLowerCase()));
+}
+
 function curPortionG() { return (selPortion >= 0 && entryPortions[selPortion]) ? (+entryPortions[selPortion].g || 0) : 1; }
 function effGrams() {
   const v = num($("grams").value);
@@ -7788,7 +7794,8 @@ $("fbSend").addEventListener("click", async () => {
   else { fbEnqueue(payload); msg("fbMsg", T("אין חיבור כרגע — יישלח כשתחזור לרשת."), "ok"); setTimeout(closeFb, 1600); }
 });
 
-/* ---------------- wireless kitchen scale (BLE) — admin-only beta ----------------
+/* ---------------- wireless kitchen scale (BLE) — invite-only beta ----------------
+   gated by scaleBetaAllowed(): the admin plus whoever is in SCALE_BETA_EMAILS.
    The native HealthBridge scans/connects and streams RAW notification bytes; we
    decode them HERE, so the parser is tunable through a content update with no new
    APK. Stability is detected client-side (weight unchanged ~1s), which works for
@@ -7871,7 +7878,7 @@ $("dashNotifChk").addEventListener("change", async e => {
 });
 function scaleSupported() { const hb = HB(); return !!(hb && hb.scaleStart && hb.addListener); }
 function updateScaleRow() {
-  const show = isAdmin() && scaleSupported();
+  const show = scaleBetaAllowed() && scaleSupported();
   $("scaleRow").style.display = show ? "flex" : "none";
   $("scaleRowState").textContent = scaleConn ? T("מחובר ✓")
     : (localStorage.getItem(LS_SCALE) ? T("זכור — יתחבר בהדלקה") : "");
@@ -8092,8 +8099,8 @@ testModeBarInit();
   updateFbButton();
   updateScaleRow();
   updateDashNotifRow();
-  // admin-only: silently reconnect a paired scale so weighing "just works"
-  if (isAdmin() && scaleSupported() && localStorage.getItem(LS_SCALE)) {
+  // beta users only: silently reconnect a paired scale so weighing "just works"
+  if (scaleBetaAllowed() && scaleSupported() && localStorage.getItem(LS_SCALE)) {
     scaleListen(); scaleConnectTo(localStorage.getItem(LS_SCALE));
   }
   if (isSignedIn()) await cloudMergeSync();
