@@ -1381,6 +1381,7 @@
           <b>🗂️ קטלוג קהילתי</b>
           <div style="display:flex;gap:8px">
             <button type="button" id="catalogRefreshBtn" aria-label="רענן קטלוג">🔄</button>
+            <button type="button" id="catalogMigrateBtn" aria-label="העלה קטלוג ישן ל-Firestore" title="חד פעמי: מעביר את catalog.json הישן ל-Firestore">📤</button>
             <button type="button" id="catalogAddBtn" aria-label="הוסף מוצר חדש">➕</button>
           </div>
         </div>
@@ -3437,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.17.8";
+const APP_BUILD = "2026.09.18.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3485,14 +3486,11 @@ async function showDbg() {
    Every product anyone identifies is contributed here, so the next person who
    scans that barcode gets it instantly - and offline afterwards, because the
    answer is written into this phone's own product memory the moment it lands. */
-// The only Make webhook the app still writes to: one contribution per
-// never-before-seen product. The per-scan Make LOOKUP was removed - barcodes
-// resolve from local -> the CDN catalog -> Open Food Facts, all with zero Make
-// operations, so the app stays cheap at world scale.
-const SHARED_PUT = "https://hook.us2.make.com/n12hl57ay5q6q2hji6ufsbjxis4r8fyo";
-// the whole shared store, as a JSON array (barcode, macros, photo, pt, status,
-// at). The GitHub compile reads this to build catalog.json; the admin inbox
-// reads it live to list the products a user submitted that wait for approval.
+// Ido, 2026-09-18: the app no longer writes anything to Make - contributions
+// go straight to Firestore (see sharedContribute/contribFlush/catalogSignIn).
+// SHARED_GET is kept only for the admin inbox's read-only view of whatever
+// legacy "pending" items still sit in Make's old datastore (see
+// pendingFetch below) - nothing new is ever written there anymore.
 const SHARED_GET = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg";
 // "כתוב לנו" - user feedback goes here (bug / missing product / suggestion),
 // reaches Ido with who sent it and an optional screenshot
@@ -3535,13 +3533,6 @@ function newCatalogCount() {
     if ((Date.parse(p.t || "") || 0) > seen) n++;
   return n;
 }
-// the app is served from the custom domain mrgurufit.com (github.io just
-// redirects there, which breaks a cross-origin fetch), so the canonical host
-// is mrgurufit.com; raw.githubusercontent is the mirror the APK falls back to
-const CATALOG_URLS = [
-  "https://mrgurufit.com/app/catalog.json",
-  "https://raw.githubusercontent.com/mrgurufit/scanlog/main/app/catalog.json",
-];
 let CATALOG = store.get(LS_CAT, null);
 if (!CATALOG || typeof CATALOG.codes !== "object") CATALOG = { v: "", codes: {} };
 
@@ -3552,107 +3543,115 @@ function catalogGet(code) {
   return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "", unit: +p.u || 0, portions: Array.isArray(p.pt) ? p.pt : [] };
 }
 
-async function catalogText() {
-  const hb = HB();
-  if (hb && hb.httpGet) {
-    try { const r = await hb.httpGet({ urls: CATALOG_URLS }); return (r && r.body) || null; }
-    catch { return null; }
-  }
-  // web/PWA: same-origin relative first (no CORS at all), then the raw mirror
-  let rel = "catalog.json";
-  try { rel = new URL("catalog.json", location.href).href; } catch { /* keep relative */ }
-  for (const u of [rel, CATALOG_URLS[1]]) {
-    try {
-      const r = await fetch(u + (u.indexOf("?") < 0 ? "?" : "&") + "_=" + Date.now(), { cache: "no-store" });
-      if (r.ok) return await r.text();
-    } catch { /* try the next mirror */ }
-  }
-  return null;
+// Ido, 2026-09-18: "אין יותר קטלוג שלי קטלוג שלו... יש רק קטלוג אחד... הכל
+// מאוחד ומעודכן אונליין... בלי להשתמש במייק" - the catalog used to be
+// Make's own datastore, compiled nightly (or on a webhook trigger) by a
+// GitHub Action into a static catalog.json every phone polled. That's gone:
+// every phone now holds a LIVE Firestore listener on the "catalog"
+// collection, so an edit anywhere reaches every open phone the moment
+// Firestore delivers the change - no polling, no throttle, no compile lag.
+// Writing still requires being signed in with a Google account (Ido,
+// 2026-09-18: "חייב להתחבר עם חשבון גוגל") - see catalogSignIn() below.
+let catalogUnsub = null;
+function catalogListenStart() {
+  if (catalogUnsub) return;   // already running
+  ensureFirebaseWeb().then(ok => {
+    if (!ok || !fbDb || catalogUnsub) return;
+    const beforeNew = isAdmin() ? newCatalogCount() : 0;
+    let firstSnap = true;
+    catalogUnsub = fbFsMod.onSnapshot(fbFsMod.collection(fbDb, "catalog"), snap => {
+      CATALOG.codes = CATALOG.codes || {};
+      for (const ch of snap.docChanges()) {
+        if (ch.type === "removed") delete CATALOG.codes[ch.doc.id];
+        else CATALOG.codes[ch.doc.id] = ch.doc.data();
+      }
+      // cache-bust every hosted photo URL against its own edit time (see
+      // bustCacheUrl below) - keeps a re-edited photo from hiding behind a
+      // CDN's cache under the same fixed per-barcode filename
+      for (const rec of Object.values(CATALOG.codes)) {
+        if (rec && rec.img) rec.img = bustCacheUrl(rec.img, rec.t);
+      }
+      store.set(LS_CAT, CATALOG);
+      // adopt any already-hosted photo URL into this phone's own product
+      // memory (and any log rows still showing the raw shot)
+      for (const [c, v] of Object.entries(CATALOG.codes)) {
+        const url = v && v.img;
+        if (!url || !/^https?:/.test(url)) continue;
+        const cur = PRODUCTS[c] && PRODUCTS[c].photo;
+        if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
+      }
+      if (typeof renderCatalogList === "function") renderCatalogList();
+      // the in-app "notification": tell the admin right away if this update
+      // actually brought in products he hasn't seen yet (skip on the very
+      // first snapshot - that is the whole existing catalog, not "new")
+      if (isAdmin() && !firstSnap) {
+        const gained = newCatalogCount() - beforeNew;
+        if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים בקטלוג הקהילתי"));
+        if (typeof updateInboxBadge === "function") updateInboxBadge();
+      }
+      firstSnap = false;
+    }, () => { /* offline or rules issue - keep whatever is already on the phone */ });
+  });
 }
+// old call sites just want "make sure the catalog is current" - the
+// realtime listener already guarantees that once started, so this is now
+// just "start it if it isn't running yet" regardless of the old force flag
+async function catalogPull() { catalogListenStart(); }
 
-// Ido, 2026-09-17: every fresh photo for the same barcode is hosted at the
-// SAME filename (mrgurufit.com/app/img/<barcode>.jpg), and that URL is
-// CDN-cached for 10 minutes (Cache-Control: max-age=600). So re-editing a
-// photo twice in a row - exactly the "חלב 1%" test - looked like it kept
-// reverting: the data was correct end to end, but the phone (and the CDN
-// edge) kept serving the OLD cached bytes for the unchanged URL. Appending
-// the record's own edit time as a query string forces a fresh fetch
-// whenever the photo actually changed, while leaving an unchanged photo
-// cacheable as before.
+// Ido, 2026-09-17: every fresh photo for the same barcode used to be hosted
+// at the SAME filename (mrgurufit.com/app/img/<barcode>.jpg) behind a
+// 10-minute CDN cache; freshly-contributed photos now live straight in the
+// Firestore record instead (a data: URL or an external https: one), so this
+// only still matters for photos hosted from BEFORE the 2026-09-18 migration.
 function bustCacheUrl(url, t) {
   if (!url || !t || !url.startsWith("https://mrgurufit.com/")) return url;
   return url.split("?")[0] + "?v=" + encodeURIComponent(t);
 }
 
-async function catalogPull(force) {
-  const last = Number(localStorage.getItem(LS_CAT_AT)) || 0;
-  // Ido, 2026-09-17: "כל שינוי שאני עורך גובר על הכל ומופיע מיידית אצל כולם" -
-  // an admin edit already pushes to the shared datastore and kicks off a
-  // catalog.json compile within ~1-2 minutes (see sharedContribute), so the
-  // only remaining lag was this client-side pull throttle. Shortened from an
-  // hour to two minutes - catalogPull already fires opportunistically (app
-  // open/resume, catalog page, search, scan), so any user who touches the
-  // app sees an admin edit almost immediately, at near-zero cost (a static
-  // GitHub Pages fetch, not a Make operation).
-  if (!force && Date.now() - last < 120 * 1000) return;
+// a signed-in Google account is required to WRITE to the shared catalog
+// (Ido, 2026-09-18) - this is a SEPARATE sign-in from the native per-user
+// cloud backup (CB()/HB()): it always goes through the JS Firebase SDK
+// (ensureFirebaseWeb above), because that is the SDK instance the Firestore
+// catalog rules actually check, in both the browser and the APK's WebView.
+// Reads stay open to everyone, signed in or not - only writes are gated.
+async function catalogSignIn() {
+  const ok = await ensureFirebaseWeb();
+  if (!ok || !fbAuth) return false;
+  if (fbAuth.currentUser) return true;
+  const provider = new fbAuthMod.GoogleAuthProvider();
   try {
-    const text = await catalogText();
-    if (!text) return;
-    const data = JSON.parse(text);
-    if (!data || typeof data.codes !== "object") return;
-    const beforeNew = isAdmin() ? newCatalogCount() : 0;
-    // Ido, 2026-09-17: "שינוי שאני עורך גובר על הכל" - a blind merge let a
-    // stale catalog.json (the compile that predates this edit is still
-    // publishing) clobber a local edit the moment the next pull ran, which
-    // got a lot more likely once the throttle above dropped to 2 minutes.
-    // Keep the local record whenever it is the newer one (both sides carry
-    // the edit time in "t"); only accept the server's value when it is at
-    // least as fresh, or there is no local record to protect yet.
-    const mergedCodes = Object.assign({}, CATALOG.codes);
-    for (const [c, sv] of Object.entries(data.codes)) {
-      const lv = mergedCodes[c];
-      if (!lv || !lv.t || !sv.t || sv.t >= lv.t) mergedCodes[c] = sv;
+    await fbAuthMod.signInWithPopup(fbAuth, provider);
+    return !!fbAuth.currentUser;
+  } catch (e) {
+    if (/popup|operation-not-supported/i.test((e && e.code) || "")) {
+      await fbAuthMod.signInWithRedirect(fbAuth, provider);
+      return false;   // navigation is already underway
     }
-    // cache-bust every hosted photo URL against its own edit time (see
-    // bustCacheUrl above) - keeps a re-edited photo from hiding behind the
-    // CDN's 10-minute cache under the same fixed per-barcode filename
-    for (const rec of Object.values(mergedCodes)) {
-      if (rec && rec.img) rec.img = bustCacheUrl(rec.img, rec.t);
-    }
-    CATALOG = { v: data.v || "", codes: mergedCodes };
-    store.set(LS_CAT, CATALOG);
-    localStorage.setItem(LS_CAT_AT, String(Date.now()));
-    // The pipeline hosts the uploaded camera photo as-is (no background removal)
-    // and returns its URL. Adopt that hosted URL into this phone's own product
-    // memory (and any log rows still showing the raw shot), so the hosted picture
-    // appears here too - and the app stops re-sending the raw base64 one.
-    for (const [c, v] of Object.entries(CATALOG.codes)) {
-      const url = v && v.img;
-      if (!url || !/^https?:/.test(url)) continue;
-      const cur = PRODUCTS[c] && PRODUCTS[c].photo;
-      if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
-    }
-    // the in-app "notification": tell the admin right away if this pull
-    // actually brought in products he hasn't seen yet
-    if (isAdmin()) {
-      const gained = newCatalogCount() - beforeNew;
-      if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים בקטלוג הקהילתי"));
-      if (typeof updateInboxBadge === "function") updateInboxBadge();
-    }
-  } catch { /* offline or malformed - keep whatever is already on the phone */ }
+    return false;
+  }
 }
 
-// contributions are queued durably so a lost signal never drops a new product
-function contribEnqueue(payload) {
+// contributions are queued durably so a lost signal (or not being signed in
+// yet) never drops a new product - each entry is {code, data}, "data" being
+// exactly the record shape stored in CATALOG.codes / the Firestore doc
+function contribEnqueue(code, data) {
   let q = [];
   try { q = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { q = []; }
-  q = q.filter(x => x.barcode !== payload.barcode);   // newest wins per barcode
-  q.push(payload);
+  q = q.filter(x => x.code !== code);   // newest wins per barcode
+  q.push({ code, data });
   if (q.length > 300) q = q.slice(-300);
   localStorage.setItem(LS_CONTRIB, JSON.stringify(q));
 }
 
 let contribBusy = false;
+// Ido, 2026-09-18: pushes straight to Firestore now instead of a Make
+// webhook - a signed-in Google account is required to write (catalogSignIn
+// above); if nobody is signed in yet, everything just stays queued and
+// retries next time contribFlush runs (app resume, another contribution, or
+// right after the user signs in some other way) - this NEVER pops its own
+// sign-in prompt, since it also runs from background polls (AI answers
+// arriving) where a surprise Google popup/redirect would be jarring;
+// catalogSignIn() is only ever called from a direct user action instead.
 async function contribFlush() {
   if (contribBusy) return;
   contribBusy = true;
@@ -3660,24 +3659,16 @@ async function contribFlush() {
     let q = [];
     try { q = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { q = []; }
     if (!q.length) return;
-    const hb = HB(), rest = [];
-    for (const payload of q) {
+    const ok1 = await ensureFirebaseWeb();
+    if (!ok1 || !fbDb || !fbAuth.currentUser) return;   // offline, SDK failed, or not signed in - keep everything queued
+    const rest = [];
+    for (const item of q) {
       let ok = false;
       try {
-        if (hb && hb.httpPost) {
-          const r = await hb.httpPost({ url: SHARED_PUT, body: JSON.stringify(payload),
-            contentType: "application/json; charset=utf-8" });
-          ok = !!(r && r.ok);
-        } else {
-          // no-cors gives an opaque response we cannot read; a resolved fetch
-          // means the request left the device, which is all we can verify here
-          await fetch(SHARED_PUT, { method: "POST", mode: "no-cors",
-            headers: { "Content-Type": "application/json; charset=utf-8" },
-            body: JSON.stringify(payload), keepalive: true });
-          ok = true;
-        }
+        await fbFsMod.setDoc(fbFsMod.doc(fbDb, "catalog", item.code), item.data);
+        ok = true;
       } catch { ok = false; }
-      if (!ok) rest.push(payload);
+      if (!ok) rest.push(item);
     }
     localStorage.setItem(LS_CONTRIB, JSON.stringify(rest));
   } finally { contribBusy = false; }
@@ -3685,13 +3676,10 @@ async function contribFlush() {
 
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
-  // A camera/gallery photo is a data: URL. It USED to be dropped here (only http
-  // was kept), so captured product photos never reached the cloud. Now it is
-  // sent too - the compile pipeline hosts it as-is (no background removal) and
-  // swaps the record's photo for that hosted URL, so everyone gets the picture.
+  // A camera/gallery photo is a data: URL - it goes straight into the
+  // Firestore record as-is (no separate hosting/compaction step anymore).
   const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
-  const ptStr = portions.length ? JSON.stringify(portions) : "";
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
   // who sent it, so a wrong value in the shared catalog can be traced back
@@ -3708,17 +3696,17 @@ function sharedContribute(code, p) {
   // REAL change, or re-logging an unchanged product would look freshly added
   // every time (Ido, 2026-09-12: wants to see what's genuinely new).
   const t = already ? (ex && ex.t) || new Date().toISOString() : new Date().toISOString();
+  const rec = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who, t };
+  if (portions.length) rec.pt = portions;
   try {
-    CATALOG.codes[code] = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who, t };
-    if (portions.length) CATALOG.codes[code].pt = portions;
+    CATALOG.codes[code] = rec;
     store.set(LS_CAT, CATALOG);
   } catch { /* storage full - the cloud queue still carries it */ }
   if (already) return;
-  // queue for the cloud (durable + retried) and flush now. status:"approved"
-  // means it is published to everyone as soon as the next compile runs - this is
-  // the admin path and the trusted-external-data path (a complete OFF hit).
-  contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: who, status: "approved" });
+  // queue for Firestore (durable + retried) and flush now - reaches every
+  // other phone the instant the realtime listener delivers it (Ido,
+  // 2026-09-18: "מיידי... אין יותר קטלוג שלי קטלוג שלו... קטלוג אחד")
+  contribEnqueue(code, rec);
   contribFlush();
 }
 
@@ -3768,6 +3756,9 @@ function pollEnrichment(barcode, name, needPortion, needPhoto) {
     if (gotPortion || gotPhoto) {
       const what = gotPortion && gotPhoto ? T("מנה ותמונה") : gotPortion ? T("מנה") : T("תמונה");
       showToast("🤖 " + T("מצאנו") + " " + what + " ל" + name);
+      // Ido, 2026-09-18: this phone is what publishes the AI's find to the
+      // shared Firestore catalog now - Make only ever computed the answer
+      if (isShareable(barcode) && PRODUCTS[barcode]) sharedContribute(barcode, Object.assign({ src: "ai" }, PRODUCTS[barcode]));
     }
     if ((needPortion || needPhoto) && tries < maxTries) setTimeout(tick, 5000);
   };
@@ -3800,16 +3791,20 @@ function aiMarkAsked(code) {
 function applyAiRecord(code, rec) {
   if (!pending || pending.barcode !== code) return false;
   let got = false;
+  let portionsArr = [];
   if (rec.name && !$("pName").value) { $("pName").value = rec.name; got = true; }
   if (rec.kcal && !$("p100kcal").value) { setMacroField("p100kcal", rec.kcal); got = true; }
   if (rec.pro && !$("p100pro").value) { setMacroField("p100pro", rec.pro); got = true; }
   if (rec.carb && !$("p100carb").value) { setMacroField("p100carb", rec.carb); got = true; }
   if (rec.fat && !$("p100fat").value) { setMacroField("p100fat", rec.fat); got = true; }
   if (rec.photo && !shotSrc()) { setShot(rec.photo); got = true; }
-  if (rec.pt && !entryPortions.length) {
+  if (rec.pt) {
     try {
       const arr = JSON.parse(rec.pt);
-      if (Array.isArray(arr) && arr.length) { setEntryProduct(arr); got = true; }
+      if (Array.isArray(arr) && arr.length) {
+        portionsArr = arr;
+        if (!entryPortions.length) { setEntryProduct(arr); got = true; }
+      }
     } catch { /* ignore */ }
   }
   if (got) {
@@ -3817,6 +3812,13 @@ function applyAiRecord(code, rec) {
     $("foundTag").className = "foundtag known";
     preview();
     msg("scanMsg", "", "");
+    // Ido, 2026-09-18: "בלי להשתמש במייק... הכל מיידי" - Make only computes
+    // the AI answer and hands it back to whichever phone asked; THIS phone
+    // is the one that publishes it to the shared Firestore catalog, exactly
+    // like every other contribution path in this file already does.
+    if (isShareable(code)) {
+      sharedContribute(code, { name: rec.name, kcal: rec.kcal, pro: rec.pro, carb: rec.carb, fat: rec.fat, photo: rec.photo, portions: portionsArr, src: "ai" });
+    }
   }
   return got;
 }
@@ -3904,10 +3906,16 @@ function pendingSubmit(code, p) {
   if (!code || !p || !p.name) return;
   const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
-  const ptStr = portions.length ? JSON.stringify(portions) : "";
-  // deliberately NOT written into the local shared catalog - it is not shared yet
-  contribEnqueue({ barcode: code, name: p.name,
-    kcal: p.kcal || 0, pro: p.pro || 0, carb: p.carb || 0, fat: p.fat || 0, photo, pt: ptStr, src: p.src || "app", status: "pending" });
+  // deliberately NOT written into the local shared catalog - it is not shared yet.
+  // NOTE 2026-09-18: the Firestore catalog rules have no "pending" concept -
+  // every signed-in write is instantly live to every listener. Re-enabling
+  // this function needs a real design (a separate pending collection, or a
+  // status field the rules and every reader explicitly filter on) before it
+  // does what its name says again; today it would publish exactly like
+  // sharedContribute.
+  const rec = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: p.src || "app", t: new Date().toISOString() };
+  if (portions.length) rec.pt = portions;
+  contribEnqueue(code, rec);
   contribFlush();
 }
 
@@ -3931,9 +3939,16 @@ function HB() {
    deals with cloud accounts uses CB() instead of HB() so it works either way;
    everything else (scanner, Health Connect, BLE scale...) stays HB()-only. */
 let fbAuthMod = null, fbFsMod = null, fbAuth = null, fbDb = null;
+// Ido, 2026-09-18: the community catalog now lives in Firestore instead of
+// Make+GitHub, and needs to work identically whether this page is a plain
+// browser tab or the WebView inside the native APK - so, unlike the per-user
+// cloud sync below (which prefers the native bridge's OWN FirebaseAuth/
+// Firestore session via CB()), this SDK loads unconditionally in BOTH
+// contexts. The native bridge has no Firestore-catalog methods and no plan
+// to add any (that would mean a new APK release for every install), so the
+// JS SDK is the one thing that runs the same everywhere.
 async function ensureFirebaseWeb() {
   if (fbAuth) return true;
-  if (HB()) return false;   // native app has its own bridge, skip the web SDK entirely
   try {
     const [appMod, authMod, fsMod] = await Promise.all([
       import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
@@ -6286,6 +6301,46 @@ $("catalogRefreshBtn").addEventListener("click", async () => {
   try { await catalogPull(true); renderCatalogList(); showToast("🔄 " + T("הקטלוג עודכן")); }
   finally { btn.disabled = false; btn.textContent = "🔄"; }
 });
+/* ONE-TIME migration (Ido, 2026-09-18: "אין יותר קטלוג שלי קטלוג שלו... יש רק
+   קטלוג אחד") - the ~1270 products that used to live only in the compiled
+   catalog.json (Make + GitHub Action pipeline) need to land in the new
+   Firestore "catalog" collection too, or every phone would see an empty
+   community catalog until someone happens to re-scan each one. Diffs against
+   whatever Firestore already has (CATALOG.codes, from the realtime listener)
+   so it's safe to press twice - a second run only fills in whatever the
+   first one missed (a dropped network call, a doc that failed validation),
+   never overwrites anything already there. Admin-only, manual button: this
+   is a one-time seed, not something that should ever run silently on load. */
+async function migrateCatalogToFirestore() {
+  if (!isAdmin()) return;
+  const btn = $("catalogMigrateBtn");
+  const ok = await ensureFirebaseWeb();
+  if (!ok || !fbDb || !fbAuth.currentUser) { showToast(T("צריך להתחבר עם Google קודם")); return; }
+  if (!confirm(T("להעלות את הקטלוג הישן (catalog.json) ל-Firestore? פעולה חד פעמית."))) return;
+  btn.disabled = true; btn.textContent = "⏳";
+  try {
+    const res = await fetch("https://mrgurufit.com/app/catalog.json?ts=" + Date.now());
+    const data = await res.json();
+    const oldCodes = (data && data.codes) || {};
+    const have = CATALOG.codes || {};
+    const missing = Object.entries(oldCodes).filter(([c]) => !have[c]);
+    if (!missing.length) { showToast("✅ " + T("הקטלוג כבר מסונכרן עם Firestore")); return; }
+    let batch = fbFsMod.writeBatch(fbDb), n = 0, done = 0;
+    for (const [code, rec] of missing) {
+      batch.set(fbFsMod.doc(fbDb, "catalog", code), rec);
+      n++;
+      if (n === 400) { await batch.commit(); batch = fbFsMod.writeBatch(fbDb); n = 0; }
+      done++;
+    }
+    if (n) await batch.commit();
+    showToast("✅ " + done + " " + T("מוצרים הועלו ל-Firestore"));
+  } catch (e) {
+    showToast(T("המיגרציה נכשלה: ") + String((e && e.message) || e).slice(0, 200));
+  } finally {
+    btn.disabled = false; btn.textContent = "📤";
+  }
+}
+$("catalogMigrateBtn").addEventListener("click", migrateCatalogToFirestore);
 /* Ido, 2026-09-13: "כפתור של הוספת מוצר חדש לקטלוג הקהילתי... ברגע שאני מוסיף
    שם ידנית שייתווסף לכולם אוטומטית" - a way to add a brand-new product
    straight into the shared catalog without scanning it first. A real barcode
@@ -7075,7 +7130,7 @@ let cloudUser = null, cloudTimer = null;
 function isSignedIn() { return !!(cloudUser && cloudUser.signedIn); }
 
 async function cloudRefreshUser() {
-  await ensureFirebaseWeb();   // no-op inside the APK; loads the Firebase Web SDK in a browser
+  await ensureFirebaseWeb();   // loads the JS Firebase SDK everywhere now (needed for the catalog), but CB() below still prefers the native bridge's own session for per-user sync
   const hb = CB(); if (!hb || !hb.authState) { renderAccount(); return; }
   try { cloudUser = await hb.authState(); } catch { cloudUser = null; }
   renderAccount();
@@ -7088,6 +7143,14 @@ async function cloudSignIn() {
     await cloudMergeSync();
     renderAccount();
     msg("setMsg", "✅ " + T("מחובר כ-") + " " + (cloudUser.email || ""), "ok");
+    // Ido, 2026-09-18: on the web this IS already a JS-Firebase sign-in, so
+    // catalogSignIn() below just confirms it silently; inside the APK,
+    // per-user cloud sync uses the NATIVE Google/Firebase session, which the
+    // Firestore catalog rules can't see - so also open the (separate) JS
+    // session used for catalog writes right here, once, instead of
+    // surprising the user with a second Google prompt later mid-contribution.
+    if (HB()) catalogSignIn().catch(() => {});
+    else contribFlush();
   } catch (e) {
     msg("setMsg", T("ההתחברות נכשלה: ") + String((e && e.message) || e).slice(0, 280), "err");
   }
@@ -7448,10 +7511,10 @@ function inboxApprove(i) {
 function inboxReject(i) {
   const r = PENDING[i]; if (!r) return;
   if (!confirm(T("לדחות את המוצר? הוא לא יגיע לאף אחד."))) return;
-  // mark it "rejected" so the compile keeps skipping it for good
-  contribEnqueue({ barcode: r.barcode, name: r.name, kcal: +r.kcal || 0, pro: +r.pro || 0,
-    carb: +r.carb || 0, fat: +r.fat || 0, photo: r.photo || "", pt: r.pt || "", src: r.src || "app", status: "rejected" });
-  contribFlush();
+  // NOTE 2026-09-18: PENDING items come from the old Make-based inbox
+  // (pendingFetch/SHARED_GET) - nothing writes new ones since the catalog
+  // moved to Firestore (every contribution is instantly live, no pending
+  // state exists there), so this is now just a local dismissal.
   PENDING.splice(i, 1); updateInboxBadge(); renderInbox();
 }
 
