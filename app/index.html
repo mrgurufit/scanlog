@@ -3438,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.18.1";
+const APP_BUILD = "2026.09.19.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7198,6 +7198,31 @@ function renderAccount() {
       + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u></div>`
       + `<div class="ehint">${T("הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.")}</div>`;
     const b = $("acctOut"); if (b) b.onclick = cloudSignOut;
+    // Ido, 2026-09-19: "הוספתי מנה וזה לא נשמר" - a native-app user who was
+    // ALREADY signed in before the Firestore catalog shipped (2026-09-18)
+    // never went through cloudSignIn()'s new catalogSignIn() call, so
+    // contribFlush() has been silently leaving every contribution queued
+    // forever on that phone (fbAuth.currentUser stays null). Never auto-pop
+    // the Google prompt this needs - only offer a tappable, one-time fix,
+    // and only when the gap is real (native bridge signed in, JS session not).
+    if (HB()) {
+      ensureFirebaseWeb().then(ok => {
+        if (!ok || !fbAuth || fbAuth.currentUser || !$("acctRow")) return;
+        const hint = document.createElement("div");
+        hint.className = "ehint";
+        const link = document.createElement("u");
+        link.style.cursor = "pointer";
+        link.textContent = "🔗 " + T("הפעל עדכון קטלוג מיידי (חד פעמי)");
+        link.onclick = async () => {
+          link.textContent = "⏳ " + T("מתחבר…");
+          const ok2 = await catalogSignIn();
+          if (ok2) { hint.remove(); contribFlush(); showToast("✅ " + T("הקטלוג מסונכרן")); }
+          else link.textContent = "🔗 " + T("הפעל עדכון קטלוג מיידי (חד פעמי)");
+        };
+        hint.appendChild(link);
+        $("acctRow").appendChild(hint);
+      });
+    }
   } else {
     row.innerHTML = `<button type="button" id="acctIn" class="gbtn">${T("התחבר עם Google (גיבוי בענן)")}</button>`
       + `<div class="ehint">${T("שמור את הנתונים שלך בענן כדי שיישרדו החלפת טלפון או מחיקת האפליקציה.")}</div>`;
