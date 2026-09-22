@@ -3438,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.19.1";
+const APP_BUILD = "2026.09.22.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3536,10 +3536,67 @@ function newCatalogCount() {
 let CATALOG = store.get(LS_CAT, null);
 if (!CATALOG || typeof CATALOG.codes !== "object") CATALOG = { v: "", codes: {} };
 
-// a hit from the on-phone catalog, in the same shape as sharedLookup/OFF
+/* ---------------- Hebrew search normalization ----------------
+   A search must not care about niqqud, a geresh, a final-letter form, a
+   double yod/vav, or stray punctuation - "חלב" should find "חָלָב", "צ׳יפס"
+   should find "צ'יפס", "לחמניה" should find "לחמנייה". heNorm() folds all of
+   that away so both the stored name and the typed query are compared in the
+   same reduced form (Ido, 2026-09-22, matching how the big built-in DB
+   indexes its 57k products). */
+function heNorm(s) {
+  if (!s) return "";
+  s = String(s).toLowerCase();
+  s = s.replace(/[֑-ׇ]/g, "");                 // niqqud + cantillation
+  s = s.replace(/['"’‘`״׳]/g, " ");                       // geresh / gershayim / quotes
+  s = s.replace(/ך/g, "כ").replace(/ם/g, "מ").replace(/ן/g, "נ")
+       .replace(/ף/g, "פ").replace(/ץ/g, "צ");             // final letters -> base
+  s = s.replace(/יי/g, "י").replace(/וו/g, "ו");          // double yod/vav -> single
+  s = s.replace(/[^א-תa-z0-9\s]/g, " ");        // drop other punctuation
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/* ---------------- built-in base catalog (the big offline DB) ----------------
+   57k Israeli products (name, manufacturer, per-100g macros, portions),
+   shipped as one static file catalog_base.json next to this page and cached
+   by the service worker for full offline use. It is READ-ONLY reference data:
+   it never goes into Firestore and is never written to localStorage (far too
+   big for the 5MB quota) - it lives only in memory once fetched. Barcode
+   scans and the name search both fall back to it after the small, editable
+   community catalog (CATALOG.codes) misses. Ido, 2026-09-22. */
+let BASE_CAT = null;          // { codes: { key: {n,m,k,p,c,f,pt} } }
+let BASE_IDX = null;          // [ { key, rec, norm } ] for fast name search
+let baseLoading = null;
+function loadBaseCatalog() {
+  if (BASE_CAT) return Promise.resolve(BASE_CAT);
+  if (baseLoading) return baseLoading;
+  baseLoading = (async () => {
+    try {
+      const r = await fetch("catalog_base.json", { cache: "force-cache" });
+      if (!r.ok) { baseLoading = null; return null; }
+      const d = await r.json();
+      BASE_CAT = (d && d.codes) ? d : { codes: {} };
+      BASE_IDX = [];
+      for (const key in BASE_CAT.codes) {
+        const rec = BASE_CAT.codes[key];
+        BASE_IDX.push({ key, rec, norm: heNorm((rec.n || "") + " " + (rec.m || "")) });
+      }
+      return BASE_CAT;
+    } catch { baseLoading = null; return null; }
+  })();
+  return baseLoading;
+}
+// a base-catalog record in the same {name,kcal,...} shape as catalogGet
+function baseGet(code) {
+  const p = code && BASE_CAT && BASE_CAT.codes && BASE_CAT.codes[code];
+  if (!p || !p.n) return null;
+  return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: "", unit: 0, portions: Array.isArray(p.pt) ? p.pt : [] };
+}
+
+// a hit from the on-phone catalog, in the same shape as sharedLookup/OFF -
+// the small editable community catalog first, then the big built-in base DB
 function catalogGet(code) {
   const p = code && CATALOG.codes && CATALOG.codes[code];
-  if (!p || !p.n) return null;
+  if (!p || !p.n) return baseGet(code);
   return { name: p.n, kcal: +p.k || 0, pro: +p.p || 0, carb: +p.c || 0, fat: +p.f || 0, photo: p.img || "", unit: +p.u || 0, portions: Array.isArray(p.pt) ? p.pt : [] };
 }
 
@@ -4805,6 +4862,15 @@ let entryFromSearch = false, searchReturn = null, entryFromCatalog = false;
 function localMatches(q) {
   const res = [];
   const ql = q.toLowerCase();
+  // normalized Hebrew query - niqqud/geresh/final-letter/spacing tolerant, so
+  // the whole search matches the way the big built-in DB is indexed
+  const qn = heNorm(q);
+  const qWords = qn.split(" ").filter(w => w.length >= 2);
+  const nMatch = txt => {
+    if (!qn || !txt) return false;
+    const t = heNorm(txt);
+    return qWords.length ? qWords.every(w => t.includes(w)) : t.includes(qn);
+  };
   const seen = new Set();
   const add = r => { const k = r.src + "|" + r.name; if (seen.has(k)) return; seen.add(k); res.push(r); };
   // the phone's own products: match the Hebrew name, or the translation it
@@ -4812,7 +4878,7 @@ function localMatches(q) {
   for (const [code, pr] of Object.entries(PRODUCTS)) {
     const nm = pr.name || "";
     const alt = (trCache()[LANG + ":" + nm] || "").toLowerCase();
-    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)))
+    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)) || nMatch(nm))
       add({ name: nm, k: pr.kcal, p: pr.pro, c: pr.carb, f: pr.fat, barcode: code, photo: pr.photo || "", unit: pr.unit || 0, portions: pr.portions || [], src: "שלי" });
   }
   for (const g of GENERIC)
@@ -4857,9 +4923,26 @@ function localMatches(q) {
     // time (see catalog.yml) precisely so a Hebrew query still finds it -
     // "גם אם רשום על האריזה באנגלית" (Ido, 2026-09-15)
     const heAlias = (cp.a || "").toLowerCase();
-    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)) || (heAlias && heAlias.includes(q)))
+    if (nm.includes(q) || nm.toLowerCase().includes(ql) || (alt && alt.includes(ql)) || (heAlias && heAlias.includes(q)) || nMatch(nm))
       add({ name: nm, k: cp.k || 0, p: cp.p || 0, c: cp.c || 0, f: cp.f || 0, barcode: code,
             photo: cp.img || "", portions: Array.isArray(cp.pt) ? cp.pt : [], src: "קהילתי" });
+  }
+  // the big built-in base DB (57k Israeli products, offline, read-only) -
+  // normalized Hebrew match on name + manufacturer; skip anything already
+  // surfaced from the phone or the community catalog above. Shortest names
+  // first so the plain product beats a long promotional variant.
+  if (BASE_IDX && qn) {
+    const hits = [];
+    for (const it of BASE_IDX) {
+      if (PRODUCTS[it.key] || (CATALOG.codes && CATALOG.codes[it.key])) continue;
+      if (qWords.length ? qWords.every(w => it.norm.includes(w)) : it.norm.includes(qn)) hits.push(it);
+    }
+    hits.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
+    for (const it of hits.slice(0, 15)) {
+      const r = it.rec;
+      add({ name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: it.key,
+            photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" });
+    }
   }
   return res;
 }
@@ -4898,6 +4981,9 @@ function doSearch(q) {
   }
   const token = ++searchToken;
   renderSearch(localMatches(q), token, false);
+  // the big built-in DB may still be loading on this first search - fetch it
+  // (once) and re-render this same query the moment it is ready
+  if (!BASE_IDX) loadBaseCatalog().then(() => { if (token === searchToken) renderSearch(localMatches(q), token, false); });
   btn.style.display = "block";
   btn.disabled = false;
   btn.textContent = T("🤖 חיפוש AI");
@@ -5764,6 +5850,8 @@ async function onBarcode(code, photo) {
   // the community catalog is already on the phone - a barcode anyone in the
   // world has entered is answered here with no network at all, offline
   if (!known && code) {
+    await loadBaseCatalog();               // make sure the big built-in DB is ready to answer
+    if (!pending || pending.barcode !== code) return;
     const cat = catalogGet(code);
     if (cat) {
       if (!$("pName").value) $("pName").value = cat.name;
@@ -6669,6 +6757,9 @@ $("updBar").addEventListener("click", async () => {
 });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkForUpdate(); catalogPull(); contribFlush(); } });
 checkForUpdate();
+// warm the big built-in DB in the background so a scan or search a moment
+// later is already answered offline from its 57k products
+setTimeout(() => { loadBaseCatalog(); }, 1500);
 
 /* pull down from the top to refresh, like a web page */
 async function doRefresh() {
