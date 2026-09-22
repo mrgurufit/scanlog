@@ -3438,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.22.1";
+const APP_BUILD = "2026.09.22.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6365,6 +6365,7 @@ function openCatalogPage() {
   if (!isAdmin()) return;
   ovPush();
   catalogPull(false).then(renderCatalogList);
+  loadBaseCatalog().then(renderCatalogList);   // so the browse page sees the 57k built-in DB too
   renderCatalogList();
   $("catalogSearch").value = "";
   $("catalogPage").classList.add("on");
@@ -6496,21 +6497,54 @@ function catalogRowData(code) {
   const own = PRODUCTS[code];
   const shared = CATALOG.codes[code];
   if (own) return { n: own.name, k: own.kcal, p: own.pro, c: own.carb, f: own.fat, img: own.photo, pt: own.portions, u: own.unit, s: shared && shared.s, t: shared && shared.t };
-  return shared;
+  if (shared) return shared;
+  // fall back to the big read-only built-in DB so a base-only row still opens
+  const b = BASE_CAT && BASE_CAT.codes && BASE_CAT.codes[code];
+  if (b) return { n: b.n, k: b.k, p: b.p, c: b.c, f: b.f, pt: Array.isArray(b.pt) ? b.pt : [] };
+  return null;
 }
 let catalogSort = "name";   // "name" | "new" - toggled by the catalog page's own segmented control
+let BASE_SORTED = null;   // the 57k built-in DB rows, pre-sorted by name once (heavy to sort per keystroke)
 function renderCatalogList() {
   const q = $("catalogSearch").value.trim().toLowerCase();
-  const codes = Object.keys((CATALOG && CATALOG.codes) || {})
-    .map(code => ({ code, p: catalogRowData(code) })).filter(x => x.p);
-  $("catalogCount").textContent = codes.length + " " + T("מוצרים בקטלוג הקהילתי");
-  const filtered = codes.filter(({ p }) => !q || (p.n || "").toLowerCase().includes(q));
-  const rows = (catalogSort === "new"
-    ? filtered.sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0))
-    : filtered.sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"))
-  ).slice(0, 300);
+  const qn = (typeof heNorm === "function") ? heNorm(q) : q;
+  const qWords = qn.split(" ").filter(w => w.length >= 2);
+  // the small editable community catalog (Firestore)
+  const comm = Object.keys((CATALOG && CATALOG.codes) || {})
+    .map(code => ({ code, p: catalogRowData(code), base: false })).filter(x => x.p);
+  const commN = comm.length;
+  // the big read-only built-in DB (57k) - fills the long tail, searchable here too
+  const baseN = (BASE_CAT && BASE_CAT.codes) ? Object.keys(BASE_CAT.codes).length : 0;
+  $("catalogCount").textContent = baseN
+    ? commN.toLocaleString(LOC()) + " " + T("קהילתי") + " · " + baseN.toLocaleString(LOC()) + " " + T("מאגר מובנה") + " · " + (commN + baseN).toLocaleString(LOC()) + " " + T("סה״כ")
+    : commN + " " + T("מוצרים בקטלוג הקהילתי");
+  // build the base row set once (skip codes already in the community catalog or
+  // the admin's own products so nothing shows twice), pre-sorted by name
+  if (BASE_IDX && !BASE_SORTED) {
+    BASE_SORTED = BASE_IDX
+      .filter(it => !(CATALOG.codes && CATALOG.codes[it.key]) && !PRODUCTS[it.key])
+      .map(it => ({ code: it.key, p: it.rec, base: true, norm: it.norm }))
+      .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"));
+  }
+  const baseRows = BASE_SORTED || [];
+  let rows;
+  if (q) {
+    const commF = comm.filter(({ p }) =>
+      (p.n || "").toLowerCase().includes(q) || (qWords.length && qWords.every(w => heNorm(p.n || "").includes(w))));
+    const baseF = baseRows.filter(({ norm }) =>
+      qWords.length ? qWords.every(w => norm.includes(w)) : (norm || "").includes(qn));
+    rows = commF.concat(baseF);
+    if (catalogSort === "new") rows.sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0));
+    else rows.sort((a, b) => (a.p.n || "").length - (b.p.n || "").length);
+    rows = rows.slice(0, 300);
+  } else {
+    const commSorted = (catalogSort === "new"
+      ? comm.slice().sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0))
+      : comm.slice().sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he")));
+    rows = commSorted.concat(baseRows).slice(0, 300);   // community first, then the built-in long tail
+  }
   const NEW_MS = 48 * 3600 * 1000;   // "🆕" badge window - two days, so a product added yesterday still shows as new
-  $("catalogList").innerHTML = rows.map(({ code, p }) => {
+  $("catalogList").innerHTML = rows.map(({ code, p, base }) => {
     const isNew = p.t && (Date.now() - (Date.parse(p.t) || 0)) < NEW_MS;
     return `<div class="sr" data-code="${esc(code)}">
        <button type="button" class="catThumbBtn" data-thumb="${esc(code)}" aria-label="${T("תמונת המוצר")}">
@@ -6518,7 +6552,7 @@ function renderCatalogList() {
        </button>
        <button type="button" class="catMain" data-open="${esc(code)}">
          <span class="catMainTop">
-           <span class="srs mine">${T("קהילתי")}</span>
+           <span class="srs ${base ? "gen" : "mine"}">${base ? T("מאגר") : T("קהילתי")}</span>
            ${isNew ? `<span class="srs new">🆕</span>` : ""}
            <span class="srn">${esc(displayName(p.n, true))}</span>
          </span>
