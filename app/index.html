@@ -3480,7 +3480,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.5";
+const APP_BUILD = "2026.09.23.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6384,6 +6384,10 @@ function parseSpokenFood(text) {
   const unitAlt = Object.keys(V_UNIT).join("|");
   s = s.replace(new RegExp("\\s(?:ו)?(" + numAlt + "|\\d+(?:\\.\\d+)?)(?=\\s)", "g"), " | $1");   // new item at each quantity
   s = s.replace(new RegExp("\\sו(" + unitAlt + ")(?=\\s)", "g"), " | $1");                           // "וכוס" -> new item, implicit qty 1
+  // a natural list of foods with no numbers ("סלמון אפוי, בטטה ופטריות שיטאקי")
+  // is still several items: split on "עם" (with) and on a word-initial "ו" (and)
+  s = s.replace(/\sעם\s/g, " | ");
+  s = s.replace(/\sו([א-ת]{2,})/g, " | $1");   // "ופטריות" -> new item "פטריות"
   const items = [];
   for (const seg of s.split("|").map(x => x.trim()).filter(Boolean)) {
     const toks = seg.split(/\s+/).filter(Boolean);
