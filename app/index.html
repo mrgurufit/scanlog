@@ -83,7 +83,7 @@
     border: 1px solid var(--border); border-radius: 10px;
   }
   .camweb:disabled { opacity: .6; }
-  #searchRes { display:none; margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  #searchRes { display:none; margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden; max-height:60vh; overflow-y:auto; }
   #missRes { display:none; margin:0 0 10px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   #missRes.on { display:block; }
   .misshead { font-size:12px; color:var(--muted); padding:7px 10px; line-height:1.5; }
@@ -3438,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.22.2";
+const APP_BUILD = "2026.09.23.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3571,9 +3571,22 @@ function loadBaseCatalog() {
   if (baseLoading) return baseLoading;
   baseLoading = (async () => {
     try {
-      const r = await fetch("catalog_base.json", { cache: "force-cache" });
-      if (!r.ok) { baseLoading = null; return null; }
-      const d = await r.json();
+      // load robustly on every context: native httpGet (tries the bundled
+      // copy then the CDN) inside the APK where a WebView fetch to the host
+      // can fail, plain fetch (relative, then absolute) on web/PWA
+      const rel = new URL("catalog_base.json", location.href).href;
+      const abs = "https://mrgurufit.com/app/catalog_base.json";
+      let text = null;
+      const hb = HB();
+      if (hb && hb.httpGet) { try { const r = await hb.httpGet({ urls: [rel, abs] }); text = (r && r.body) || null; } catch {} }
+      if (!text) {
+        let r = null;
+        try { r = await fetch(rel, { cache: "force-cache" }); } catch {}
+        if (!r || !r.ok) { try { r = await fetch(abs, { cache: "force-cache" }); } catch {} }
+        text = (r && r.ok) ? await r.text() : null;
+      }
+      if (!text) { baseLoading = null; return null; }
+      const d = JSON.parse(text);
       BASE_CAT = (d && d.codes) ? d : { codes: {} };
       BASE_IDX = [];
       for (const key in BASE_CAT.codes) {
@@ -4938,7 +4951,7 @@ function localMatches(q) {
       if (qWords.length ? qWords.every(w => it.norm.includes(w)) : it.norm.includes(qn)) hits.push(it);
     }
     hits.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
-    for (const it of hits.slice(0, 15)) {
+    for (const it of hits.slice(0, 60)) {   // show many options, like Kaloria - the list scrolls
       const r = it.rec;
       add({ name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: it.key,
             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" });
@@ -5164,7 +5177,7 @@ function applyMissPick(r) {
 
 function renderSearch(res, token, stillLoading) {
   if (token !== searchToken) return;
-  lastResults = res.slice(0, 10);
+  lastResults = res.slice(0, 60);   // show all the options (scrollable), like Kaloria - not just 10
   const box = $("searchRes");
   box.className = "on";
   box.innerHTML = lastResults.map((r, i) =>
@@ -6537,11 +6550,23 @@ function renderCatalogList() {
     if (catalogSort === "new") rows.sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0));
     else rows.sort((a, b) => (a.p.n || "").length - (b.p.n || "").length);
     rows = rows.slice(0, 300);
+  } else if (catalogSort === "new") {
+    // newest first: community rows carry a timestamp, the built-in DB doesn't,
+    // so community-by-recency then the built-in long tail
+    const commSorted = comm.slice().sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0));
+    rows = commSorted.concat(baseRows).slice(0, 300);
   } else {
-    const commSorted = (catalogSort === "new"
-      ? comm.slice().sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0))
-      : comm.slice().sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he")));
-    rows = commSorted.concat(baseRows).slice(0, 300);   // community first, then the built-in long tail
+    // A→Z: merge the two already-name-sorted lists so the built-in products
+    // are INTERLEAVED with the community ones and visible from the first screen,
+    // not hidden behind 1,326 community rows. Bounded to 300, so it's O(300).
+    const commSorted = comm.slice().sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"));
+    rows = [];
+    let i = 0, j = 0;
+    while (rows.length < 300 && (i < commSorted.length || j < baseRows.length)) {
+      if (i >= commSorted.length) rows.push(baseRows[j++]);
+      else if (j >= baseRows.length) rows.push(commSorted[i++]);
+      else rows.push((commSorted[i].p.n || "").localeCompare(baseRows[j].p.n || "", "he") <= 0 ? commSorted[i++] : baseRows[j++]);
+    }
   }
   const NEW_MS = 48 * 3600 * 1000;   // "🆕" badge window - two days, so a product added yesterday still shows as new
   $("catalogList").innerHTML = rows.map(({ code, p, base }) => {
