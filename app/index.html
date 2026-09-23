@@ -3480,7 +3480,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.3";
+const APP_BUILD = "2026.09.23.4";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6404,23 +6404,56 @@ async function openVoice() {
   $("voiceOv").classList.add("on"); document.body.style.overflow = "hidden";
   loadBaseCatalog();   // make sure the 57k DB is ready to match against
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  $("voiceMic").style.display = SR ? "block" : "none";
+  const hasNative = !!(HB() && HB().startSpeech);   // native STT inside the APK
+  $("voiceMic").style.display = (hasNative || SR) ? "block" : "none";
 }
-function closeVoice() { try { if (vRec) vRec.stop(); } catch {} $("voiceOv").classList.remove("on"); document.body.style.overflow = ""; }
-function voiceStartMic() {
+function closeVoice() {
+  try { const hb = HB(); if (hb && hb.stopSpeech) hb.stopSpeech(); } catch {}
+  try { if (vRec) vRec.stop(); } catch {}
+  $("voiceOv").classList.remove("on"); document.body.style.overflow = "";
+}
+function voiceMicReset() {
+  $("voiceMic").classList.remove("listening"); $("micFab").classList.remove("listening");
+  $("voiceMic").textContent = "🎤 " + T("התחל לדבר");
+}
+async function voiceStartMic() {
+  const lang = LANG === "he" ? "he-IL" : LANG === "ar" ? "ar-SA" : LANG === "ru" ? "ru-RU" : "en-US";
+  // Prefer the native SpeechRecognizer inside the APK (the WebView can't do Web
+  // Speech - RECORD_AUDIO is denied to the page). Falls back to Web Speech on
+  // the PWA/Chrome, and to the text box everywhere else.
+  const hb = HB();
+  if (hb && hb.startSpeech) {
+    $("voiceMic").classList.add("listening"); $("micFab").classList.add("listening");
+    $("voiceMic").textContent = "🎤 " + T("מקשיב… דבר עכשיו");
+    try {
+      const r = await hb.startSpeech({ lang });
+      voiceMicReset();
+      const t = (r && r.text) || "";
+      if (t) { $("voiceText").value = t; voiceParseNow(); }
+      else showToast(T("לא נקלט דיבור - נסה שוב או הקלד"));
+      return;
+    } catch (err) {
+      voiceMicReset();
+      const m = String((err && (err.message || err.errorMessage || err.code)) || err || "");
+      if (/need_mic_permission/.test(m)) { showToast(T("אשר גישה למיקרופון ולחץ שוב על הכפתור")); return; }
+      if (/no_recognition/.test(m)) { showToast(T("אין שירות זיהוי דיבור במכשיר - אפשר להקליד")); return; }
+      // any other native error: fall through to Web Speech if present, else toast
+      if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) { showToast(T("שגיאת זיהוי דיבור") + ": " + m); return; }
+    }
+  }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast(T("זיהוי דיבור לא נתמך כאן - אפשר להקליד")); return; }
   try {
     vRec = new SR();
-    vRec.lang = LANG === "he" ? "he-IL" : LANG === "ar" ? "ar-SA" : LANG === "ru" ? "ru-RU" : "en-US";
+    vRec.lang = lang;
     vRec.interimResults = false; vRec.maxAlternatives = 1;
     $("voiceMic").classList.add("listening"); $("micFab").classList.add("listening");
     $("voiceMic").textContent = "🎤 " + T("מקשיב… דבר עכשיו");
     vRec.onresult = e => { $("voiceText").value = e.results[0][0].transcript; voiceParseNow(); };
     vRec.onerror = e => { showToast(T("שגיאת זיהוי דיבור") + ": " + (e.error || "")); };
-    vRec.onend = () => { $("voiceMic").classList.remove("listening"); $("micFab").classList.remove("listening"); $("voiceMic").textContent = "🎤 " + T("התחל לדבר"); };
+    vRec.onend = voiceMicReset;
     vRec.start();
-  } catch (err) { showToast(T("לא ניתן להפעיל מיקרופון") + ": " + (err.message || err)); }
+  } catch (err) { voiceMicReset(); showToast(T("לא ניתן להפעיל מיקרופון") + ": " + (err.message || err)); }
 }
 function voiceCommit() {
   const now = new Date(); let added = 0, cnt = 0, touchedProducts = false;
