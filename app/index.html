@@ -340,6 +340,33 @@
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 20px rgba(0,0,0,.55);
   }
+#micFab {
+    position:fixed; bottom:20px; right:88px; z-index:60;
+    width:52px; height:52px; border-radius:50%;
+    background:#1f9d76; color:#fff; border:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    box-shadow:0 6px 20px rgba(0,0,0,.5);
+  }
+#micFab:active { transform:scale(.93); }
+#micFab.listening { background:#e5484d; animation:coachpulse 1.1s ease-in-out infinite; }
+.voiceov { display:none; position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.6); align-items:flex-end; justify-content:center; }
+.voiceov.on { display:flex; }
+.voicebox { width:100%; max-width:560px; background:var(--card,#151a22); color:var(--fg,#e9edf2); border-radius:16px 16px 0 0; padding:16px; box-sizing:border-box; max-height:88vh; overflow-y:auto; }
+.vhead { display:flex; align-items:center; justify-content:space-between; font-size:18px; margin-bottom:6px; }
+.vhead button { background:none; border:0; color:inherit; font-size:22px; cursor:pointer; }
+.vhint { font-size:13px; opacity:.75; margin:4px 0 12px; line-height:1.5; }
+.vmic { width:100%; padding:14px; border-radius:12px; border:0; background:#1f9d76; color:#fff; font-size:17px; font-weight:700; cursor:pointer; margin-bottom:10px; }
+.vmic.listening { background:#e5484d; }
+#voiceText { width:100%; box-sizing:border-box; border-radius:10px; border:1px solid var(--line,#2a3340); background:var(--bg,#0d1117); color:inherit; padding:10px; font-size:16px; resize:vertical; }
+.vbtn { width:100%; padding:11px; border-radius:10px; border:1px solid var(--line,#2a3340); background:transparent; color:inherit; font-size:15px; cursor:pointer; margin-top:8px; }
+.vresults { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+.vrow { display:flex; align-items:center; gap:8px; background:var(--bg,#0d1117); border:1px solid var(--line,#2a3340); border-radius:10px; padding:8px 10px; }
+.vrow.miss { border-color:#e5484d; }
+.vrow .vname { flex:1; font-size:15px; }
+.vrow .vsub { font-size:12px; opacity:.7; }
+.vrow input.vqty { width:52px; text-align:center; border-radius:8px; border:1px solid var(--line,#2a3340); background:var(--card,#151a22); color:inherit; padding:6px; font-size:15px; }
+.vrow .vdel { background:none; border:0; color:#e5484d; font-size:18px; cursor:pointer; }
+.vcommit { width:100%; padding:14px; border-radius:12px; border:0; background:#ffd400; color:#000; font-size:17px; font-weight:800; cursor:pointer; margin-top:14px; }
   #fab:active { transform:scale(.93); }
   /* one button toggles the scanner: camera when closed, ✕ (red) while scanning */
   #fab .fabx { display:none; font-size:28px; }
@@ -1158,8 +1185,23 @@
     <span class="fabcam" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
     <span class="fabx" aria-hidden="true">✕</span>
   </button>
+  <button id="micFab" aria-label="דיווח קולי - אמור מה אכלת" title="דיווח קולי">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+  </button>
   <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
+
+  <div id="voiceOv" class="voiceov">
+    <div class="voicebox">
+      <div class="vhead"><b>🎤 דיווח קולי</b><button type="button" id="voiceClose" aria-label="סגור">✕</button></div>
+      <p class="vhint">אמור או הקלד מה אכלת. לדוגמה: "6 כפות אורז לבן מבושל, 3 קציצות בשר וכוס קולה זירו"</p>
+      <button type="button" id="voiceMic" class="vmic">🎤 התחל לדבר</button>
+      <textarea id="voiceText" rows="2" placeholder="…או הקלד כאן מה אכלת"></textarea>
+      <button type="button" id="voiceParse" class="vbtn">נתח מה אכלתי</button>
+      <div id="voiceResults" class="vresults"></div>
+      <button type="button" id="voiceCommit" class="vcommit" style="display:none">➕ הוסף הכל ליומן</button>
+    </div>
+  </div>
   <div class="offbar" id="offbar">אין חיבור לאינטרנט. הרישום, המוצרים השמורים, המאגר המובנה והחישובים עובדים רגיל. מה שיחזור עם החיבור: חיפוש מוצר חדש במאגר העולמי וקריאת טבלת ערכים בצילום.</div>
 
   <div id="entry">
@@ -3438,7 +3480,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.2";
+const APP_BUILD = "2026.09.23.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6257,6 +6299,159 @@ function toggleScan() {
   else startScan();
 }
 $("fab").addEventListener("click", toggleScan);
+
+/* ===================== VOICE / TEXT FOOD LOGGING (fully local) =====================
+   A microphone button next to the scanner. The user just says what they ate
+   ("6 כפות אורז לבן מבושל, 3 קציצות בשר וכוס קולה זירו") and it goes into the
+   log. Speech->text is the browser's own free Web Speech API (he-IL etc), no
+   server, no Make ops; a text box does the same everywhere the mic isn't
+   available. The sentence is parsed locally into {quantity, unit, food},
+   matched against the built-in DB (same heNorm + cross-language search), turned
+   into grams via the product's own portions or a household-measures table, and
+   shown for a quick review before it's added. Ido, 2026-09-23, Kaloria-style. */
+const V_FILLER = ["אכלתי", "אכלנו", "שתיתי", "שתינו", "היה לי", "היום", "לקחתי", "טעמתי", "בערך", "וגם", "גם"];
+const V_NUM = { "אחד":1,"אחת":1,"שתי":2,"שתיים":2,"שניים":2,"שני":2,"שלוש":3,"שלושה":3,"ארבע":4,"ארבעה":4,"חמש":5,"חמישה":5,"שש":6,"שישה":6,"שבע":7,"שבעה":7,"שמונה":8,"שמונת":8,"תשע":9,"תשעה":9,"עשר":10,"עשרה":10,"חצי":0.5,"רבע":0.25 };
+// grams per household unit; 0 = "use the product's own portion, else 100g"
+const V_UNIT = { "כף":15,"כפות":15,"כפית":5,"כפיות":5,"כוס":240,"כוסות":240,"קציצה":50,"קציצות":50,"פרוסה":30,"פרוסות":30,"חתיכה":50,"חתיכות":50,"חתיכת":50,"גרם":1,"גרמים":1,"גר":1,"כדור":50,"כדורים":50,"צלחת":300,"קופסה":200,"קופסא":200,"בקבוק":500,"פחית":330,"פחיות":330,"שקית":100,"מנה":150,"מנות":150,"ביס":15,"יחידה":0,"יחידות":0,"יח":0 };
+let V_ITEMS = [], vRec = null;
+function vNum(tok) {
+  if (tok == null) return null;
+  if (/^\d+(?:\.\d+)?$/.test(tok)) return parseFloat(tok);
+  if (V_NUM[tok] != null) return V_NUM[tok];
+  const w = heNorm(tok);
+  return V_NUM[w] != null ? V_NUM[w] : null;
+}
+function vBestMatch(food) {
+  const res = (typeof localMatches === "function") ? localMatches(food) : [];
+  if (!res || !res.length) return null;
+  const fn = heNorm(food);
+  for (const r of res) if (heNorm(r.name) === fn) return r;   // exact name wins
+  return res[0];                                              // else the top-ranked hit
+}
+function vGrams(qty, unit, match) {
+  qty = qty > 0 ? qty : 1;
+  const pt = (match && match.portions) || [];
+  if (unit) {
+    const un = heNorm(unit);
+    for (const p of pt) { const pn = heNorm(p.n); if (pn && (pn.includes(un) || un.includes(pn)) && +p.g > 0) return Math.round(qty * p.g); }
+    const g = V_UNIT[unit];
+    if (g > 0) return Math.round(qty * g);
+    if (g === 0) return Math.round(qty * (pt[0] && +pt[0].g > 0 ? pt[0].g : 100));
+  }
+  if (pt[0] && +pt[0].g > 0) return Math.round(qty * pt[0].g);
+  return Math.round(qty * 100);
+}
+function parseSpokenFood(text) {
+  if (!text) return [];
+  let s = " " + String(text).replace(/[\n\r]+/g, " ") + " ";
+  for (const f of V_FILLER) s = s.split(f).join(" ");
+  s = s.replace(/[,.;־]/g, " | ");
+  const numAlt = Object.keys(V_NUM).join("|");
+  const unitAlt = Object.keys(V_UNIT).join("|");
+  s = s.replace(new RegExp("\\s(?:ו)?(" + numAlt + "|\\d+(?:\\.\\d+)?)(?=\\s)", "g"), " | $1");   // new item at each quantity
+  s = s.replace(new RegExp("\\sו(" + unitAlt + ")(?=\\s)", "g"), " | $1");                           // "וכוס" -> new item, implicit qty 1
+  const items = [];
+  for (const seg of s.split("|").map(x => x.trim()).filter(Boolean)) {
+    const toks = seg.split(/\s+/).filter(Boolean);
+    if (!toks.length) continue;
+    let qty = 1, i = 0;
+    const n = vNum(toks[0]); if (n != null) { qty = n; i = 1; }
+    let unit = null;
+    if (toks[i] != null && V_UNIT[toks[i]] != null) { unit = toks[i]; i++; }
+    let food = toks.slice(i).join(" ").replace(/^(של ה|של|עם|ה)\s+/, "").trim();
+    if (!food) continue;
+    const match = vBestMatch(food);
+    const grams = match ? vGrams(qty, unit, match) : 0;
+    const kcal = match ? Math.round((match.k || 0) * grams / 100) : 0;
+    items.push({ qty, unit, food, match, grams, kcal });
+  }
+  return items;
+}
+function voiceRecalc() {
+  let total = 0;
+  V_ITEMS.forEach((it, idx) => {
+    if (it.match) total += it.kcal;
+    const sub = document.querySelector('.vsub[data-sub="' + idx + '"]');
+    if (sub && it.match) sub.textContent = (it.qty + (it.unit ? " " + it.unit : "")) + " · " + it.grams + " " + T("גרם") + " · " + it.kcal + " " + T("קק״ל");
+  });
+  const tt = $("vTotal"); if (tt) tt.textContent = total + " " + T("קק״ל");
+}
+function renderVoiceReview() {
+  const box = $("voiceResults");
+  if (!V_ITEMS.length) { box.innerHTML = '<div class="vrow miss"><span class="vname">' + T("לא זוהו פריטים - נסה שוב או הקלד") + '</span></div>'; $("voiceCommit").style.display = "none"; return; }
+  let total = 0;
+  box.innerHTML = V_ITEMS.map((it, idx) => {
+    if (it.match) total += it.kcal;
+    const unitTxt = it.qty + (it.unit ? " " + it.unit : "");
+    const sub = it.match ? (unitTxt + " · " + it.grams + " " + T("גרם") + " · " + it.kcal + " " + T("קק״ל")) : T("לא נמצא במאגר");
+    const nm = it.match ? esc(displayName(it.match.name, false)) : esc(it.food);
+    return '<div class="vrow' + (it.match ? "" : " miss") + '">'
+      + '<input type="number" class="vqty" data-i="' + idx + '" value="' + it.qty + '" min="0" step="0.5">'
+      + '<span class="vname">' + nm + '<br><span class="vsub" data-sub="' + idx + '">' + esc(sub) + '</span></span>'
+      + '<button type="button" class="vdel" data-del="' + idx + '">🗑</button></div>';
+  }).join("") + '<div class="vrow" style="border:0;justify-content:flex-end"><b>' + T("סה״כ") + ': <span id="vTotal">' + total + " " + T("קק״ל") + '</span></b></div>';
+  $("voiceCommit").style.display = V_ITEMS.some(it => it.match) ? "block" : "none";
+  box.querySelectorAll(".vqty").forEach(inp => inp.addEventListener("input", e => {
+    const i = +e.target.dataset.i, q = parseFloat(e.target.value) || 0, it = V_ITEMS[i];
+    it.qty = q; if (it.match) { it.grams = vGrams(q, it.unit, it.match); it.kcal = Math.round((it.match.k || 0) * it.grams / 100); }
+    voiceRecalc();
+  }));
+  box.querySelectorAll(".vdel").forEach(b => b.addEventListener("click", () => { V_ITEMS.splice(+b.dataset.del, 1); renderVoiceReview(); }));
+}
+function voiceParseNow() { V_ITEMS = parseSpokenFood($("voiceText").value); renderVoiceReview(); }
+async function openVoice() {
+  V_ITEMS = []; $("voiceResults").innerHTML = ""; $("voiceCommit").style.display = "none"; $("voiceText").value = "";
+  $("voiceOv").classList.add("on"); document.body.style.overflow = "hidden";
+  loadBaseCatalog();   // make sure the 57k DB is ready to match against
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  $("voiceMic").style.display = SR ? "block" : "none";
+}
+function closeVoice() { try { if (vRec) vRec.stop(); } catch {} $("voiceOv").classList.remove("on"); document.body.style.overflow = ""; }
+function voiceStartMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast(T("זיהוי דיבור לא נתמך כאן - אפשר להקליד")); return; }
+  try {
+    vRec = new SR();
+    vRec.lang = LANG === "he" ? "he-IL" : LANG === "ar" ? "ar-SA" : LANG === "ru" ? "ru-RU" : "en-US";
+    vRec.interimResults = false; vRec.maxAlternatives = 1;
+    $("voiceMic").classList.add("listening"); $("micFab").classList.add("listening");
+    $("voiceMic").textContent = "🎤 " + T("מקשיב… דבר עכשיו");
+    vRec.onresult = e => { $("voiceText").value = e.results[0][0].transcript; voiceParseNow(); };
+    vRec.onerror = e => { showToast(T("שגיאת זיהוי דיבור") + ": " + (e.error || "")); };
+    vRec.onend = () => { $("voiceMic").classList.remove("listening"); $("micFab").classList.remove("listening"); $("voiceMic").textContent = "🎤 " + T("התחל לדבר"); };
+    vRec.start();
+  } catch (err) { showToast(T("לא ניתן להפעיל מיקרופון") + ": " + (err.message || err)); }
+}
+function voiceCommit() {
+  const now = new Date(); let added = 0, cnt = 0, touchedProducts = false;
+  for (const it of V_ITEMS) {
+    if (!it.match || !it.grams) continue;
+    const m = it.match;
+    let barcode = m.barcode || "";
+    if (!barcode && m.name && !isBuiltinStapleName(m.name)) barcode = nameKey(m.name);
+    const e = { id: now.getTime() + "-" + (cnt++) + "-" + Math.round(performance.now()), day: todayKey(),
+      t: now.toTimeString().slice(0, 5), barcode, name: m.name, grams: it.grams,
+      k100: m.k || 0, pro100: m.p || 0, carb100: m.c || 0, fat100: m.f || 0, photo: m.photo || "" };
+    LOG.push(e);
+    try { hcWriteEntry(e); } catch {}
+    if (isShareable(barcode)) {
+      PRODUCTS[barcode] = Object.assign(PRODUCTS[barcode] || {}, { name: m.name, kcal: m.k || 0, pro: m.p || 0, carb: m.c || 0, fat: m.f || 0 });
+      if (m.portions && m.portions.length) PRODUCTS[barcode].portions = m.portions.slice();
+      touchedProducts = true;
+      if (isAdmin()) sharedContribute(barcode, PRODUCTS[barcode]);
+    }
+    added++;
+  }
+  if (touchedProducts) store.set(LS_PROD, PRODUCTS);
+  save(); renderLog(); closeVoice();
+  showToast("🎤 " + added + " " + T("פריטים נוספו ליומן"));
+}
+$("micFab").addEventListener("click", openVoice);
+$("voiceClose").addEventListener("click", closeVoice);
+$("voiceOv").addEventListener("click", e => { if (e.target === $("voiceOv")) closeVoice(); });
+$("voiceMic").addEventListener("click", voiceStartMic);
+$("voiceParse").addEventListener("click", voiceParseNow);
+$("voiceCommit").addEventListener("click", voiceCommit);
 $("stopBtn").addEventListener("click", () => { stopScan(); msg("scanMsg", ""); });
 $("torchBtn").addEventListener("click", toggleTorch);
 $("cam").addEventListener("click", e => { if (e.target === $("cam")) { stopScan(); msg("scanMsg", ""); } });
