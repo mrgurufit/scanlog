@@ -3480,7 +3480,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.4";
+const APP_BUILD = "2026.09.23.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6312,7 +6312,10 @@ $("fab").addEventListener("click", toggleScan);
 const V_FILLER = ["אכלתי", "אכלנו", "שתיתי", "שתינו", "היה לי", "היום", "לקחתי", "טעמתי", "בערך", "וגם", "גם"];
 const V_NUM = { "אחד":1,"אחת":1,"שתי":2,"שתיים":2,"שניים":2,"שני":2,"שלוש":3,"שלושה":3,"ארבע":4,"ארבעה":4,"חמש":5,"חמישה":5,"שש":6,"שישה":6,"שבע":7,"שבעה":7,"שמונה":8,"שמונת":8,"תשע":9,"תשעה":9,"עשר":10,"עשרה":10,"חצי":0.5,"רבע":0.25 };
 // grams per household unit; 0 = "use the product's own portion, else 100g"
-const V_UNIT = { "כף":15,"כפות":15,"כפית":5,"כפיות":5,"כוס":240,"כוסות":240,"קציצה":50,"קציצות":50,"פרוסה":30,"פרוסות":30,"חתיכה":50,"חתיכות":50,"חתיכת":50,"גרם":1,"גרמים":1,"גר":1,"כדור":50,"כדורים":50,"צלחת":300,"קופסה":200,"קופסא":200,"בקבוק":500,"פחית":330,"פחיות":330,"שקית":100,"מנה":150,"מנות":150,"ביס":15,"יחידה":0,"יחידות":0,"יח":0 };
+const V_UNIT = { "כף":15,"כפות":15,"כפית":5,"כפיות":5,"כוס":240,"כוסות":240,"קציצה":50,"קציצות":50,"פרוסה":30,"פרוסות":30,"חתיכה":50,"חתיכות":50,"חתיכת":50,"גרם":1,"גרמים":1,"גר":1,"כדור":50,"כדורים":50,"צלחת":300,"קופסה":200,"קופסא":200,"בקבוק":500,"פחית":330,"פחיות":330,"שקית":100,"מנה":150,"מנות":150,"ביס":15,"משולש":100,"משולשי":100,"משולשים":100,"פרי":120,"פירות":120,"כזית":30,"קוביה":20,"קוביות":20,"יחידה":0,"יחידות":0,"יח":0 };
+// words that carry no food meaning - dropped before matching so a descriptive
+// phrase ("פיצה עם פפרוני") still finds the product
+const V_STOP = new Set(["עם","של","ב","או","גם","ה","את","קצת","הרבה","גדול","גדולה","קטן","קטנה"]);
 let V_ITEMS = [], vRec = null;
 function vNum(tok) {
   if (tok == null) return null;
@@ -6322,11 +6325,42 @@ function vNum(tok) {
   return V_NUM[w] != null ? V_NUM[w] : null;
 }
 function vBestMatch(food) {
-  const res = (typeof localMatches === "function") ? localMatches(food) : [];
-  if (!res || !res.length) return null;
   const fn = heNorm(food);
-  for (const r of res) if (heNorm(r.name) === fn) return r;   // exact name wins
-  return res[0];                                              // else the top-ranked hit
+  if (!fn) return null;
+  // 1) precise pass: the normal all-source search (every word must appear) - best quality
+  const res = (typeof localMatches === "function") ? localMatches(food) : [];
+  if (res && res.length) {
+    for (const r of res) if (heNorm(r.name) === fn) return r;   // exact name wins
+    return res[0];
+  }
+  // 2) relaxed pass over the big DB: a natural phrase ("משולשי פיצה עם פפרוני
+  //    ופטריות") rarely matches a product word-for-word, so score each product
+  //    by HOW MANY of the query's content words it contains and take the best
+  //    (ties → the shorter, more generic name). Handles the leading "ו"
+  //    conjunction ("ופטריות" also matches "פטריות").
+  if (!BASE_IDX) return null;
+  let words = fn.split(" ").filter(w => w.length >= 2 && !V_STOP.has(w));
+  if (!words.length) words = fn.split(" ").filter(w => w.length >= 2);
+  if (!words.length) return null;
+  const qskel = xlSkel(food);
+  let best = null, bestScore = 0, bestLen = 1e9;
+  for (const it of BASE_IDX) {
+    let s = 0;
+    for (const w of words) {
+      if (it.norm.includes(w)) s++;
+      else if (w[0] === "ו" && w.length > 3 && it.norm.includes(w.slice(1))) s++;   // drop the "and" prefix
+    }
+    if (qskel.length >= 4 && it.skel.includes(qskel)) s += 0.5;   // cross-script bonus
+    if (s <= 0) continue;
+    const len = (it.rec.n || "").length;
+    if (s > bestScore || (s === bestScore && len < bestLen)) { best = it; bestScore = s; bestLen = len; }
+  }
+  if (best && bestScore >= 1) {
+    const r = best.rec;
+    return { name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: best.key,
+             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" };
+  }
+  return null;
 }
 function vGrams(qty, unit, match) {
   qty = qty > 0 ? qty : 1;
