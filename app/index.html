@@ -3438,7 +3438,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.1";
+const APP_BUILD = "2026.09.23.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3555,6 +3555,28 @@ function heNorm(s) {
   return s.replace(/\s+/g, " ").trim();
 }
 
+/* ---------------- cross-language (Hebrew <-> Latin) matching ----------------
+   Israeli products are stored some in Hebrew, some in Latin ("נוטלה" vs
+   "Nutella 750g"). To let a Hebrew query find a Latin-named product and vice
+   versa, both the stored text and the query are reduced to a Latin CONSONANT
+   SKELETON: vowels are dropped (Hebrew has none written anyway) and doubled
+   letters collapsed, so "נוטלה" -> "ntl" and "Nutella" -> "ntl" line up.
+   Approximate by design - used as an extra matcher on top of the exact
+   heNorm match, never instead of it. Ido, 2026-09-23. */
+const HE2LAT_SKEL = { "ב":"b","ג":"g","ד":"d","ז":"z","ח":"h","ט":"t","כ":"k","ך":"k","ל":"l","מ":"m","ם":"m","נ":"n","ן":"n","ס":"s","פ":"p","ף":"p","צ":"c","ץ":"c","ק":"k","ר":"r","ש":"s","ת":"t" };
+function xlSkel(s) {
+  if (!s) return "";
+  s = String(s).toLowerCase();
+  let out = "";
+  for (const ch of s) {
+    if (ch >= "a" && ch <= "z") { if (!"aeiou".includes(ch)) out += (ch === "q" ? "k" : ch === "c" ? "k" : ch === "w" ? "v" : ch); }
+    else if (HE2LAT_SKEL[ch]) out += HE2LAT_SKEL[ch];
+    // Hebrew vowel letters (א ה ו י ע) and everything else are dropped
+  }
+  out = out.replace(/c/g, "k");                 // unify c/k after Hebrew mapping too
+  return out.replace(/(.)\1+/g, "$1");          // collapse doubled consonants (nutella -> ntl)
+}
+
 /* ---------------- built-in base catalog (the big offline DB) ----------------
    57k Israeli products (name, manufacturer, per-100g macros, portions),
    shipped as one static file catalog_base.json next to this page and cached
@@ -3591,7 +3613,8 @@ function loadBaseCatalog() {
       BASE_IDX = [];
       for (const key in BASE_CAT.codes) {
         const rec = BASE_CAT.codes[key];
-        BASE_IDX.push({ key, rec, norm: heNorm((rec.n || "") + " " + (rec.m || "")) });
+        const txt = (rec.n || "") + " " + (rec.m || "");
+        BASE_IDX.push({ key, rec, norm: heNorm(txt), skel: xlSkel(txt) });
       }
       return BASE_CAT;
     } catch { baseLoading = null; return null; }
@@ -4885,7 +4908,10 @@ function localMatches(q) {
     return qWords.length ? qWords.every(w => t.includes(w)) : t.includes(qn);
   };
   const seen = new Set();
-  const add = r => { const k = r.src + "|" + r.name; if (seen.has(k)) return; seen.add(k); res.push(r); };
+  // one unified built-in DB: dedup every reference source by normalized name so
+  // the same product from staples/national/USDA/base/community shows once; the
+  // user's own products stay their own bucket
+  const add = r => { const k = (r.src === "שלי" ? "me:" : "db:") + heNorm(r.name); if (seen.has(k)) return; seen.add(k); res.push(r); };
   // the phone's own products: match the Hebrew name, or the translation it
   // already got in this language (so an English query finds a Hebrew product)
   for (const [code, pr] of Object.entries(PRODUCTS)) {
@@ -4945,13 +4971,17 @@ function localMatches(q) {
   // surfaced from the phone or the community catalog above. Shortest names
   // first so the plain product beats a long promotional variant.
   if (BASE_IDX && qn) {
-    const hits = [];
+    const qskel = xlSkel(q);
+    const direct = [], trans = [];   // exact heNorm hits first, cross-script skeleton hits after
     for (const it of BASE_IDX) {
       if (PRODUCTS[it.key] || (CATALOG.codes && CATALOG.codes[it.key])) continue;
-      if (qWords.length ? qWords.every(w => it.norm.includes(w)) : it.norm.includes(qn)) hits.push(it);
+      const d = qWords.length ? qWords.every(w => it.norm.includes(w)) : it.norm.includes(qn);
+      if (d) direct.push(it);
+      else if (qskel.length >= 3 && it.skel.includes(qskel)) trans.push(it);   // "נוטלה" <-> "Nutella"
     }
-    hits.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
-    for (const it of hits.slice(0, 60)) {   // show many options, like Kaloria - the list scrolls
+    direct.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
+    trans.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
+    for (const it of direct.concat(trans).slice(0, 60)) {   // show many options, like Kaloria - the list scrolls
       const r = it.rec;
       add({ name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: it.key,
             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" });
@@ -5182,7 +5212,7 @@ function renderSearch(res, token, stillLoading) {
   box.className = "on";
   box.innerHTML = lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
-       <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : r.src === "AI" ? " ai" : ""}">${T(r.src)}</span>
+       <span class="srs${r.src === "שלי" ? " mine" : " gen"}">${r.src === "שלי" ? T("שלי") : T("מאגר")}</span>
        <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
        <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
      </button>`).join("") +
@@ -6536,7 +6566,7 @@ function renderCatalogList() {
   if (BASE_IDX && !BASE_SORTED) {
     BASE_SORTED = BASE_IDX
       .filter(it => !(CATALOG.codes && CATALOG.codes[it.key]) && !PRODUCTS[it.key])
-      .map(it => ({ code: it.key, p: it.rec, base: true, norm: it.norm }))
+      .map(it => ({ code: it.key, p: it.rec, base: true, norm: it.norm, skel: it.skel }))
       .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"));
   }
   const baseRows = BASE_SORTED || [];
@@ -6544,8 +6574,10 @@ function renderCatalogList() {
   if (q) {
     const commF = comm.filter(({ p }) =>
       (p.n || "").toLowerCase().includes(q) || (qWords.length && qWords.every(w => heNorm(p.n || "").includes(w))));
-    const baseF = baseRows.filter(({ norm }) =>
-      qWords.length ? qWords.every(w => norm.includes(w)) : (norm || "").includes(qn));
+    const qskel = xlSkel(q);
+    const baseF = baseRows.filter(({ norm, skel }) =>
+      (qWords.length ? qWords.every(w => norm.includes(w)) : (norm || "").includes(qn))
+      || (qskel.length >= 3 && skel && skel.includes(qskel)));   // cross-script (נוטלה <-> Nutella)
     rows = commF.concat(baseF);
     if (catalogSort === "new") rows.sort((a, b) => (Date.parse(b.p.t || "") || 0) - (Date.parse(a.p.t || "") || 0));
     else rows.sort((a, b) => (a.p.n || "").length - (b.p.n || "").length);
