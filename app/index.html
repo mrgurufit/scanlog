@@ -367,6 +367,7 @@
 .vrow input.vqty { width:52px; text-align:center; border-radius:8px; border:1px solid var(--line,#2a3340); background:var(--card,#151a22); color:inherit; padding:6px; font-size:15px; }
 .vrow .vdel { background:none; border:0; color:#e5484d; font-size:18px; cursor:pointer; }
 .vcommit { width:100%; padding:14px; border-radius:12px; border:0; background:#ffd400; color:#000; font-size:17px; font-weight:800; cursor:pointer; margin-top:14px; }
+.vrow.dim { opacity:.6; justify-content:center; font-size:14px; }
   #fab:active { transform:scale(.93); }
   /* one button toggles the scanner: camera when closed, ✕ (red) while scanning */
   #fab .fabx { display:none; font-size:28px; }
@@ -3480,7 +3481,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.23.6";
+const APP_BUILD = "2026.09.23.7";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6330,7 +6331,8 @@ function vBestMatch(food) {
   // 1) precise pass: the normal all-source search (every word must appear) - best quality
   const res = (typeof localMatches === "function") ? localMatches(food) : [];
   if (res && res.length) {
-    for (const r of res) if (heNorm(r.name) === fn) return r;   // exact name wins
+    for (const r of res) if (heNorm(r.name) === fn) { r._conf = 1; return r; }   // exact name wins
+    res[0]._conf = 0.85;   // all query words present, strong
     return res[0];
   }
   // 2) relaxed pass over the big DB: a natural phrase ("משולשי פיצה עם פפרוני
@@ -6357,8 +6359,17 @@ function vBestMatch(food) {
   }
   if (best && bestScore >= 1) {
     const r = best.rec;
+    // confidence blends RECALL (how many query words the product covered) with
+    // PRECISION (how much of the PRODUCT name the query explains). A blob like
+    // "אגוזי מלך חמוציות סלרי" hitting "חטיף אנרגיה חמוציות ואגוזי מלך" has ok
+    // recall but poor precision (the product is really an energy bar), so it
+    // scores low and gets flagged weak → learn-cache/AI second opinion.
+    let mc = 0;
+    for (const w of words) { if (best.norm.includes(w) || (w[0] === "ו" && w.length > 3 && best.norm.includes(w.slice(1)))) mc++; }
+    const nameWords = (best.norm.split(" ").filter(w => w.length >= 2 && !V_STOP.has(w)).length) || 1;
+    const conf = (mc / words.length) * Math.min(1, mc / nameWords);
     return { name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: best.key,
-             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" };
+             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר", _conf: conf };
   }
   return null;
 }
@@ -6380,6 +6391,9 @@ function parseSpokenFood(text) {
   let s = " " + String(text).replace(/[\n\r]+/g, " ") + " ";
   for (const f of V_FILLER) s = s.split(f).join(" ");
   s = s.replace(/[,.;־]/g, " | ");
+  // conversational "... that had X, Y, Z in it" - the ingredients are their own
+  // items, so break the relative clause into a new segment
+  s = s.replace(/\s(שהיה בו|שהיו בו|שיש בו|שיש בה|שהיה בה|שהיו בה|שהיתה בו|במילוי|בתוספת|ובתוספת)\s/g, " | ");
   const numAlt = Object.keys(V_NUM).join("|");
   const unitAlt = Object.keys(V_UNIT).join("|");
   s = s.replace(new RegExp("\\s(?:ו)?(" + numAlt + "|\\d+(?:\\.\\d+)?)(?=\\s)", "g"), " | $1");   // new item at each quantity
@@ -6401,9 +6415,65 @@ function parseSpokenFood(text) {
     const match = vBestMatch(food);
     const grams = match ? vGrams(qty, unit, match) : 0;
     const kcal = match ? Math.round((match.k || 0) * grams / 100) : 0;
-    items.push({ qty, unit, food, match, grams, kcal });
+    // "weak" = no match, or a shaky low-confidence one - these are the only
+    // items that will ever reach the learn-cache / AI tiers
+    const weak = !match || (match._conf != null && match._conf < 0.6);
+    items.push({ qty, unit, food, match, grams, kcal, weak, via: "local" });
   }
   return items;
+}
+
+/* ---------------- learn cache (free memory, no AI, no Make) ----------------
+   Whatever the AI resolves - or the phrasing that finally matched - is
+   remembered per phrase, so the SAME (or a normalized-identical) sentence next
+   time is answered instantly from here, never re-hitting AI/Make. Ido,
+   2026-09-23: "שיזכור... בלי לבזבז פעולות במייק". */
+const LS_VLEARN = "fl_voice_learn";
+function vLearnGet(phrase) {
+  try { const m = JSON.parse(localStorage.getItem(LS_VLEARN) || "{}"); return m[heNorm(phrase)] || null; } catch { return null; }
+}
+function vLearnSet(phrase, item) {
+  if (!phrase || !item) return;
+  try {
+    const m = JSON.parse(localStorage.getItem(LS_VLEARN) || "{}");
+    m[heNorm(phrase)] = { name: item.name, k: item.k || 0, p: item.p || 0, c: item.c || 0, f: item.f || 0, barcode: item.barcode || "", portions: item.portions || [] };
+    const keys = Object.keys(m);
+    if (keys.length > 800) delete m[keys[0]];   // bound it
+    localStorage.setItem(LS_VLEARN, JSON.stringify(m));
+  } catch {}
+}
+// Fill in the weak/unmatched items, cheapest source first: learn-cache (free) →
+// AI (a Make op, only when nothing local worked), and remember the AI answer so
+// it is free ever after. Capped per utterance so cost is always bounded.
+async function vResolveWeak(items) {
+  let aiCalls = 0, changed = false;
+  for (const it of items) {
+    if (it.match && !it.weak) continue;
+    // tier 2: learned from a previous time (free)
+    const cached = vLearnGet(it.food);
+    if (cached) {
+      it.match = cached; it.weak = false; it.via = "learned";
+      it.grams = vGrams(it.qty, it.unit, cached); it.kcal = Math.round((cached.k || 0) * it.grams / 100);
+      changed = true; continue;
+    }
+    // tier 3: AI (costs Make ops) - only now, and at most a few per utterance
+    if (aiCalls >= 3) continue;
+    aiCalls++;
+    let res = [];
+    try { res = await aiTextSearch(it.food); } catch { res = []; }
+    if (res && res.length) {
+      const contributed = (typeof contributeAiResults === "function") ? contributeAiResults(res) : [];
+      const best = contributed[0] || null;
+      if (best) {
+        const m = { name: best.name, k: best.k || 0, p: best.p || 0, c: best.c || 0, f: best.f || 0, barcode: best.barcode || "", portions: best.portions || [] };
+        it.match = m; it.weak = false; it.via = "ai";
+        it.grams = vGrams(it.qty, it.unit, m); it.kcal = Math.round((m.k || 0) * it.grams / 100);
+        vLearnSet(it.food, m);   // remember → next time it's free
+        changed = true;
+      }
+    }
+  }
+  return changed;
 }
 function voiceRecalc() {
   let total = 0;
@@ -6421,7 +6491,8 @@ function renderVoiceReview() {
   box.innerHTML = V_ITEMS.map((it, idx) => {
     if (it.match) total += it.kcal;
     const unitTxt = it.qty + (it.unit ? " " + it.unit : "");
-    const sub = it.match ? (unitTxt + " · " + it.grams + " " + T("גרם") + " · " + it.kcal + " " + T("קק״ל")) : T("לא נמצא במאגר");
+    const viaTag = it.via === "ai" ? " · 🤖 AI" : it.via === "learned" ? " · 💾" : "";
+    const sub = it.match ? (unitTxt + " · " + it.grams + " " + T("גרם") + " · " + it.kcal + " " + T("קק״ל") + viaTag) : T("לא נמצא במאגר");
     const nm = it.match ? esc(displayName(it.match.name, false)) : esc(it.food);
     return '<div class="vrow' + (it.match ? "" : " miss") + '">'
       + '<input type="number" class="vqty" data-i="' + idx + '" value="' + it.qty + '" min="0" step="0.5">'
@@ -6436,7 +6507,17 @@ function renderVoiceReview() {
   }));
   box.querySelectorAll(".vdel").forEach(b => b.addEventListener("click", () => { V_ITEMS.splice(+b.dataset.del, 1); renderVoiceReview(); }));
 }
-function voiceParseNow() { V_ITEMS = parseSpokenFood($("voiceText").value); renderVoiceReview(); }
+async function voiceParseNow() {
+  V_ITEMS = parseSpokenFood($("voiceText").value);
+  renderVoiceReview();                         // show the local (free) result at once
+  if (V_ITEMS.some(it => it.weak || !it.match)) {
+    const hint = document.createElement("div");
+    hint.className = "vrow dim"; hint.textContent = "🤖 " + T("משלים חוסרים…");
+    $("voiceResults").appendChild(hint);
+    await vResolveWeak(V_ITEMS);               // learn-cache (free) → AI only if still missing
+    renderVoiceReview();
+  }
+}
 async function openVoice() {
   V_ITEMS = []; $("voiceResults").innerHTML = ""; $("voiceCommit").style.display = "none"; $("voiceText").value = "";
   $("voiceOv").classList.add("on"); document.body.style.overflow = "hidden";
