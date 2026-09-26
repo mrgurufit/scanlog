@@ -1,0 +1,12 @@
+{
+  "appId": "fit.mrguru.scanlog",
+  "appName": "Scan & Log",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "appendUserAgent": "ScanLogIOS"
+  }
+}
