@@ -48,11 +48,11 @@ public class HealthKitBridge: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - CAPBridgedPlugin (Capacitor 7+/8 registration surface)
 
-    public static let identifier = "HealthKitBridge"
+    public let identifier = "HealthKitBridge"
     // MUST equal Android's @CapacitorPlugin(name = "HealthBridge") — this is
     // the key the web app looks up as window.Capacitor.Plugins.HealthBridge.
-    public static let jsName = "HealthBridge"
-    public static let pluginMethods: [CAPPluginMethod] = [
+    public let jsName = "HealthBridge"
+    public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestHealthPermissions", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openHealthSettings", returnType: CAPPluginReturnPromise),
