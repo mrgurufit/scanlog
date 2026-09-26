@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	 HealthKit entitlement pair, current as of the Xcode "HealthKit" capability
+	 toggle (introduced Xcode 11, unchanged since): `com.apple.developer.healthkit`
+	 turns HealthKit on for the app; `com.apple.developer.healthkit.access` is an
+	 array that is only non-empty for the separate "Clinical Health Records"
+	 capability (e.g. "health-records") — this app reads/writes ordinary
+	 quantity samples (steps, energy, weight, workouts, nutrition), not clinical
+	 records, so an empty array is correct here, not a placeholder left unfilled.
+	 -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
+</dict>
+</plist>

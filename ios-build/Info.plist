@@ -30,6 +30,10 @@
 	<string>הזנת מזון בעזרת הדיבור</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>בחירת תמונת מוצר מהגלריה</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>קריאת צעדים, קלוריות שנשרפו, משקל ואימונים מ-Health כדי לעדכן את היומן שלך</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>שמירת הארוחות שאתה מתעד באפליקציה כנתוני תזונה ב-Health</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
