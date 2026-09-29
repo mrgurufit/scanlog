@@ -3501,7 +3501,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.1";
+const APP_BUILD = "2026.09.29.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6079,14 +6079,11 @@ function effGrams() {
   const v = num($("grams").value);
   return selPortion >= 0 ? Math.round(v * curPortionG()) : Math.round(v);
 }
-// shown once ever, the first time a regular (non-admin) user reaches a
-// new/unknown product and can define its portion himself (Ido, 2026-09-12)
-const LS_PORTION_HINT = "fl_portion_hint_seen";
 function renderPortions() {
-  // a new/unknown product is editable by anyone (it is crowdsourced, same
-  // gate as the name/macros fields) - a curated or verified-OFF product
-  // stays admin-only, exactly like entryEditable() already governs above
-  const canEditPortions = entryEditable();
+  // adding/deleting a portion is admin-only (Ido, 2026-09-29) - it used to be
+  // open to anyone on a new/unknown product as part of the crowdsourcing flow,
+  // but he wants that ability kept in his own hands only
+  const canEditPortions = isAdmin();
   const sel = $("portionSel");
   sel.innerHTML = entryPortions.map((p, i) =>
     `<option value="${i}">${esc(p.n)} (${p.g} ${T("ג׳")})</option>`).join("")
@@ -6095,18 +6092,10 @@ function renderPortions() {
   // grams input shows only in weigh mode; for a portion it's the quantity
   $("qtyUnit").textContent = selPortion >= 0 ? T("יחידות") : T("גרם");
   $("grams").placeholder = selPortion >= 0 ? T("כמות") : T("כמה גרם?");
-  const firstTime = canEditPortions && !isAdmin() && !localStorage.getItem(LS_PORTION_HINT);
-  $("portionHint").innerHTML = firstTime
-    ? `<div class="portHint"><b>💡 ${T("הוסיפו מנה למוצר הזה")}</b>
-        <p>${T('לחצו על "➕ הוסף מנה" ותנו שם ומשקל בגרמים, לדוגמה')}: <span class="ex">חטיף 80</span>.
-        ${T("אפשר גם לצלם תמונה — הכל יעבור לאישור תוך יום.")}</p></div>`
-    : "";
-  if (firstTime) localStorage.setItem(LS_PORTION_HINT, "1");
-  // anyone editing a new product can propose a portion (+ delete their own
-  // pick before saving); a curated/verified product stays locked for non-admins
+  $("portionHint").innerHTML = "";
   let adm = "";
   if (canEditPortions) {
-    adm = `<button type="button" class="padd${firstTime ? " hintGlow" : ""}" id="paddBtn">➕ ${T("הוסף מנה")}</button>`;
+    adm = `<button type="button" class="padd" id="paddBtn">➕ ${T("הוסף מנה")}</button>`;
     if (selPortion >= 0) adm += `<button type="button" class="padd pdelbtn" id="pdelBtn">🗑 ${T("מחק מנה זו")}</button>`;
   }
   $("portionAdmin").innerHTML = adm;
@@ -6114,6 +6103,7 @@ function renderPortions() {
   const db = $("pdelBtn"); if (db) db.onclick = delPortion;
 }
 function delPortion() {
+  if (!isAdmin()) return;
   if (selPortion < 0 || !entryPortions[selPortion]) return;
   entryPortions.splice(selPortion, 1);
   selPortion = entryPortions.length ? 0 : -1;
@@ -6121,6 +6111,7 @@ function delPortion() {
   renderPortions(); preview();
 }
 function addPortion() {
+  if (!isAdmin()) return;
   const raw = prompt(T("שם המנה ואז המשקל בגרמים, למשל: יחידה 50"));
   if (!raw) return;
   const m = String(raw).trim().match(/^(.*?)[\s,:]+(\d+(?:\.\d+)?)\s*$/);
@@ -6204,9 +6195,8 @@ function applyAdminLock() {
   $("per100Field").classList.toggle("locked", !editable);
   $("per100Hint").textContent = !editable ? T("(ערכים מאומתים — נעולים)")
     : (isAdmin() ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(מהמדבקה — יתווסף למאגר המשותף)"));
-  // a new product can get a photo from anyone (it is crowdsourced); a curated
-  // product's photo stays admin-only
-  $("picBtn").style.display = editable ? "" : "none";
+  // adding/replacing a product photo is admin-only (Ido, 2026-09-29)
+  $("picBtn").style.display = isAdmin() ? "" : "none";
   // the add-portion button/hint share this exact gate - without this, a
   // barcode that resolves to a verified hit AFTER the first render (the
   // catalog/OFF lookups in onBarcode() call applyAdminLock() again once they
@@ -7019,9 +7009,9 @@ function renderCatalogList() {
   $("catalogList").innerHTML = rows.map(({ code, p, base }) => {
     const isNew = p.t && (Date.now() - (Date.parse(p.t) || 0)) < NEW_MS;
     return `<div class="sr" data-code="${esc(code)}">
-       <button type="button" class="catThumbBtn" data-thumb="${esc(code)}" aria-label="${T("תמונת המוצר")}">
-         ${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}
-       </button>
+       ${isAdmin()
+         ? `<button type="button" class="catThumbBtn" data-thumb="${esc(code)}" aria-label="${T("תמונת המוצר")}">${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}</button>`
+         : `<span class="catThumbBtn" aria-label="${T("תמונת המוצר")}">${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}</span>`}
        <button type="button" class="catMain" data-open="${esc(code)}">
          <span class="catMainTop">
            <span class="srs ${base ? "gen" : "mine"}">${base ? T("מאגר") : T("קהילתי")}</span>
@@ -7030,7 +7020,7 @@ function renderCatalogList() {
          </span>
          <span class="srv">${Math.round(p.k || 0)} ${T("קק״ל · ח")} ${p.p ?? "?"}${p.s ? " · 👤 " + esc(srcLabel(p.s)) : ""}${p.t ? " · 🕒 " + esc(timeAgo(p.t)) : ""}</span>
        </button>
-       <button type="button" class="catAddPortion" data-portion="${esc(code)}" aria-label="${T("הוסף מנה")}">➕</button>
+       ${isAdmin() ? `<button type="button" class="catAddPortion" data-portion="${esc(code)}" aria-label="${T("הוסף מנה")}">➕</button>` : ""}
      </div>`;
   }).join("") ||
     `<div class="sr dim">${q ? T("לא נמצא") : T("הקטלוג ריק כרגע")}</div>`;
@@ -8292,15 +8282,16 @@ async function pickedPicture(file) {
 function applyPickedPhoto(photo) {
   if (!photo) return;
   if (typeof picTarget === "string" && picTarget.startsWith("cat:")) {
+    if (!isAdmin()) return;
     const code = picTarget.slice(4);
     PRODUCTS[code] = Object.assign(PRODUCTS[code] || {}, { photo });
     store.set(LS_PROD, PRODUCTS);
-    if (isAdmin()) sharedContribute(code, PRODUCTS[code]);
+    sharedContribute(code, PRODUCTS[code]);
     renderCatalogList();
     showToast(T("התמונה עודכנה."));
     return;
   }
-  if (picTarget == null) { setShot(photo); return; }
+  if (picTarget == null) { if (isAdmin()) setShot(photo); return; }
   const e = LOG.find(x => x.id === picTarget);
   if (!e) return;
   e.photo = photo;
@@ -8373,6 +8364,7 @@ $("picWebBtn").addEventListener("click", openWebImagePicker);
    as the entry sheet's addPortion(), but writing PRODUCTS[code] directly so
    he never has to open product after product just to define a portion. */
 function catalogAddPortion(code) {
+  if (!isAdmin()) return;
   const p = PRODUCTS[code];
   if (!p) { showToast(T("אפשר להוסיף מנה רק אחרי שהמוצר נשמר עם שם וקלוריות.")); return; }
   const raw = prompt(T("שם המנה ואז המשקל בגרמים, למשל: יחידה 50"));
