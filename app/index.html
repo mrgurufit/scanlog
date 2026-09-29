@@ -3532,7 +3532,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.19";
+const APP_BUILD = "2026.09.29.20";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4570,14 +4570,16 @@ async function startScan() {
   // zoom (Ido, 2026-09-16) never had a chance to run. Native CameraX gives
   // real zoom control, so it goes first inside the APK.
   // IN_APK is true on BOTH Android and iOS (Capacitor's isNativePlatform()
-  // doesn't distinguish) - but only Android actually HAS a native scanner
-  // plugin (HealthBridge.kt); iOS has none, so HB() correctly comes back
-  // null there. Gating on IN_APK sent iOS straight into nativeScan(),
-  // which called HB().scanBarcode() on a null bridge and silently failed -
-  // the camera never opened at all (Ido, 2026-09-29: "המצלמה עם הסורק לא
-  // נפתח באייפון"). Every OTHER fallback in this same function already
-  // correctly checks HB() instead of IN_APK - this was the one leftover.
-  if (HB()) return nativeScan();
+  // doesn't distinguish), and a bare HB() truthiness check isn't safe either
+  // once iOS gets its own native bridge (HealthKitBridge, health-only,
+  // 2026-09-29) - HB() will be non-null there too, just without a
+  // scanBarcode method. Android's HealthBridge.kt is the only plugin that
+  // actually implements scanning, so check for that specific method, same
+  // pattern already used correctly below (HB() && HB().scanBarcode) and by
+  // voiceStartMic()'s HB() && HB().startSpeech (Ido, 2026-09-29: "המצלמה עם
+  // הסורק לא נפתח באייפון" - this was the one call site still checking bare
+  // IN_APK/HB() instead of the method itself).
+  if (HB() && HB().scanBarcode) return nativeScan();
   ovPush();
   msg("scanMsg", "");
   $("diag").textContent = "";
@@ -4625,7 +4627,7 @@ async function startScan() {
     const timeout = new Promise(res => setTimeout(() => { timedOut = true; res("TIMEOUT"); }, 7000));
     const result = await Promise.race([gum, timeout]);
     if (result === "TIMEOUT") {
-      if (HB()) { stopScan(); nativeScan(); return; }
+      if (HB() && HB().scanBarcode) { stopScan(); nativeScan(); return; }
       throw { name: "NotAllowedError" };
     }
     stream = result;
@@ -4643,7 +4645,7 @@ async function startScan() {
   $("camHint").textContent = T("טוען מפענח ברקודים…");
   if (!(await ensureDetector())) {
     stream.getTracks().forEach(t => t.stop()); stream = null;
-    if (HB()) { stopScan(); nativeScan(); return; }
+    if (HB() && HB().scanBarcode) { stopScan(); nativeScan(); return; }
     return camFallback(T("הדפדפן הזה לא יודע לקרוא ברקוד ישירות מהווידאו."));
   }
 
