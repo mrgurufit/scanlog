@@ -127,15 +127,17 @@
     flex:0 0 auto; width:30px; height:30px; border-radius:50%; align-self:center;
     background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:15px; padding:0;
   }
-  /* header + streak */
-  .hdr { display:flex; align-items:flex-start; gap:10px; }
+  /* header + streak - the flame and the hamburger sit at the same height as
+     the "SCAN // LOG" title text itself (Ido, 2026-09-29), not just
+     vertically centered against a taller row */
+  .hdr { display:flex; align-items:center; gap:10px; }
   .hdr > div:first-child { flex:1; }
   #streak {
-    display:flex; align-items:center; gap:5px; padding:8px 13px;
+    display:flex; align-items:center; gap:5px; padding:3px 11px; height:26px;
     background:#241a0e; border:1px solid #6b4d16; border-radius:999px;
-    font-size:17px; flex:0 0 auto;
+    font-size:15px; flex:0 0 auto;
   }
-  #streak span { font-size:15px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
+  #streak span { font-size:13px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
   #streakToast {
     display:none; background:var(--panel); border:1px solid var(--accent); color:var(--text);
     border-radius:12px; padding:11px 14px; font-size:14px; font-weight:700;
@@ -421,23 +423,25 @@
   #stopBtn:active { background:#2a3242; }
   .campanel { position:relative; }
   /* hamburger menu button: the app's yellow, three black bars, a red dot
-     when the admin has something new waiting (Ido, 2026-09-09) */
+     when the admin has something new waiting (Ido, 2026-09-09). Square with
+     slightly rounded corners, sized to the "SCAN // LOG" title's own text
+     height rather than a big standalone circle (Ido, 2026-09-29). */
   #menuBtn {
-    position:relative; flex:0 0 auto; width:41px; height:41px; padding:0;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    background:var(--accent); border:0; border-radius:999px;
+    position:relative; flex:0 0 auto; width:26px; height:26px; padding:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:var(--accent); border:0; border-radius:7px;
     box-shadow:0 2px 6px rgba(0,0,0,.22);
   }
   #menuBtn:active { transform:scale(.93); }
-  #menuBtn .menuBar { display:block; width:18px; height:2.5px; border-radius:2px; background:#141005; }
+  #menuBtn .menuBar { display:block; width:14px; height:2px; border-radius:2px; background:#141005; }
   #menuDot {
-    position:absolute; top:1px; inset-inline-end:1px; width:12px; height:12px; border-radius:50%;
+    position:absolute; top:-2px; inset-inline-end:-2px; width:10px; height:10px; border-radius:50%;
     background:#e5484d; border:2px solid var(--bg); display:none;
   }
   #menuDot.on { display:block; }
   .hbadge {
-    position:absolute; top:-4px; inset-inline-end:-4px; min-width:18px; height:18px; padding:0 4px;
-    background:#e5484d; color:#fff; font-size:10.5px; font-weight:800; line-height:1;
+    position:absolute; top:-6px; inset-inline-end:-6px; min-width:15px; height:15px; padding:0 3px;
+    background:#e5484d; color:#fff; font-size:9.5px; font-weight:800; line-height:1;
     border-radius:999px; display:flex; align-items:center; justify-content:center;
     border:2px solid var(--bg); font-variant-numeric:tabular-nums;
   }
@@ -3525,7 +3529,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.11";
+const APP_BUILD = "2026.09.29.12";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
