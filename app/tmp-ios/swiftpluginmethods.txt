@@ -1,3 +1,0 @@
-        CAPPluginMethod(name: "setTorch", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "startSpeech", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopSpeech", returnType: CAPPluginReturnPromise),
