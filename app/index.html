@@ -634,9 +634,6 @@
   #manRow input { width:72px; min-width:0; flex:1 1 72px; }
   #manRow button { background:var(--panel2); border:1px solid var(--line); color:var(--text);
                    border-radius:9px; padding:6px 10px; font-size:13px; font-family:inherit; cursor:pointer; }
-  #updBar { display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
-            background:var(--accent); color:#141005; font-weight:800; text-align:center;
-            padding:9px 12px; font-size:13.5px; cursor:pointer; }
   #betaBar { display:none; position:fixed; top:0; left:0; right:0; z-index:9998;
              background:#141821; color:#f4f6fb; border-bottom:1px solid #2a3140;
              padding:8px 10px; font-size:13px; font-weight:700;
@@ -935,8 +932,6 @@
 </style>
 </head>
 <body>
-
-<div id="updBar">🔄 יש גרסה חדשה — הקש לעדכון</div>
 
 <div id="testModeBar">🧪 מצב בדיקה כמשתמש רגיל <u id="testModeBack">חזור לחשבון האדמין</u></div>
 
@@ -1848,8 +1843,6 @@ const I18N_EN = {
   "התנתק": "Sign out",
   "הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.": "Your data is saved to the cloud and syncs automatically. New phone? Sign in and get it all back.",
   "מסונכרן": "Synced",
-  "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 New version available — tap to update",
-  "⬇️ מוריד עדכון…": "⬇️ Downloading update…",
   "נשרף היום": "Burned today",
   "מאזן היום": "Day balance",
   "נשאר בבנק": "Left in bank",
@@ -2354,8 +2347,6 @@ const I18N_AR = {
   "התנתק": "تسجيل الخروج",
   "הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.": "بياناتك محفوظة في السحابة وتُزامَن تلقائيًا. هاتف جديد؟ سجّل الدخول واستعد كل شيء.",
   "מסונכרן": "مُزامَن",
-  "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 يتوفر إصدار جديد — اضغط للتحديث",
-  "⬇️ מוריד עדכון…": "⬇️ جارٍ تنزيل التحديث…",
   "נשרף היום": "احترق اليوم",
   "מאזן היום": "ميزان اليوم",
   "נשאר בבנק": "المتبقي في البنك",
@@ -2833,8 +2824,6 @@ const I18N_RU = {
   "התנתק": "Выйти",
   "הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.": "Ваши данные хранятся в облаке и синхронизируются автоматически. Новый телефон? Войдите — и всё вернётся.",
   "מסונכרן": "Синхронизировано",
-  "🔄 יש גרסה חדשה — הקש לעדכון": "🔄 Доступна новая версия — нажмите для обновления",
-  "⬇️ מוריד עדכון…": "⬇️ Загрузка обновления…",
   "נשרף היום": "Сожжено сегодня",
   "מאזן היום": "Баланс дня",
   "נשאר בבנק": "Осталось в банке",
@@ -3501,7 +3490,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.2";
+const APP_BUILD = "2026.09.29.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7225,7 +7214,9 @@ async function checkForUpdate() {
       const r = await fetch(VERSION_URL + "?_=" + Date.now(), { cache: "no-store" });
       build = ((await r.json()) || {}).build;
     }
-    if (build && build !== APP_BUILD) $("updBar").style.display = "block";
+    // no more "tap to update" banner (Ido, 2026-09-29: "אל תגיד ליוזר שיש
+    // גרסא חדשה, פשוט תזריק אוטומטית") - a new build applies itself
+    if (build && build !== APP_BUILD) applyUpdateSilently();
     if (updErr) { updErr = ""; renderVer(); }
   } catch (e) {
     // a silent failure here cost a whole evening once - surface it in the
@@ -7234,24 +7225,38 @@ async function checkForUpdate() {
     renderVer();
   }
 }
-$("updBar").addEventListener("click", async () => {
+let updApplying = false, updPending = false;
+async function applyUpdateSilently() {
+  if (updApplying) return;
+  // never swap the page out from under someone mid-entry (typing a name,
+  // portion, grams…) - defer and retry once the entry sheet closes, checked
+  // lightly below rather than hooking every place that closes it
+  if ($("entry").classList.contains("on")) { updPending = true; return; }
+  updApplying = true;
   const hb = HB();
   if (hb && hb.applyUpdate) {
     // the native side downloads the new page into filesDir, re-points the
     // local server at it and reloads - same https://localhost origin, so
     // localStorage (his whole log) is untouched
-    $("updBar").textContent = T("⬇️ מוריד עדכון…");
     try { await hb.applyUpdate(); }
     catch (e) {
-      $("updBar").textContent = T("🔄 יש גרסה חדשה — הקש לעדכון");
+      updApplying = false;
       updErr = String((e && e.message) || e).slice(0, 60);
       renderVer();
     }
     return;
   }
   location.reload();
+}
+setInterval(() => {
+  if (updPending && !$("entry").classList.contains("on")) { updPending = false; applyUpdateSilently(); }
+}, 5000);
+document.addEventListener("visibilitychange", () => {
+  // check (and silently apply) both on the way out and the way back in, so a
+  // backgrounded tab is already current by the time he returns to it
+  checkForUpdate();
+  if (!document.hidden) { catalogPull(); contribFlush(); }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { checkForUpdate(); catalogPull(); contribFlush(); } });
 checkForUpdate();
 // warm the big built-in DB in the background so a scan or search a moment
 // later is already answered offline from its 57k products
