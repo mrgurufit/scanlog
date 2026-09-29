@@ -3532,7 +3532,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.14";
+const APP_BUILD = "2026.09.29.15";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4883,8 +4883,12 @@ const GENERIC = [
   { n: "קולה", k: 42, p: 0, c: 10.6, f: 0, a: ["קוקה קולה", "משקה קל מוגז"], pt: [{ n: "כוס", g: 250 }, { n: "פחית", g: 330 }, { n: "בקבוק (500 מ\"ל)", g: 500 }, { n: "בקבוק משפחתי (1.5 ליטר)", g: 1500 }] },
   { n: "מיץ תפוזים", k: 45, p: 0.7, c: 10.4, f: 0.1, pt: [{ n: "כוס", g: 250 }, { n: "בקבוק (1 ליטר)", g: 1000 }] },
   { n: "מיץ תפוחים", k: 46, p: 0.1, c: 11.3, f: 0.1, pt: [{ n: "כוס", g: 250 }, { n: "בקבוק (1 ליטר)", g: 1000 }] },
-  { n: "גבינה צהובה", k: 330, p: 25, c: 1, f: 26, a: ["צהובה"] },
+  { n: "גבינה צהובה", k: 330, p: 25, c: 1, f: 26, a: ["צהובה"], pt: [{ n: "פרוסה", g: 20 }] },
   { n: "גבינה בולגרית 5%", k: 95, p: 12, c: 3, f: 4, a: ["בולגרית"] },
+  { n: "נקניק הודו", k: 100, p: 18, c: 2, f: 2, a: ["חזה הודו נקניק", "נקניק חזה הודו"], pt: [{ n: "פרוסה", g: 15 }] },
+  { n: "פסטרמה", k: 147, p: 21, c: 1, f: 6, pt: [{ n: "פרוסה", g: 15 }] },
+  { n: "סלמי", k: 380, p: 22, c: 2, f: 31, pt: [{ n: "פרוסה", g: 10 }] },
+  { n: "נקניקיה", k: 290, p: 12, c: 3, f: 25, a: ["נקניקיות", "הוט דוג", "פרנקפורטר"], pt: [{ n: "יחידה", g: 50 }] },
   { n: "שמן זית", k: 884, p: 0, c: 0, f: 100, a: ["שמן"] },
   { n: "טחינה גולמית", k: 595, p: 17, c: 21, f: 54, a: ["טחינה"], pt: [{ n: "כפית", g: 5 }, { n: "כף", g: 15 }] },
   { n: "חומוס מוכן", k: 290, p: 7.5, c: 17, f: 21, a: ["חומוס"], pt: [{ n: "כפית", g: 5 }, { n: "כף", g: 15 }] },
@@ -4899,6 +4903,12 @@ const GENERIC = [
   { n: "קטשופ", k: 112, p: 1.2, c: 26, f: 0.1 },
   { n: "מיונז", k: 680, p: 1, c: 1.5, f: 75 },
   { n: "אבקת חלבון", k: 375, p: 75, c: 12, f: 6, a: ["וואי", "חלבון אבקה"] },
+  { n: "עוגיות שוקולד צ'יפס", k: 480, p: 5.5, c: 65, f: 22, a: ["עוגיית שוקולד צ'יפס", "קוקיז"], pt: [{ n: "יחידה", g: 14 }] },
+  { n: "עוגיות שיבולת שועל", k: 440, p: 7, c: 68, f: 16, pt: [{ n: "יחידה", g: 15 }] },
+  { n: "עוגיות חמאה (פתי בר)", k: 460, p: 6.5, c: 70, f: 17, a: ["פתי בר", "עוגיות תה"], pt: [{ n: "יחידה", g: 7 }] },
+  { n: "וופל", k: 530, p: 6, c: 58, f: 30, a: ["וופלים", "וופל נוגט"], pt: [{ n: "יחידה", g: 22 }] },
+  { n: "בייגלה", k: 390, p: 10, c: 75, f: 5, pt: [{ n: "כוס", g: 30 }, { n: "שקית קטנה", g: 25 }] },
+  { n: "קרקרים", k: 435, p: 9, c: 70, f: 12, a: ["קרקר"], pt: [{ n: "יחידה", g: 3.5 }, { n: "5 קרקרים", g: 17.5 }] },
 
   // Israeli generic/branded foods without a barcode (McDonald's Israel + Aroma
   // menus, sourced from foodiepedia.co.il product pages; shawarma/falafel/
@@ -5431,9 +5441,12 @@ const GENERIC_EN = {
   "קוטג' 5%": "Cottage cheese 5%", "גבינה לבנה 5%": "White cheese 5%", "יוגורט 3%": "Yogurt 3%", "יוגורט חלבון 0%": "Protein yogurt 0%",
   "חלב 3%": "Milk 3%", "שוקו": "Chocolate milk", "קולה": "Cola", "מיץ תפוזים": "Orange juice", "מיץ תפוחים": "Apple juice",
   "גבינה צהובה": "Yellow cheese", "גבינה בולגרית 5%": "Bulgarian cheese 5%", "שמן זית": "Olive oil",
+  "נקניק הודו": "Turkey deli meat", "פסטרמה": "Pastrami", "סלמי": "Salami", "נקניקיה": "Hot dog",
   "טחינה גולמית": "Raw tahini", "חומוס מוכן": "Hummus", "חמאת בוטנים": "Peanut butter", "ממרח שוקולד": "Chocolate spread", "ריבה": "Jam", "שקדים": "Almonds",
   "אגוזי מלך": "Walnuts", "בוטנים": "Peanuts", "דבש": "Honey", "סוכר": "Sugar", "קטשופ": "Ketchup", "מיונז": "Mayonnaise",
   "אבקת חלבון": "Protein powder",
+  "עוגיות שוקולד צ'יפס": "Chocolate chip cookies", "עוגיות שיבולת שועל": "Oatmeal cookies", "עוגיות חמאה (פתי בר)": "Butter cookies",
+  "וופל": "Wafer", "בייגלה": "Bagel snacks", "קרקרים": "Crackers",
   "ביג מק (מקדונלדס)": "Big Mac (McDonald's)", "דאבל ביג מק (מקדונלדס)": "Big Mac Double (McDonald's)",
   "מק דאבל רויאל (מקדונלדס)": "Double McRoyal (McDonald's)", "מק רויאל קלאסי (מקדונלדס)": "McRoyal Classic (McDonald's)",
   "דאבל מק רויאל חריף (מקדונלדס)": "Double McRoyal Spicy (McDonald's)", "מק רויאל עם טבעות בצל (מקדונלדס)": "McRoyal with Onion Rings (McDonald's)",
