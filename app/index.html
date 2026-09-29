@@ -580,8 +580,13 @@
   .progBarSurplus { fill:var(--red); }
   .progAxis { stroke:var(--line); stroke-width:1; }
   .progAxisLabel { fill:var(--muted); font-size:9px; font-family:var(--sans); }
+  /* portion + how-much on one row: the portion picker takes ~70%, the
+     quantity ~30%, right next to it (Ido, 2026-09-29) */
+  .qtywrap { display:flex; gap:8px; align-items:stretch; margin:2px 0 10px; }
+  .qtywrap .psel { flex:7 1 0; width:0; margin:0; }
+  .qtywrap .qtyrow { flex:3 1 0; margin:0; }
   .qtyrow { display:flex; gap:8px; align-items:stretch; }
-  .qtyrow #grams { flex:1; }
+  .qtyrow #grams { flex:1; min-width:0; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
   .acctin { font-size:13px; color:var(--text); }
@@ -795,7 +800,9 @@
   .ehead .ehinfo { flex:1; min-width:0; }
   .ehead #pName { width:100%; font-size:16px; font-weight:700; }
   .ehead #entryClose { flex:0 0 auto; background:var(--panel2); border:1px solid var(--line);
-                       color:var(--text); width:34px; height:34px; border-radius:9px; font-size:15px; cursor:pointer; }
+                       color:var(--text); width:34px; height:34px; border-radius:9px; padding:0;
+                       display:flex; align-items:center; justify-content:center; line-height:1;
+                       font-size:15px; cursor:pointer; }
   .ehinfo .foundtag { margin:7px 0 0; }
   /* locked per-100g for non-admins: dimmed, not editable */
   #per100Field.locked input { opacity:.7; background:var(--panel2); }
@@ -1235,7 +1242,7 @@
     <div id="missRes"></div>
 
     <div class="field" id="per100Field">
-      <label>ערכים ל-100 גרם <span class="per100" id="per100Hint">(מהמדבקה על האריזה — נשמר לפעם הבאה)</span></label>
+      <label>ערכים ל-100 גרם <span class="per100" id="per100Hint"></span></label>
       <div class="grid4">
         <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal" step="0.1">
         <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal" step="0.1">
@@ -1246,10 +1253,12 @@
 
     <div class="field">
       <label id="gramsLbl" for="portionSel">כמה אכלת?</label>
-      <select id="portionSel" class="psel"></select>
-      <div class="qtyrow" id="qtyRow">
-        <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
-        <span id="qtyUnit" class="qtyunit">גרם</span>
+      <div class="qtywrap">
+        <select id="portionSel" class="psel"></select>
+        <div class="qtyrow" id="qtyRow">
+          <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
+          <span id="qtyUnit" class="qtyunit">גרם</span>
+        </div>
       </div>
       <div id="scaleLive" style="display:none">⚖️ <b id="scaleLiveG">0</b> גרם <span id="scaleLiveHint">— הנח על המשקל…</span></div>
       <div id="portionHint"></div>
@@ -1568,11 +1577,9 @@ const I18N_EN = {
   "אין חיבור כרגע — יישלח כשתחזור לרשת.": "Offline — it will send when you're back online.",
   "לא הצלחתי לקרוא את התמונה.": "Couldn't read that image.",
   "בחר תמונה למוצר": "Choose a product photo",
-  "(מהמדבקה — יתווסף למאגר המשותף)": "(from the label — added to the shared database)",
   "שם המוצר": "Product name",
   "למשל: קוטג׳ 5%": "e.g. cottage cheese 5%",
   "ערכים ל-100 גרם": "Values per 100 g",
-  "(מהמדבקה על האריזה — נשמר לפעם הבאה)": "(from the label, remembered next time)",
   "📄 צלם את טבלת הערכים — היא תיקרא לבד": "📄 Photograph the nutrition table and it reads itself",
   "מה נקרא מהתמונה": "What was read from the photo",
   "כמה גרם אכלת?": "How many grams did you eat?",
@@ -1607,7 +1614,6 @@ const I18N_EN = {
   "כמה גרם?": "How many grams?",
   "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "Portion name then its weight in grams, e.g. unit 50",
   "כתוב שם ואז מספר, למשל: יחידה 50": "Write a name then a number, e.g. unit 50",
-  "(ערכים מאומתים — נעולים)": "(verified values — locked)",
   "משקל יחידה אחת:": "One unit weighs:",
   "הזן כמות כדי לחשב": "Enter an amount to calculate",
   "חסרה כמות": "Amount is missing",
@@ -2073,11 +2079,9 @@ const I18N_AR = {
   "אין חיבור כרגע — יישלח כשתחזור לרשת.": "لا يوجد اتصال — ستُرسل عند عودة الشبكة.",
   "לא הצלחתי לקרוא את התמונה.": "تعذّر قراءة الصورة.",
   "בחר תמונה למוצר": "اختر صورة للمنتج",
-  "(מהמדבקה — יתווסף למאגר המשותף)": "(من الملصق — يُضاف إلى القاعدة المشتركة)",
   "שם המוצר": "اسم المنتج",
   "למשל: קוטג׳ 5%": "مثال: جبنة قريش 5%",
   "ערכים ל-100 גרם": "القيم لكل 100 غ",
-  "(מהמדבקה על האריזה — נשמר לפעם הבאה)": "(من الملصق — يُحفظ للمرة القادمة)",
   "📄 צלם את טבלת הערכים — היא תיקרא לבד": "📄 صوّر جدول القيم الغذائية وسيُقرأ تلقائيًا",
   "מה נקרא מהתמונה": "ما قُرئ من الصورة",
   "כמה גרם אכלת?": "كم غرامًا أكلت؟",
@@ -2112,7 +2116,6 @@ const I18N_AR = {
   "כמה גרם?": "كم غرامًا؟",
   "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "اسم الحصة ثم وزنها بالغرام، مثال: وحدة 50",
   "כתוב שם ואז מספר, למשל: יחידה 50": "اكتب اسمًا ثم رقمًا، مثال: وحدة 50",
-  "(ערכים מאומתים — נעולים)": "(قيم مُتحقَّق منها — مقفلة)",
   "משקל יחידה אחת:": "وزن الوحدة الواحدة:",
   "הזן כמות כדי לחשב": "أدخل كمية للحساب",
   "חסרה כמות": "الكمية ناقصة",
@@ -2550,11 +2553,9 @@ const I18N_RU = {
   "אין חיבור כרגע — יישלח כשתחזור לרשת.": "Нет сети — отправится, когда появится соединение.",
   "לא הצלחתי לקרוא את התמונה.": "Не удалось прочитать изображение.",
   "בחר תמונה למוצר": "Выберите фото продукта",
-  "(מהמדבקה — יתווסף למאגר המשותף)": "(с этикетки — попадёт в общую базу)",
   "שם המוצר": "Название продукта",
   "למשל: קוטג׳ 5%": "например: творог 5%",
   "ערכים ל-100 גרם": "Значения на 100 г",
-  "(מהמדבקה על האריזה — נשמר לפעם הבאה)": "(с этикетки — запомнится на следующий раз)",
   "📄 צלם את טבלת הערכים — היא תיקרא לבד": "📄 Сфотографируйте таблицу состава — она считается сама",
   "מה נקרא מהתמונה": "Что считано с фото",
   "כמה גרם אכלת?": "Сколько граммов вы съели?",
@@ -2589,7 +2590,6 @@ const I18N_RU = {
   "כמה גרם?": "Сколько граммов?",
   "שם המנה ואז המשקל בגרמים, למשל: יחידה 50": "Название порции, затем вес в граммах, например: штука 50",
   "כתוב שם ואז מספר, למשל: יחידה 50": "Напишите название, затем число, например: штука 50",
-  "(ערכים מאומתים — נעולים)": "(проверенные значения — заблокированы)",
   "משקל יחידה אחת:": "Вес одной штуки:",
   "הזן כמות כדי לחשב": "Введите количество для расчёта",
   "חסרה כמות": "Не указано количество",
@@ -3498,7 +3498,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.5";
+const APP_BUILD = "2026.09.29.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6187,7 +6187,11 @@ function entryEditable() { return isAdmin() || !(pending && pending.fromDB); }
 
 function applyAdminLock() {
   const editable = entryEditable();
-  ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !editable; });
+  // the food's values (kcal/protein/carb/fat per 100g) are admin-only, full
+  // stop - no more exception for a new/unknown product (Ido, 2026-09-29:
+  // "שלא תהיה ליוזר לשנות שום דבר בערכים של המזון רק לאדמין יש הרשאה")
+  const macroEditable = isAdmin();
+  ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !macroEditable; });
   // a non-admin may still NAME a genuinely new product (the field starts
   // empty - there's nothing yet to log it under otherwise), but can no
   // longer CHANGE a name that's already there, even on an otherwise-editable
@@ -6197,9 +6201,9 @@ function applyAdminLock() {
   // catalog by anyone
   const nameEditable = isAdmin() || (editable && !$("pName").value.trim());
   $("pName").readOnly = !nameEditable;
-  $("per100Field").classList.toggle("locked", !editable);
-  $("per100Hint").textContent = !editable ? T("(ערכים מאומתים — נעולים)")
-    : (isAdmin() ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(מהמדבקה — יתווסף למאגר המשותף)"));
+  $("per100Field").classList.toggle("locked", !macroEditable);
+  // no more hint under the label - just "ערכים ל-100 גרם" on its own
+  // (Ido, 2026-09-29: "השאר רק איפה שכתוב ערכים ל-100 גרם")
   // adding/replacing a product photo is admin-only (Ido, 2026-09-29)
   $("picBtn").style.display = isAdmin() ? "" : "none";
   // the add-portion button/hint share this exact gate - without this, a
