@@ -106,6 +106,7 @@
   .sr .srs.gen  { background:#2a2410; color:var(--accentText); border-color:#6b5a12; }
   .sr .srs.new  { background:#2a1030; color:#e07be0; border-color:#5c1d5c; }
   .sr .srs.ai   { background:#1a1030; color:#a78bfa; border-color:#4c3a7a; }
+  .sr .srs.hist { background:#1c2836; color:var(--muted); border-color:#2b3f55; }
   .catBar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; }
   .catSortSeg { margin:0; }
   .catSortSeg .segb { flex:0 0 auto; padding:5px 10px; font-size:11.5px; }
@@ -3033,6 +3034,11 @@ const store = {
     } catch { return false; }
   },
 };
+// recent name-search picks, most-recent-first - phone-only (like fl_tr below),
+// not a CLOUD_KEYS entry, since this is a per-device typing convenience, not
+// user data. Powers the "recent searches" autocomplete (Ido, 2026-09-29).
+const LS_SEARCH_HIST = "fl_search_hist";
+let SEARCH_HIST = store.get(LS_SEARCH_HIST, []);
 /* one-time device setup: open the app once with #cfg=<base64url {pr,pk}>
    and the report push hook lands in THIS device's storage - the public file
    ships with nothing baked in */
@@ -3532,7 +3538,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.20";
+const APP_BUILD = "2026.09.29.21";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5166,6 +5172,32 @@ async function offSearch(q) {
   } catch { noteNet(false); return []; }
 }
 
+// most-recent-first, deduped, capped - like Google remembering what you
+// actually picked rather than every keystroke of every abandoned query
+// (Ido, 2026-09-29: "תזכור את הבחירה האחרונה... השלמה אוטומטית... בדומה
+// לחיפוש בגוגל"). Called from openProduct() at the moment of selection.
+function pushSearchHistory(q) {
+  q = (q || "").trim();
+  if (!q) return;
+  SEARCH_HIST = [q, ...SEARCH_HIST.filter(x => x !== q)].slice(0, 8);
+  store.set(LS_SEARCH_HIST, SEARCH_HIST);
+}
+
+// the list rendered by the last doSearch()/renderHistory() call, indexed by
+// the "hist" buttons' data-hist-i - separate from lastResults (catalog hits)
+// the same way lastResults itself is separate from the DOM.
+let curHistMatches = [];
+function renderHistory(list) {
+  curHistMatches = list;
+  const box = $("searchRes");
+  box.className = list.length ? "on" : "";
+  box.innerHTML = list.map((h, i) =>
+    `<button class="sr hist" data-hist-i="${i}">
+       <span class="srs hist">🕓</span>
+       <span class="srn">${esc(h)}</span>
+     </button>`).join("");
+}
+
 /* Typing searches only what is already on the phone - about 12,000 foods,
    instant and free. Asking the world database costs a Make operation per
    search, so it waits behind a button instead of firing on every keystroke,
@@ -5174,16 +5206,20 @@ function doSearch(q) {
   q = q.trim();
   const box = $("searchRes");
   const btn = $("webSearchBtn");
+  // recent searches that contain what's typed so far - shown before any
+  // typing at all (focus) and blended in while typing, same as Google.
+  const histMatches = q ? SEARCH_HIST.filter(h => h.includes(q)) : SEARCH_HIST.slice();
   if (q.length < 2) {
-    box.className = ""; box.innerHTML = "";
     btn.style.display = "none";
+    if (histMatches.length) { renderHistory(histMatches); return; }
+    box.className = ""; box.innerHTML = "";
     return;
   }
   const token = ++searchToken;
-  renderSearch(localMatches(q), token, false);
+  renderSearch(localMatches(q), token, false, histMatches);
   // the big built-in DB may still be loading on this first search - fetch it
   // (once) and re-render this same query the moment it is ready
-  if (!BASE_IDX) loadBaseCatalog().then(() => { if (token === searchToken) renderSearch(localMatches(q), token, false); });
+  if (!BASE_IDX) loadBaseCatalog().then(() => { if (token === searchToken) renderSearch(localMatches(q), token, false, histMatches); });
   btn.style.display = "block";
   btn.disabled = false;
   btn.textContent = T("🤖 חיפוש AI");
@@ -5362,12 +5398,18 @@ function applyMissPick(r) {
   if (!shotSrc()) autoImage(r.name);
 }
 
-function renderSearch(res, token, stillLoading) {
+function renderSearch(res, token, stillLoading, histMatches) {
   if (token !== searchToken) return;
   lastResults = res.slice(0, 60);   // show all the options (scrollable), like Kaloria - not just 10
+  curHistMatches = histMatches || [];
   const box = $("searchRes");
   box.className = "on";
-  box.innerHTML = lastResults.map((r, i) =>
+  const histHtml = curHistMatches.map((h, i) =>
+    `<button class="sr hist" data-hist-i="${i}">
+       <span class="srs hist">🕓</span>
+       <span class="srn">${esc(h)}</span>
+     </button>`).join("");
+  box.innerHTML = histHtml + lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
        <span class="srs${r.src === "שלי" ? " mine" : " gen"}">${r.src === "שלי" ? T("שלי") : T("מאגר")}</span>
        <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
@@ -5379,6 +5421,7 @@ function renderSearch(res, token, stillLoading) {
 
 function openProduct(r) {
   entryFromSearch = true;   // came from the name-search list; ✕ returns to it
+  pushSearchHistory($("searchIn").value);
   searchReturn = { q: $("searchIn").value, results: lastResults.slice() };
   stopScan();
   $("missRes").className = ""; $("missRes").innerHTML = "";
@@ -7762,6 +7805,9 @@ $("searchIn").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => doSearch(e.target.value), 250);
 });
+// tapping into an empty box shows recent searches right away, like Google -
+// doSearch("") already renders history when there's nothing typed yet.
+$("searchIn").addEventListener("focus", e => doSearch(e.target.value));
 // name search is behind a button (like the torch), not an always-open box:
 // tapping it reveals the search + shrinks the camera so the list shows below
 $("searchToggle").addEventListener("click", () => {
@@ -7773,6 +7819,13 @@ $("searchToggle").addEventListener("click", () => {
   else { $("searchIn").value = ""; doSearch(""); }
 });
 $("searchRes").addEventListener("click", e => {
+  const h = e.target.closest("[data-hist-i]");
+  if (h) {
+    const term = curHistMatches[+h.dataset.histI];
+    $("searchIn").value = term;
+    doSearch(term);
+    return;
+  }
   const b = e.target.closest("[data-i]");
   if (b) openProduct(lastResults[+b.dataset.i]);
 });
