@@ -1,0 +1,124 @@
+
+    // MARK: - Torch (Ido, 2026-09-29: Safari/WKWebView has never exposed
+    // torch control to web JS - this is what actually makes the flashlight
+    // work while scanning on iOS, mirroring the native torch fallback
+    // Android's own toggleTorch() already prefers via HealthBridge.kt.)
+    @objc func setTorch(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+            call.reject("torch_unsupported")
+            return
+        }
+        do {
+            try device.lockForConfiguration()
+            device.torchMode = on ? .on : .off
+            device.unlockForConfiguration()
+            call.resolve()
+        } catch {
+            call.reject("torch_unsupported")
+        }
+    }
+
+    // MARK: - Speech-to-text (Ido, 2026-09-29: Safari has never implemented
+    // the Web Speech Recognition API, so voiceStartMic()'s web fallback
+    // never appears on iOS - this native path is what makes voice food
+    // entry work there, mirroring the startSpeech/stopSpeech pair the JS
+    // already calls identically on both platforms via HB().)
+    private var speechRecognizer: SFSpeechRecognizer?
+    private var speechRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var speechTask: SFSpeechRecognitionTask?
+    private let speechEngine = AVAudioEngine()
+
+    @objc func startSpeech(_ call: CAPPluginCall) {
+        let lang = call.getString("lang") ?? "en-US"
+        SFSpeechRecognizer.requestAuthorization { [weak self] authStatus in
+            DispatchQueue.main.async {
+                guard self != nil else { return }
+                guard authStatus == .authorized else {
+                    call.reject("need_mic_permission")
+                    return
+                }
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        guard granted else {
+                            call.reject("need_mic_permission")
+                            return
+                        }
+                        self?.beginSpeech(lang: lang, call: call)
+                    }
+                }
+            }
+        }
+    }
+
+    private func beginSpeech(lang: String, call: CAPPluginCall) {
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: lang)), recognizer.isAvailable else {
+            call.reject("no_recognition")
+            return
+        }
+        speechRecognizer = recognizer
+
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            call.reject("no_recognition")
+            return
+        }
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = false
+        speechRequest = request
+
+        let inputNode = speechEngine.inputNode
+        var didFinish = false
+        speechTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            guard let self = self, !didFinish else { return }
+            if let result = result, result.isFinal {
+                didFinish = true
+                self.endSpeech()
+                var ret = JSObject()
+                ret["text"] = result.bestTranscription.formattedString
+                call.resolve(ret)
+            } else if error != nil {
+                didFinish = true
+                self.endSpeech()
+                var ret = JSObject()
+                ret["text"] = ""
+                call.resolve(ret)
+            }
+        }
+
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+            self?.speechRequest?.append(buffer)
+        }
+        speechEngine.prepare()
+        do {
+            try speechEngine.start()
+        } catch {
+            call.reject("no_recognition")
+            return
+        }
+
+        // bounded listen window, mirroring the same shape the web fallback
+        // and the Android native recognizer both already use
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            guard let self = self, !didFinish else { return }
+            self.speechRequest?.endAudio()
+        }
+    }
+
+    @objc func stopSpeech(_ call: CAPPluginCall) {
+        speechRequest?.endAudio()
+        call.resolve()
+    }
+
+    private func endSpeech() {
+        speechEngine.stop()
+        speechEngine.inputNode.removeTap(onBus: 0)
+        speechRequest = nil
+        speechTask = nil
+    }
