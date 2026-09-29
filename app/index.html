@@ -580,12 +580,14 @@
   .progBarSurplus { fill:var(--red); }
   .progAxis { stroke:var(--line); stroke-width:1; }
   .progAxisLabel { fill:var(--muted); font-size:9px; font-family:var(--sans); }
-  /* portion + how-much on one row: the portion picker takes ~60%, the
-     quantity ~40%, right next to it (Ido, 2026-09-29) */
+  /* portion + how-much on one row: the portion picker takes ~70%, the
+     quantity ~30%, right next to it (Ido, 2026-09-29) */
   .qtywrap { display:flex; gap:8px; align-items:stretch; margin:2px 0 10px; }
-  .qtywrap .psel { flex:6 1 0; width:0; margin:0; }
-  .qtywrap .qtyrow { flex:4 1 0; margin:0; }
-  .qtyrow { display:flex; gap:8px; align-items:stretch; }
+  .qtywrap .psel { flex:7 1 0; width:0; margin:0; }
+  .qtywrap .qtyrow { flex:3 1 0; margin:0; }
+  /* the unit word ("יחידות"/"גרם") sits above the amount box instead of
+     beside it (Ido, 2026-09-29: "תרים את המילה יחידות מעל תיבת הטקסט") */
+  .qtyrow { display:flex; flex-direction:column; gap:3px; }
   .qtyrow #grams { flex:1; min-width:0; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
           padding:11px 14px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; }
@@ -1269,8 +1271,8 @@
       <div class="qtywrap">
         <select id="portionSel" class="psel"></select>
         <div class="qtyrow" id="qtyRow">
-          <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
           <span id="qtyUnit" class="qtyunit">גרם</span>
+          <input type="number" id="grams" placeholder="כמות" inputmode="decimal">
         </div>
       </div>
       <div id="scaleLive" style="display:none">⚖️ <b id="scaleLiveG">0</b> גרם <span id="scaleLiveHint">— הנח על המשקל…</span></div>
@@ -3520,7 +3522,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.8";
+const APP_BUILD = "2026.09.29.9";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
