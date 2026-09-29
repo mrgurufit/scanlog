@@ -69,7 +69,7 @@
   body { padding:14px 12px 92px; }
   .wrap { max-width:620px; margin:0 auto; }
 
-  h1 { font-size:19px; letter-spacing:.2px; margin-bottom:2px; }
+  h1 { font-size:21px; letter-spacing:.2px; margin-bottom:2px; }
   h1 span { color:var(--accentText); }
   .sub { color:var(--muted); font-size:12.5px; margin-bottom:14px; }
 
@@ -130,14 +130,14 @@
   /* header + streak - the flame and the hamburger sit at the same height as
      the "SCAN // LOG" title text itself (Ido, 2026-09-29), not just
      vertically centered against a taller row */
-  .hdr { display:flex; align-items:center; gap:10px; }
+  .hdr { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
   .hdr > div:first-child { flex:1; }
   #streak {
-    display:flex; align-items:center; gap:5px; padding:3px 11px; height:26px;
+    display:flex; align-items:center; gap:5px; padding:3px 12px; height:28px;
     background:#241a0e; border:1px solid #6b4d16; border-radius:999px;
-    font-size:15px; flex:0 0 auto;
+    font-size:16px; flex:0 0 auto;
   }
-  #streak span { font-size:13px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
+  #streak span { font-size:14px; font-weight:800; color:var(--accentText); font-variant-numeric:tabular-nums; }
   #streakToast {
     display:none; background:var(--panel); border:1px solid var(--accent); color:var(--text);
     border-radius:12px; padding:11px 14px; font-size:14px; font-weight:700;
@@ -427,13 +427,13 @@
      slightly rounded corners, sized to the "SCAN // LOG" title's own text
      height rather than a big standalone circle (Ido, 2026-09-29). */
   #menuBtn {
-    position:relative; flex:0 0 auto; width:26px; height:26px; padding:0;
+    position:relative; flex:0 0 auto; width:28px; height:28px; padding:0;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     background:var(--accent); border:0; border-radius:7px;
     box-shadow:0 2px 6px rgba(0,0,0,.22);
   }
   #menuBtn:active { transform:scale(.93); }
-  #menuBtn .menuBar { display:block; width:14px; height:2px; border-radius:2px; background:#141005; }
+  #menuBtn .menuBar { display:block; width:15px; height:2px; border-radius:2px; background:#141005; }
   #menuDot {
     position:absolute; top:-2px; inset-inline-end:-2px; width:10px; height:10px; border-radius:50%;
     background:#e5484d; border:2px solid var(--bg); display:none;
@@ -1232,7 +1232,6 @@
     <span class="fabplus" aria-hidden="true">+</span>
     <span class="fabx" aria-hidden="true">✕</span>
   </button>
-  <div class="msg" id="scanMsg"></div>
   <div class="diag" id="diag"></div>
 
   <div id="voiceOv" class="voiceov">
@@ -1340,6 +1339,7 @@
   </div>
 
   <div class="card">
+    <div class="msg" id="scanMsg"></div>
     <div class="loghead">
       <h2 id="logTitle">היום</h2>
     </div>
@@ -3529,7 +3529,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.12";
+const APP_BUILD = "2026.09.29.13";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
