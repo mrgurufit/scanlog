@@ -1,0 +1,80 @@
+
+    // MARK: - Native Barcode Scanner (Ido, 2026-09-29: the torch call above
+    // resolves without error but the physical LED never lights - WKWebView's
+    // getUserMedia() camera preview runs its own AVCaptureSession in a
+    // separate, sandboxed WebKit process that holds exclusive hardware
+    // access, so a second, independent AVCaptureDevice reference from this
+    // plugin has no real effect on the LED while that session is live. The
+    // fix is giving the app itself full ownership of the camera for
+    // scanning, mirroring Android's native CameraX scan sheet in
+    // HealthBridge.kt: one native AVCaptureSession that both shows the
+    // preview and controls the torch, so there is no cross-process conflict.
+    // JS already prefers this path automatically the moment scanBarcode
+    // exists - see "if (HB() && HB().scanBarcode) return nativeScan();" in
+    // app/index.html, same pattern used for startSpeech above.)
+    private var pendingScanCall: CAPPluginCall?
+    private weak var presentedScanner: NativeScannerViewController?
+
+    @objc func scanBarcode(_ call: CAPPluginCall) {
+        call.keepAlive = true
+        pendingScanCall = call
+        DispatchQueue.main.async { [weak self] in
+            self?.presentScanner()
+        }
+    }
+
+    @objc func cancelScan(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            self?.presentedScanner?.finish(.cancelled)
+            call.resolve()
+        }
+    }
+
+    private func presentScanner() {
+        guard let rootVC = self.bridge?.viewController else {
+            pendingScanCall?.reject("cancel")
+            pendingScanCall = nil
+            return
+        }
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        switch status {
+        case .authorized:
+            showScannerVC(from: rootVC)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.showScannerVC(from: rootVC)
+                    } else {
+                        self?.pendingScanCall?.reject("camera_permission_requested")
+                        self?.pendingScanCall = nil
+                    }
+                }
+            }
+        default:
+            pendingScanCall?.reject("camera_permission_requested")
+            pendingScanCall = nil
+        }
+    }
+
+    private func showScannerVC(from rootVC: UIViewController) {
+        let scanner = NativeScannerViewController()
+        scanner.modalPresentationStyle = .fullScreen
+        scanner.onFinish = { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let value):
+                var ret = JSObject()
+                ret["value"] = value
+                self.pendingScanCall?.resolve(ret)
+            case .searchRequested:
+                self.pendingScanCall?.reject("search_requested")
+            case .cancelled:
+                self.pendingScanCall?.reject("cancel")
+            }
+            self.pendingScanCall = nil
+            self.presentedScanner = nil
+        }
+        presentedScanner = scanner
+        rootVC.present(scanner, animated: true)
+    }

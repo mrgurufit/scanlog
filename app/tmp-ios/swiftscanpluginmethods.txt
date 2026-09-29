@@ -1,0 +1,2 @@
+        CAPPluginMethod(name: "scanBarcode", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelScan", returnType: CAPPluginReturnPromise),
