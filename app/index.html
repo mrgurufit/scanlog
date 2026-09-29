@@ -3455,10 +3455,9 @@ function renderLog() {
     g.focus(); g.select();
     g.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); saveEditedGrams(); } });
   }
-  const pushOn = localStorage.getItem("fl_push") && localStorage.getItem("fl_pushkey");
-  const catN = (CATALOG && CATALOG.codes) ? Object.keys(CATALOG.codes).length : 0;
-  $("foot").innerHTML = `<b>${Object.keys(PRODUCTS).length}</b> ${T("שלך ·")} <b>${catN.toLocaleString(LOC())}</b> ${T("בקטלוג הקהילתי ·")} <b>${LOG.length}</b> ${T("רישומים.")}
-    ${pushOn ? T("הדוח היומי מסתנכרן לקלוד אוטומטית ✓") : T('הכל נשמר בטלפון הזה בלבד. "העתק דוח" מכין את היום לשליחה לקלוד.')}`;
+  // the "X yours / X in the community catalog / X entries..." footer is gone
+  // (Ido, 2026-09-29: declutter the journal) - the version line elsewhere is
+  // the only build/content info left on screen
   renderTotals(); renderCal(); renderStreak(); renderBank();
 }
 
@@ -3499,7 +3498,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.4";
+const APP_BUILD = "2026.09.29.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6189,7 +6188,15 @@ function entryEditable() { return isAdmin() || !(pending && pending.fromDB); }
 function applyAdminLock() {
   const editable = entryEditable();
   ["p100kcal", "p100pro", "p100carb", "p100fat"].forEach(id => { $(id).readOnly = !editable; });
-  $("pName").readOnly = !editable;
+  // a non-admin may still NAME a genuinely new product (the field starts
+  // empty - there's nothing yet to log it under otherwise), but can no
+  // longer CHANGE a name that's already there, even on an otherwise-editable
+  // new/partial product (Ido, 2026-09-29: "בטל את האופציה לשנות את השם של
+  // המאכלים אצל היוזרים") - closes the gap where a partial OFF hit or an
+  // already-typed name could still be overwritten and pushed to the shared
+  // catalog by anyone
+  const nameEditable = isAdmin() || (editable && !$("pName").value.trim());
+  $("pName").readOnly = !nameEditable;
   $("per100Field").classList.toggle("locked", !editable);
   $("per100Hint").textContent = !editable ? T("(ערכים מאומתים — נעולים)")
     : (isAdmin() ? T("(מהמדבקה על האריזה — נשמר לפעם הבאה)") : T("(מהמדבקה — יתווסף למאגר המשותף)"));
