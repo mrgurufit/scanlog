@@ -820,7 +820,10 @@
   #per100Field.locked .p100box { opacity:.7; }
   .psel { width:100%; margin:2px 0 10px; padding:11px 12px; font-size:15px; font-family:inherit;
           background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:11px; }
-  .qtyunit { align-self:center; color:var(--muted); font-size:13px; white-space:nowrap; }
+  /* the "units"/"grams" label above the amount box is hidden (Ido,
+     2026-09-29: leave just the input's own "כמות" placeholder) - JS still
+     sets its text for whichever code reads it, it's just not shown */
+  .qtyunit { display:none; }
   #portionAdmin { margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; }
   #portionAdmin .padd { background:none; border:1px dashed var(--line); color:var(--muted); border-radius:9px;
                         padding:6px 11px; font-size:12px; font-family:inherit; cursor:pointer; }
@@ -3522,7 +3525,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.9";
+const APP_BUILD = "2026.09.29.10";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -6728,7 +6731,14 @@ function closeEntry() {
   $("addBtn").textContent = T("➕ הוסף לרשימה"); msg("scanMsg", ""); document.body.style.overflow = "";
   if (typeof scaleLast === "object") { scaleLast.filled = false; }
   if ($("scaleLive")) $("scaleLive").style.display = "none";
-  if (entryFromSearch) { entryFromSearch = false; reopenSearch(); }   // ✕ from a search pick -> back to that list
+  // ✕ from a search pick used to always reopen the scanner/search list, even
+  // with "סורק קופץ" turned off in Settings (Ido, 2026-09-29: turning that
+  // off should mean NO unsolicited scanner popup, not just the boot-time
+  // one) - so this path now respects the same toggle and just goes home
+  if (entryFromSearch) {
+    entryFromSearch = false;
+    if (PROFILE.autoScan !== false) reopenSearch();
+  }
 }
 // Save name/macros/photo/portions straight to the product, no grams or log
 // row required - mirrors persistPortions() but for any field, used when the
