@@ -3532,7 +3532,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.18";
+const APP_BUILD = "2026.09.29.19";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4569,7 +4569,15 @@ async function startScan() {
   // path was always winning over nativeScan() below and the native default
   // zoom (Ido, 2026-09-16) never had a chance to run. Native CameraX gives
   // real zoom control, so it goes first inside the APK.
-  if (IN_APK) return nativeScan();
+  // IN_APK is true on BOTH Android and iOS (Capacitor's isNativePlatform()
+  // doesn't distinguish) - but only Android actually HAS a native scanner
+  // plugin (HealthBridge.kt); iOS has none, so HB() correctly comes back
+  // null there. Gating on IN_APK sent iOS straight into nativeScan(),
+  // which called HB().scanBarcode() on a null bridge and silently failed -
+  // the camera never opened at all (Ido, 2026-09-29: "המצלמה עם הסורק לא
+  // נפתח באייפון"). Every OTHER fallback in this same function already
+  // correctly checks HB() instead of IN_APK - this was the one leftover.
+  if (HB()) return nativeScan();
   ovPush();
   msg("scanMsg", "");
   $("diag").textContent = "";
