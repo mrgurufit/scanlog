@@ -580,11 +580,11 @@
   .progBarSurplus { fill:var(--red); }
   .progAxis { stroke:var(--line); stroke-width:1; }
   .progAxisLabel { fill:var(--muted); font-size:9px; font-family:var(--sans); }
-  /* portion + how-much on one row: the portion picker takes ~70%, the
-     quantity ~30%, right next to it (Ido, 2026-09-29) */
+  /* portion + how-much on one row: the portion picker takes ~60%, the
+     quantity ~40%, right next to it (Ido, 2026-09-29) */
   .qtywrap { display:flex; gap:8px; align-items:stretch; margin:2px 0 10px; }
-  .qtywrap .psel { flex:7 1 0; width:0; margin:0; }
-  .qtywrap .qtyrow { flex:3 1 0; margin:0; }
+  .qtywrap .psel { flex:6 1 0; width:0; margin:0; }
+  .qtywrap .qtyrow { flex:4 1 0; margin:0; }
   .qtyrow { display:flex; gap:8px; align-items:stretch; }
   .qtyrow #grams { flex:1; min-width:0; }
   .gbtn { width:100%; background:#fff; color:#1a1a1a; border:1px solid var(--line); border-radius:11px;
@@ -823,7 +823,10 @@
   .portHint p { margin:0; color:var(--muted); }
   .portHint .ex { color:var(--accentText); font-weight:700; }
   .foundtag {
-    display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px;
+    /* the status line under the product name ("מהמאגר המובנה — ערכים
+       מקובלים...", "מוצר חדש", "✓ מוכר"...) is hidden (Ido, 2026-09-29) -
+       the JS still sets its text/class for every code path, just not shown */
+    display:none; font-size:11.5px; font-weight:700; padding:3px 10px;
     border-radius:999px; margin-bottom:10px;
   }
   .foundtag.known { background:#12301f; color:var(--green); border:1px solid #1d5c39; }
@@ -3498,7 +3501,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.6";
+const APP_BUILD = "2026.09.29.7";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
