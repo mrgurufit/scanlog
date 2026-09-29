@@ -804,8 +804,18 @@
                        display:flex; align-items:center; justify-content:center; line-height:1;
                        font-size:15px; cursor:pointer; }
   .ehinfo .foundtag { margin:7px 0 0; }
+  /* each per-100g field is its own box: a small white label on top
+     ("קלוריות"/"חלבונים"/"פחמימות"/"שומנים"), the number centered below it
+     (Ido, 2026-09-29: "תיישר את המספרים למרכז... ורשום בלבן בקטן מעליהם") */
+  .p100box { display:flex; flex-direction:column; align-items:center; justify-content:center;
+             gap:2px; background:var(--panel2); border:1px solid var(--line);
+             border-radius:10px; padding:7px 4px 9px; }
+  .p100lbl { font-size:10px; font-weight:800; color:var(--text); letter-spacing:.2px; }
+  .p100box input[type=number] { width:100%; background:transparent; border:0; padding:0;
+                                 text-align:center; font-size:16px; color:var(--text);
+                                 font-family:inherit; }
   /* locked per-100g for non-admins: dimmed, not editable */
-  #per100Field.locked input { opacity:.7; background:var(--panel2); }
+  #per100Field.locked .p100box { opacity:.7; }
   .psel { width:100%; margin:2px 0 10px; padding:11px 12px; font-size:15px; font-family:inherit;
           background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:11px; }
   .qtyunit { align-self:center; color:var(--muted); font-size:13px; white-space:nowrap; }
@@ -1247,10 +1257,10 @@
     <div class="field" id="per100Field">
       <label>ערכים ל-100 גרם <span class="per100" id="per100Hint"></span></label>
       <div class="grid4">
-        <input type="number" id="p100kcal" placeholder="קק״ל" inputmode="decimal" step="0.1">
-        <input type="number" id="p100pro" placeholder="חלבון" inputmode="decimal" step="0.1">
-        <input type="number" id="p100carb" placeholder="פחמ׳" inputmode="decimal" step="0.1">
-        <input type="number" id="p100fat" placeholder="שומן" inputmode="decimal" step="0.1">
+        <div class="p100box"><span class="p100lbl">קלוריות</span><input type="number" id="p100kcal" inputmode="decimal" step="0.1"></div>
+        <div class="p100box"><span class="p100lbl">חלבונים</span><input type="number" id="p100pro" inputmode="decimal" step="0.1"></div>
+        <div class="p100box"><span class="p100lbl">פחמימות</span><input type="number" id="p100carb" inputmode="decimal" step="0.1"></div>
+        <div class="p100box"><span class="p100lbl">שומנים</span><input type="number" id="p100fat" inputmode="decimal" step="0.1"></div>
       </div>
     </div>
 
@@ -1678,6 +1688,9 @@ const I18N_EN = {
   "✓ מוכר — הערכים מולאו": "✓ Known product, values filled in",
   "(לא זוהה טקסט)": "(no text detected)",
   "קלוריות": "Calories",
+  "חלבונים": "Protein",
+  "שומנים": "Fat",
+  "פחמימות": "Carbs",
   "חלבון ג׳": "Protein g",
   "פחמימה ג׳": "Carbs g",
   "שומן ג׳": "Fat g",
@@ -2177,6 +2190,9 @@ const I18N_AR = {
   "✓ מוכר — הערכים מולאו": "✓ منتج معروف، مُلئت القيم",
   "(לא זוהה טקסט)": "(لم يُكتشف نص)",
   "קלוריות": "سعرات",
+  "חלבונים": "بروتين",
+  "שומנים": "دهون",
+  "פחמימות": "كربوهيدرات",
   "חלבון ג׳": "بروتين غ",
   "פחמימה ג׳": "كربوهيدرات غ",
   "שומן ג׳": "دهون غ",
@@ -2651,6 +2667,9 @@ const I18N_RU = {
   "✓ מוכר — הערכים מולאו": "✓ Известный продукт, значения заполнены",
   "(לא זוהה טקסט)": "(текст не распознан)",
   "קלוריות": "Калории",
+  "חלבונים": "Белки",
+  "שומנים": "Жиры",
+  "פחמימות": "Углеводы",
   "חלבון ג׳": "Белки, г",
   "פחמימה ג׳": "Углеводы, г",
   "שומן ג׳": "Жиры, г",
@@ -3501,7 +3520,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.7";
+const APP_BUILD = "2026.09.29.8";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
