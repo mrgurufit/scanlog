@@ -3532,7 +3532,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.16";
+const APP_BUILD = "2026.09.29.17";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3696,9 +3696,17 @@ function loadBaseCatalog() {
       const hb = HB();
       if (hb && hb.httpGet) { try { const r = await hb.httpGet({ urls: [rel, abs] }); text = (r && r.body) || null; } catch {} }
       if (!text) {
+        // Cache-bust the web fetch by APP_BUILD so a deploy that changes
+        // catalog_base.json actually reaches installs whose HTTP cache still
+        // holds the old copy (the app fetches force-cache; without a fresh
+        // URL that stale copy would win). The native httpGet above keeps the
+        // clean rel/abs URLs so the bundled-in-APK copy still matches.
+        const vq = "v=" + encodeURIComponent(APP_BUILD);
+        const relV = rel + (rel.includes("?") ? "&" : "?") + vq;
+        const absV = abs + "?" + vq;
         let r = null;
-        try { r = await fetch(rel, { cache: "force-cache" }); } catch {}
-        if (!r || !r.ok) { try { r = await fetch(abs, { cache: "force-cache" }); } catch {} }
+        try { r = await fetch(relV, { cache: "force-cache" }); } catch {}
+        if (!r || !r.ok) { try { r = await fetch(absV, { cache: "force-cache" }); } catch {} }
         text = (r && r.ok) ? await r.text() : null;
       }
       if (!text) { baseLoading = null; return null; }
