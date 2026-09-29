@@ -250,6 +250,9 @@
     background:var(--panel); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
   .enIcon[hidden] { display:none; }   /* .enIcon's own display:flex otherwise beats the browser's [hidden] default */
   #hcMini.enIcon { background:#1d5c39; color:#d9ffe8; border:0; }
+  /* yellow, like the app's other tappable controls, so the ⓘ next to "יצא"
+     reads as a button and not just a static icon (Ido, 2026-09-29) */
+  #outInfo.enIcon { background:var(--accent); color:#141005; border:0; font-weight:800; }
   #hcMini.enIcon:disabled { opacity:.5; }
   .enOutSub { font-size:10.5px; color:var(--muted); line-height:1.5; }
   .enOutSub:empty { display:none; }
@@ -267,7 +270,7 @@
     background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:5px 8px; }
   /* beats the global input[type=number] rule (same specificity, but that one
      comes later in the file) on width/border/background/padding/font-size */
-  .enStat.enWeight .enWeightBox input { width:48px; padding:0; border:0; background:none; font-size:12.5px; font-weight:400; text-align:center; }
+  .enStat.enWeight .enWeightBox input { width:44px; padding:0; border:0; background:none; font-size:12.5px; font-weight:400; text-align:center; }
   .enStat.enWeight .enWeightBox input:focus { outline:none; }
   .enWeightUnit { font-size:11px; color:var(--muted); white-space:nowrap; }
   /* small "where does 'out' come from" info popup */
@@ -3529,7 +3532,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.13";
+const APP_BUILD = "2026.09.29.14";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
