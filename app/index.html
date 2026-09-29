@@ -188,6 +188,8 @@
   #bankSub { font-size: 10.5px; color: #6f7a8c; text-align: center; margin-top: 4px; }
   #bankBox { display:none; margin-top:10px; background:#12161f; border:1px solid var(--line);
              border-radius:10px; padding:8px; }
+  #bankBox .bankPopSub { font-size: 11px; color: #9aa4b8; text-align: center; margin-bottom: 8px;
+                          font-variant-numeric: tabular-nums; }
   #bankBox table { width:100%; border-collapse:collapse; font-size:11.5px; font-variant-numeric:tabular-nums; }
   #bankBox th { color:var(--muted); font-weight:600; text-align:left; padding:3px 5px; font-size:10.5px; }
   #bankBox td { padding:3px 5px; border-top:1px solid #1c2230; }
@@ -3267,6 +3269,22 @@ function renderBank() {
   $("bankTxt").innerHTML = s.left === 0
     ? T("🏆 הבנק אופס!") + " " + BANK.kg + " " + T("ק\"ג שומן")
     : T("🔥 נותרו") + ' <span style="font-variant-numeric:tabular-nums">' + s.left.toLocaleString(LOC()) + "</span> " + T("קק\"ל בבנק");
+  // the "today ±X · X% burned · pace" line used to sit here, always visible
+  // under the bar - moved inside the popup itself (Ido, 2026-09-29: show it
+  // only when he taps the bar to open the bank breakdown)
+  $("bankSub").textContent = "";
+  renderBankBox();
+}
+
+/* the per-day ledger behind the bank (Ido, 2026-09-02: "check the total
+   deficit from my first log day"). Every counted day with its balance and
+   the running bank, so the number is never a black box again. */
+function renderBankBox() {
+  const box = $("bankBox");
+  if (!bankOpen || !BANK || !BANK.total) { box.style.display = "none"; return; }
+  const s = bankState();
+  // the "today ±X · X% burned · pace" summary, now shown only inside the
+  // popup itself, at the top, instead of always under the bar
   const burned = BANK.total - s.left;
   const bits = [Math.round(burned / BANK.total * 100) + "% " + T("נשרפו"),
                 T("מתוך") + " " + BANK.total.toLocaleString(LOC())];
@@ -3280,16 +3298,6 @@ function renderBank() {
   if (s.avg && s.left) {
     bits.push(T("בקצב הנוכחי (") + s.avg.toLocaleString("he-IL") + T('/יום) עוד ') + Math.ceil(s.left / s.avg) + T(" ימים"));
   }
-  $("bankSub").textContent = bits.join(" · ");
-  renderBankBox();
-}
-
-/* the per-day ledger behind the bank (Ido, 2026-09-02: "check the total
-   deficit from my first log day"). Every counted day with its balance and
-   the running bank, so the number is never a black box again. */
-function renderBankBox() {
-  const box = $("bankBox");
-  if (!bankOpen || !BANK || !BANK.total) { box.style.display = "none"; return; }
   const days = bankDays();
   let running = BANK.total, defSum = 0, surSum = 0, rows = "";
   days.forEach(d => {
@@ -3307,7 +3315,8 @@ function renderBankBox() {
   });
   const net = defSum - surSum;
   box.innerHTML =
-    `<table><thead><tr><th>${T("יום")}</th><th>${T("מאזן היום")}</th><th>${T("נשאר בבנק")}</th></tr></thead>`
+    `<div class="bankPopSub">${esc(bits.join(" · "))}</div>`
+    + `<table><thead><tr><th>${T("יום")}</th><th>${T("מאזן היום")}</th><th>${T("נשאר בבנק")}</th></tr></thead>`
     + `<tbody>${rows || `<tr><td colspan="3" class="brow">${T("אין עדיין ימים רשומים")}</td></tr>`}</tbody>`
     + `<tfoot><tr><td>${T("סה״כ")}</td>`
     + `<td>${T("גירעון")} ${defSum.toLocaleString("he-IL")} · ${T("עודף")} ${surSum.toLocaleString("he-IL")}</td>`
@@ -3490,7 +3499,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.3";
+const APP_BUILD = "2026.09.29.4";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
