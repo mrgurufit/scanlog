@@ -3538,7 +3538,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.29.21";
+const APP_BUILD = "2026.09.30.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5172,14 +5172,25 @@ async function offSearch(q) {
   } catch { noteNet(false); return []; }
 }
 
-// most-recent-first, deduped, capped - like Google remembering what you
-// actually picked rather than every keystroke of every abandoned query
-// (Ido, 2026-09-29: "תזכור את הבחירה האחרונה... השלמה אוטומטית... בדומה
-// לחיפוש בגוגל"). Called from openProduct() at the moment of selection.
-function pushSearchHistory(q) {
-  q = (q || "").trim();
-  if (!q) return;
-  SEARCH_HIST = [q, ...SEARCH_HIST.filter(x => x !== q)].slice(0, 8);
+// most-recent-first, deduped by product, capped - like Google remembering
+// what you actually picked rather than every keystroke of every abandoned
+// query (Ido, 2026-09-29/30: "תזכור את הבחירה האחרונה... השלמה אוטומטית...
+// בדומה לחיפוש בגוגל", then "גם ישמור את המנה ששמתי... ברגע שאני אלחץ על
+// זה, זה ישר יוסיף לי את זה"). An entry is either a legacy plain string
+// (pre-30/9 builds - still shown, but only re-runs the search, no saved
+// grams to quick-add) or {q, name, grams, k100, pro100, carb100, fat100,
+// barcode, photo, portion, qty} - a full snapshot of the exact row addEntry()
+// just logged, replayed as-is by quickAddFromHistory() rather than
+// re-deriving anything from today's (possibly since-changed) catalog.
+// Called from addEntry() itself at the moment of commit, not from
+// openProduct() at mere selection, since the grams aren't final until then.
+function histKey(h) { return typeof h === "string" ? nameKey(h) : (h.barcode || nameKey(h.name || "")); }
+function histText(h) { return typeof h === "string" ? h : (h.q || h.name || ""); }
+function pushSearchHistory(entry) {
+  if (!entry || !entry.name) return;
+  const key = histKey(entry);
+  if (!key) return;
+  SEARCH_HIST = [entry, ...SEARCH_HIST.filter(h => histKey(h) !== key)].slice(0, 8);
   store.set(LS_SEARCH_HIST, SEARCH_HIST);
 }
 
@@ -5187,15 +5198,19 @@ function pushSearchHistory(q) {
 // the "hist" buttons' data-hist-i - separate from lastResults (catalog hits)
 // the same way lastResults itself is separate from the DOM.
 let curHistMatches = [];
+function histRowHtml(h, i) {
+  const grams = (typeof h !== "string" && h.grams) ? `<span class="srv">${h.grams} ${T("ג׳")}</span>` : "";
+  return `<button class="sr hist" data-hist-i="${i}">
+       <span class="srs hist">🕓</span>
+       <span class="srn">${esc(histText(h))}</span>
+       ${grams}
+     </button>`;
+}
 function renderHistory(list) {
   curHistMatches = list;
   const box = $("searchRes");
   box.className = list.length ? "on" : "";
-  box.innerHTML = list.map((h, i) =>
-    `<button class="sr hist" data-hist-i="${i}">
-       <span class="srs hist">🕓</span>
-       <span class="srn">${esc(h)}</span>
-     </button>`).join("");
+  box.innerHTML = list.map(histRowHtml).join("");
 }
 
 /* Typing searches only what is already on the phone - about 12,000 foods,
@@ -5208,7 +5223,7 @@ function doSearch(q) {
   const btn = $("webSearchBtn");
   // recent searches that contain what's typed so far - shown before any
   // typing at all (focus) and blended in while typing, same as Google.
-  const histMatches = q ? SEARCH_HIST.filter(h => h.includes(q)) : SEARCH_HIST.slice();
+  const histMatches = q ? SEARCH_HIST.filter(h => histText(h).includes(q)) : SEARCH_HIST.slice();
   if (q.length < 2) {
     btn.style.display = "none";
     if (histMatches.length) { renderHistory(histMatches); return; }
@@ -5404,11 +5419,7 @@ function renderSearch(res, token, stillLoading, histMatches) {
   curHistMatches = histMatches || [];
   const box = $("searchRes");
   box.className = "on";
-  const histHtml = curHistMatches.map((h, i) =>
-    `<button class="sr hist" data-hist-i="${i}">
-       <span class="srs hist">🕓</span>
-       <span class="srn">${esc(h)}</span>
-     </button>`).join("");
+  const histHtml = curHistMatches.map(histRowHtml).join("");
   box.innerHTML = histHtml + lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
        <span class="srs${r.src === "שלי" ? " mine" : " gen"}">${r.src === "שלי" ? T("שלי") : T("מאגר")}</span>
@@ -5421,7 +5432,6 @@ function renderSearch(res, token, stillLoading, histMatches) {
 
 function openProduct(r) {
   entryFromSearch = true;   // came from the name-search list; ✕ returns to it
-  pushSearchHistory($("searchIn").value);
   searchReturn = { q: $("searchIn").value, results: lastResults.slice() };
   stopScan();
   $("missRes").className = ""; $("missRes").innerHTML = "";
@@ -5456,6 +5466,39 @@ function openProduct(r) {
   $("grams").focus();
   $("entry").scrollIntoView({ behavior: "smooth", block: "start" });
   if (!r.photo) autoImage(r.name);
+}
+
+/* Tapping a recent-search row that has a saved grams amount logs it right
+   there, without ever showing the entry card (Ido, 2026-09-30). Reuses the
+   exact same addEntry() path openEntryForEdit() already relies on for its
+   own portion/qty restoration - just fed from the saved history snapshot
+   instead of a log row, and with the card left hidden throughout so it
+   never flashes open before closing again. */
+function quickAddFromHistory(entry) {
+  entryFromSearch = false;   // this already IS the add - nothing to reopen after
+  stopScan();
+  $("missRes").className = ""; $("missRes").innerHTML = "";
+  editEntryId = null;
+  pending = { barcode: entry.barcode || "", photo: "" };
+  $("pName").value = entry.name;
+  setMacroField("p100kcal", entry.k100);
+  setMacroField("p100pro", entry.pro100);
+  setMacroField("p100carb", entry.carb100);
+  setMacroField("p100fat", entry.fat100);
+  setShot(entry.photo || "");
+  // same portion-lookup-by-name-on-current-PRODUCTS pattern openEntryForEdit
+  // uses, not a gram-per-unit ratio saved off in history that could go stale
+  // the moment someone edits this product's portion list
+  const pr = entry.barcode && PRODUCTS[entry.barcode];
+  setEntryProduct(pr && pr.portions, pr && pr.unit);
+  if (entry.portion) {
+    const i = entryPortions.findIndex(p => p.n === entry.portion);
+    if (i >= 0) { selPortion = i; $("grams").value = entry.qty || Math.round(entry.grams / (entryPortions[i].g || 1)); }
+    else { selPortion = -1; $("grams").value = entry.grams; }
+  } else { selPortion = -1; $("grams").value = entry.grams; }
+  addEntry();   // pushes to LOG, syncs, updates the shared catalog - closes #entry itself
+  stopScan();   // and close the whole search overlay too, straight back to today's log
+  showToast(`${T("נוסף:")} ${entry.name} · ${entry.grams} ${T("ג׳")}`);
 }
 
 /* ---------------- automatic product images ----------------
@@ -6462,6 +6505,15 @@ function addEntry() {
   // for an untouched pick off the built-in staple/national/USDA lists (those
   // are already in the app for everyone - nothing new to share).
   if (!e.barcode && name && !isBuiltinStapleName(name)) e.barcode = nameKey(name);
+  // only when this entry came from the name-search list (not a barcode scan
+  // or a log-row edit) - matches Ido's own "כשנרשום חלב 1 אחוז" example
+  if (entryFromSearch) {
+    pushSearchHistory({
+      q: (searchReturn && searchReturn.q) || name, name, grams,
+      k100, pro100: e.pro100, carb100: e.carb100, fat100: e.fat100,
+      barcode: e.barcode, photo: e.photo, portion: e.portion, qty: e.qty,
+    });
+  }
   LOG.push(e);
   save();
   hcWriteEntry(e);
@@ -7821,7 +7873,13 @@ $("searchToggle").addEventListener("click", () => {
 $("searchRes").addEventListener("click", e => {
   const h = e.target.closest("[data-hist-i]");
   if (h) {
-    const term = curHistMatches[+h.dataset.histI];
+    const item = curHistMatches[+h.dataset.histI];
+    // a saved grams amount -> log it immediately, same as tapping a log
+    // row's "log again" would (Ido, 2026-09-30: "ברגע שאני אלחץ על זה, זה
+    // ישר יוסיף לי את זה... מבלי שאני אצטרך להיכנס לכרטיס של המאכל עצמו").
+    // A legacy plain-string entry (pre-30/9) has no grams - just re-search.
+    if (typeof item !== "string" && item.grams) { quickAddFromHistory(item); return; }
+    const term = histText(item);
     $("searchIn").value = term;
     doSearch(term);
     return;
