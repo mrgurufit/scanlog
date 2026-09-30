@@ -3538,7 +3538,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.30.1";
+const APP_BUILD = "2026.09.30.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5070,6 +5070,20 @@ function localMatches(q) {
     const t = heNorm(txt);
     return qWords.length ? qWords.every(w => t.includes(w)) : t.includes(qn);
   };
+  // how closely a result's name matches what's actually typed, independent
+  // of which of the sources below happened to contribute it (Ido, 2026-09-30:
+  // "על כל אות שאני מקליד זה אמור להקפיץ לי את התוצאה הרלוונטית ביותר למעלה" -
+  // typing "קוטג' 1%" must bring exactly that product to the very top, not
+  // leave it wherever its source (own products / community / base DB...)
+  // happened to place it). Lower is better; applied as one final sort below.
+  const matchRank = name => {
+    if (!qn) return 3;
+    const t = heNorm(name);
+    if (t === qn) return 0;                                    // exact match
+    if (t.startsWith(qn)) return 1;                             // starts with what's typed
+    if ((" " + t + " ").includes(" " + qn + " ")) return 2;    // matches a whole word inside the name
+    return 3;                                                   // contains it some other way
+  };
   const seen = new Set();
   // one unified built-in DB: dedup every reference source by normalized name so
   // the same product from staples/national/USDA/base/community shows once; the
@@ -5150,6 +5164,14 @@ function localMatches(q) {
             photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" });
     }
   }
+  // one global re-rank across every source combined, so the closest match to
+  // what's actually typed always rises to the top - not just whichever
+  // source order happened to add it first.
+  res.sort((a, b) => {
+    const ra = matchRank(a.name), rb = matchRank(b.name);
+    if (ra !== rb) return ra - rb;
+    return (a.name || "").length - (b.name || "").length;   // shorter/plainer name wins ties
+  });
   return res;
 }
 
