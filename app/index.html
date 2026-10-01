@@ -885,6 +885,18 @@
   .picchoose-sheet button.prim { background:var(--accent); color:#141005; border-color:var(--accentText); font-weight:700; }
   .picchoose-sheet button.ghost { background:transparent; color:var(--muted); }
 
+  /* "אחר" kitchen-measures picker - above #entry (75), same family as
+     .picchoose (155) since it is also a modal opened from inside the entry
+     sheet (Ido, 2026-10-01) */
+  .otherpick { display:none; position:fixed; inset:0; z-index:160; background:var(--bg);
+    flex-direction:column; padding:14px; }
+  .otherpick.on { display:flex; }
+  .otherpickhead { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .otherpickhead input { flex:1; }
+  .otherpickhead button { flex:0 0 auto; background:var(--panel2); border:1px solid var(--line);
+    color:var(--text); border-radius:50%; width:38px; height:38px; font-size:16px; cursor:pointer; }
+  #otherList { overflow-y:auto; flex:1; }
+
   /* "כתוב לנו" - feedback for non-admin users */
   .fbbtn { display:block; width:100%; margin:14px 0 2px; padding:11px; border-radius:11px;
     border:1px solid var(--line); background:var(--panel2); color:var(--muted); font-size:14px; cursor:pointer; }
@@ -1288,6 +1300,14 @@
       <div id="scaleLive" style="display:none">⚖️ <b id="scaleLiveG">0</b> גרם <span id="scaleLiveHint">— הנח על המשקל…</span></div>
       <div id="portionHint"></div>
       <div id="portionAdmin"></div>
+    </div>
+
+    <div id="otherPick" class="otherpick">
+      <div class="otherpickhead">
+        <input type="text" id="otherSearchIn" placeholder="🔎 חפש מידה: כף, כוס, חופן…" autocomplete="off">
+        <button type="button" id="otherPickClose" aria-label="סגור">✕</button>
+      </div>
+      <div id="otherList"></div>
     </div>
 
     <div id="calcPreview">בחר מנה או שקול בגרמים</div>
@@ -3538,7 +3558,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.09.30.2";
+const APP_BUILD = "2026.10.01.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4747,8 +4767,8 @@ async function loop() {
         } else {
           lockHits++;
           const held = now - lockSince;
-          $("camHint").textContent = held >= 650 ? T("עוד רגע…") : T("מזהה… החזק יציב");
-          if (held >= 1000 && lockHits >= 3) {
+          $("camHint").textContent = held >= 1300 ? T("עוד רגע…") : T("מזהה… החזק יציב");
+          if (held >= 2000 && lockHits >= 3) {
             lockCode = null; lockHits = 0;
             onBarcode(c, grabFrame(v));
             return;
@@ -6273,7 +6293,8 @@ function renderPortions() {
   const sel = $("portionSel");
   sel.innerHTML = entryPortions.map((p, i) =>
     `<option value="${i}">${esc(p.n)} (${p.g} ${T("ג׳")})</option>`).join("")
-    + `<option value="-1">${T("שקילה בגרמים")}</option>`;
+    + `<option value="-1">${T("שקילה בגרמים")}</option>`
+    + `<option value="-2">${T("אחר…")}</option>`;
   sel.value = String(selPortion);
   // grams input shows only in weigh mode; for a portion it's the quantity
   $("qtyUnit").textContent = selPortion >= 0 ? T("יחידות") : T("גרם");
@@ -6379,6 +6400,63 @@ function guessPortions(name) {
   }
   if (!tmpl) tmpl = [["מנה קטנה (50 גרם)",50],["מנה בינונית (100 גרם)",100],["מנה גדולה (150 גרם)",150]];
   return tmpl.map(p => ({ n: p[0], g: p[1] }));
+}
+
+/* "אחר" (Other) portion picker (Ido, 2026-10-01): a FIXED, pre-approved list
+   of kitchen measures - deliberately NOT free text, to curb abuse. The user
+   only picks a NAME from this closed list; the AI's one and only job is to
+   estimate how many grams of THIS SPECIFIC product fit that measure (a
+   tablespoon of chia seeds weighs differently than a tablespoon of olive
+   oil). Once computed it is pushed through the exact same persistPortions()
+   path as any other portion, so it becomes a permanent, shared portion for
+   that product for every user - not just this phone. */
+const KITCHEN_MEASURES = [
+  "כף", "כפית", "כוס", "חצי כוס", "רבע כוס",
+  "חופן", "חופן גדול", "מצקת", "כף הגשה גדולה",
+  "צלחת קטנה", "צלחת בינונית", "צלחת גדולה",
+  "קערה קטנה", "קערה גדולה",
+  "שוט", "צ'ייסר", "כוס חד פעמית קטנה", "כוס חד פעמית גדולה",
+  "פחית", "בקבוק קטן", "יחידה", "פרוסה",
+];
+const AI_PORTION_HOOK = "https://hook.us2.make.com/m0bypwyogqtinlsccdcsnlluufrjdk7v";
+
+function openOtherPicker() {
+  $("otherPick").classList.add("on");
+  $("otherSearchIn").value = "";
+  renderOtherList("");
+  setTimeout(() => $("otherSearchIn").focus(), 50);
+}
+function closeOtherPicker() { $("otherPick").classList.remove("on"); }
+function renderOtherList(q) {
+  const qn = (q || "").trim();
+  const list = qn ? KITCHEN_MEASURES.filter(m => m.includes(qn)) : KITCHEN_MEASURES;
+  $("otherList").innerHTML = list.length
+    ? list.map(m => `<button type="button" class="sr" data-measure="${esc(m)}"><span class="srn">${esc(m)}</span></button>`).join("")
+    : `<div class="sr dim">${T("לא נמצא")}</div>`;
+}
+async function pickOtherMeasure(measureName) {
+  const name = ($("pName").value || "").trim();
+  closeOtherPicker();
+  if (!name) return;
+  showToast(T("מחשב משקל…"));
+  try {
+    const res = await fetch(AI_PORTION_HOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ food: name, amount: measureName }),
+    });
+    const data = await res.json();
+    const grams = +data.grams || 0;
+    if (!grams) { showToast(T("לא הצלחנו לחשב את המידה הזו")); return; }
+    // asterisk marks an AI-estimated weight, not an exact figure
+    entryPortions.push({ n: measureName + " *", g: grams });
+    selPortion = entryPortions.length - 1;
+    persistPortions();
+    renderPortions(); preview();
+    showToast(`✅ ${T("נוסף:")} ${measureName} · ${grams} ${T("ג׳")}`);
+  } catch {
+    showToast(T("לא הצלחנו לחשב את המידה הזו"));
+  }
 }
 
 function setEntryProduct(portions, legacyUnit) {
@@ -7013,7 +7091,17 @@ $("addBtn").addEventListener("click", addEntry);
   const v = e.target.value, fixed = v.replace(/^(-?\d*\.\d)\d+/, "$1");
   if (fixed !== v) e.target.value = fixed;
 }));
-$("portionSel").addEventListener("change", e => { selPortion = +e.target.value; renderPortions(); preview(); });
+$("portionSel").addEventListener("change", e => {
+  const v = +e.target.value;
+  if (v === -2) { e.target.value = String(selPortion); openOtherPicker(); return; }
+  selPortion = v; renderPortions(); preview();
+});
+$("otherSearchIn").addEventListener("input", e => renderOtherList(e.target.value));
+$("otherPickClose").addEventListener("click", closeOtherPicker);
+$("otherList").addEventListener("click", e => {
+  const b = e.target.closest("[data-measure]");
+  if (b) pickOtherMeasure(b.dataset.measure);
+});
 $("entryClose").addEventListener("click", closeEntry);
 $("streak").addEventListener("click", () => showToast(streakMsg(streakCount())));
 function openSettings() {
