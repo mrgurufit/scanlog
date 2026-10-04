@@ -1521,6 +1521,13 @@
    already seen. Typing a product's label values once teaches it
    forever.                                                        */
 const I18N_EN = {
+  "מחיקת חשבון ונתונים": "Delete account & data",
+  "למחוק את החשבון ואת כל הנתונים שלך מהענן? אי אפשר לשחזר. היומן ששמור רק בטלפון הזה יישאר עד שתסיר את האפליקציה.": "Delete your account and all your cloud data? This cannot be undone. A diary stored only on this phone stays until you uninstall the app.",
+  "מוחק…": "Deleting…",
+  "החשבון והנתונים בענן נמחקו": "Your account and cloud data were deleted",
+  "הנתונים בענן נמחקו. להשלמת מחיקת החשבון שלח לנו בקשה במייל (הקישור בעמוד המחיקה).": "Your cloud data was deleted. To finish removing the account, send us a request by email (link on the deletion page).",
+  "המחיקה נכשלה: ": "Deletion failed: ",
+  "עמוד המחיקה": "Deletion page",
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "Android app + beta, free for life",
   "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "Add to Home Screen: tap Share ⬆️ then \"Add to Home Screen\"",
   "להתקנה": "Install",
@@ -2026,6 +2033,13 @@ const I18N_EN = {
 /* Arabic and Russian maps use the same Hebrew source keys. A key missing in
    one of them falls back to English, so a gap never shows a blank. */
 const I18N_AR = {
+  "מחיקת חשבון ונתונים": "حذف الحساب والبيانات",
+  "למחוק את החשבון ואת כל הנתונים שלך מהענן? אי אפשר לשחזר. היומן ששמור רק בטלפון הזה יישאר עד שתסיר את האפליקציה.": "هل تريد حذف حسابك وجميع بياناتك السحابية؟ لا يمكن التراجع. اليوميات المحفوظة على هذا الهاتف فقط تبقى حتى تحذف التطبيق.",
+  "מוחק…": "جارٍ الحذف…",
+  "החשבון והנתונים בענן נמחקו": "تم حذف حسابك وبياناتك السحابية",
+  "הנתונים בענן נמחקו. להשלמת מחיקת החשבון שלח לנו בקשה במייל (הקישור בעמוד המחיקה).": "تم حذف بياناتك السحابية. لإكمال حذف الحساب أرسل لنا طلباً بالبريد (الرابط في صفحة الحذف).",
+  "המחיקה נכשלה: ": "فشل الحذف: ",
+  "עמוד המחיקה": "صفحة الحذف",
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "تطبيق أندرويد + نسخة تجريبية مجانية مدى الحياة",
   "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "أضف إلى الشاشة الرئيسية: اضغط على مشاركة ⬆️ ثم \"أضف إلى الشاشة الرئيسية\"",
   "להתקנה": "تثبيت",
@@ -2503,6 +2517,13 @@ const I18N_AR = {
   "הצג נתונים גולמיים (לפענוח)": "عرض البيانات الخام (للتحليل)",
 };
 const I18N_RU = {
+  "מחיקת חשבון ונתונים": "Удалить аккаунт и данные",
+  "למחוק את החשבון ואת כל הנתונים שלך מהענן? אי אפשר לשחזר. היומן ששמור רק בטלפון הזה יישאר עד שתסיר את האפליקציה.": "Удалить аккаунт и все данные в облаке? Это нельзя отменить. Дневник, сохранённый только на этом телефоне, останется, пока вы не удалите приложение.",
+  "מוחק…": "Удаляем…",
+  "החשבון והנתונים בענן נמחקו": "Аккаунт и данные в облаке удалены",
+  "הנתונים בענן נמחקו. להשלמת מחיקת החשבון שלח לנו בקשה במייל (הקישור בעמוד המחיקה).": "Данные в облаке удалены. Чтобы удалить и сам аккаунт, отправьте нам запрос по почте (ссылка на странице удаления).",
+  "המחיקה נכשלה: ": "Не удалось удалить: ",
+  "עמוד המחיקה": "Страница удаления",
   "אפליקציית אנדרואיד + בטא חינם לכל החיים": "Приложение Android + бета, бесплатно навсегда",
   "הוסף למסך הבית: הקש שיתוף ⬆️ ואז \"הוסף למסך הבית\"": "Добавить на главный экран: нажмите «Поделиться» ⬆️, затем «На экран Домой»",
   "להתקנה": "Установить",
@@ -3558,7 +3579,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.01.1";
+const APP_BUILD = "2026.10.04.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4220,6 +4241,18 @@ function CB() {
       }
     },
     googleSignOut: async () => { await fbAuthMod.signOut(fbAuth); },
+    // in-app account deletion (Play policy): the user's Firestore doc, then the
+    // Auth user itself; "recent login required" leaves the data deleted and is
+    // reported back so the UI can say what is left
+    deleteAccount: async () => {
+      const u = fbAuth.currentUser;
+      if (!u) throw new Error("not signed in");
+      await fbFsMod.deleteDoc(fbFsMod.doc(fbDb, "users", u.uid));
+      let authDeleted = false, authError = "";
+      try { await fbAuthMod.deleteUser(u); authDeleted = true; } catch (e) { authError = (e && e.code) || String(e); }
+      try { await fbAuthMod.signOut(fbAuth); } catch { /* already out */ }
+      return { dataDeleted: true, authDeleted, authError };
+    },
     cloudGet: async () => {
       const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
       if (!uid) throw new Error("not signed in");
@@ -8138,6 +8171,36 @@ async function cloudSignOut() {
   cloudUser = null; renderAccount();
   msg("setMsg", T("התנתקת מהחשבון"), "ok");
 }
+/* Delete my account and cloud data (Google Play account-deletion policy, Ido
+   2026-10-04). Native 1.52+ deletes the Firestore doc AND the Firebase Auth user;
+   older builds and refusals fall back to blanking the cloud copy and signing out,
+   and the message then points at the web deletion page to finish the account. */
+async function cloudDeleteAccount() {
+  const hb = CB(); if (!hb || !isSignedIn()) return;
+  if (!confirm(T("למחוק את החשבון ואת כל הנתונים שלך מהענן? אי אפשר לשחזר. היומן ששמור רק בטלפון הזה יישאר עד שתסיר את האפליקציה."))) return;
+  msg("setMsg", T("מוחק…"), "");
+  let r = null;
+  try {
+    if (hb.deleteAccount) r = await hb.deleteAccount();
+  } catch (e) { r = null; }
+  if (!r) {
+    try {   // fallback: blank the cloud copy (data gone), then sign out
+      await hb.cloudSet({ json: JSON.stringify({ deleted: Date.now() }) });
+      try { await hb.googleSignOut(); } catch { /* ignore */ }
+      r = { dataDeleted: true, authDeleted: false };
+    } catch (e) {
+      msg("setMsg", T("המחיקה נכשלה: ") + String((e && e.message) || e).slice(0, 200), "err");
+      return;
+    }
+  }
+  cloudUser = null; renderAccount();
+  if (r.authDeleted) msg("setMsg", "✅ " + T("החשבון והנתונים בענן נמחקו"), "ok");
+  else {
+    msg("setMsg", T("הנתונים בענן נמחקו. להשלמת מחיקת החשבון שלח לנו בקשה במייל (הקישור בעמוד המחיקה)."), "ok");
+    const el = $("setMsg");
+    if (el) { const a = document.createElement("a"); a.href = "https://mrgurufit.com/app/delete-account.html"; a.target = "_blank"; a.rel = "noopener"; a.textContent = " " + T("עמוד המחיקה"); el.appendChild(a); }
+  }
+}
 // pull the cloud copy, MERGE it into this phone, then push the merged result -
 // so a new device downloads everything and an existing one never loses data
 async function cloudMergeSync() {
@@ -8175,6 +8238,11 @@ function renderAccount() {
       + ` · <u id="acctOut" style="cursor:pointer">${T("התנתק")}</u></div>`
       + `<div class="ehint">${T("הנתונים שלך נשמרים בענן ומסתנכרנים אוטומטית. מכשיר חדש? התחבר ותקבל הכל בחזרה.")}</div>`;
     const b = $("acctOut"); if (b) b.onclick = cloudSignOut;
+    const delLink = document.createElement("div");
+    delLink.className = "ehint";
+    delLink.innerHTML = `<u id="acctDel" style="cursor:pointer">${T("מחיקת חשבון ונתונים")}</u>`;
+    row.appendChild(delLink);
+    $("acctDel").onclick = cloudDeleteAccount;
     // Ido, 2026-09-19: "הוספתי מנה וזה לא נשמר" - a native-app user who was
     // ALREADY signed in before the Firestore catalog shipped (2026-09-18)
     // never went through cloudSignIn()'s new catalogSignIn() call, so
