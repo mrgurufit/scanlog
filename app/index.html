@@ -3579,7 +3579,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.04.1";
+const APP_BUILD = "2026.10.05.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7889,26 +7889,61 @@ LANGS.forEach(l => {
 /* The phone's Back button should step out of whatever is open - the scanner,
    the entry card, settings - instead of closing the app. Each opener pushes a
    history entry; Back consumes it and closes the top layer. */
-let ovGuards = 0;
-function ovPush() {
-  ovGuards++;
-  history.pushState({ ov: ovGuards }, "");
-}
-function ovDrop() {
-  if (ovGuards > 0) { ovGuards--; history.back(); }
-}
-function closeTopOverlay() {
-  if ($("drawer").classList.contains("on")) { closeDrawer(); return true; }
-  if ($("progressPage").classList.contains("on")) { closeProgress(); return true; }
-  if ($("catalogPage").classList.contains("on")) { closeCatalogPage(); return true; }
-  if ($("setModal").classList.contains("on")) { closeSettings(); return true; }
-  if ($("entry").classList.contains("on")) { $("entry").classList.remove("on"); pending = null; return true; }
-  if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); return true; }
-  if ($("coach").classList.contains("on")) { obEndCoach(); return true; }
+/* Android hardware Back (routed here as a history popstate): step back through
+   whatever is open - menu, popup, modal, scanner, overlay - back to the MAIN
+   screen, and exit the app only when ALREADY on the main screen. Capacitor exits
+   when there's nothing to go back to, so we keep exactly ONE history "guard"
+   armed whenever anything is open and remove it when everything is closed - a
+   MutationObserver watches every overlay so no opener/closer has to remember to
+   do it. ovPush/ovDrop are kept as no-ops for the old call sites. (Ido 2026-10-05) */
+function ovPush() {}
+function ovDrop() {}
+const OVERLAY_IDS = ["drawer", "progressPage", "catalogPage", "setModal", "entry", "cam", "coach",
+  "voiceOv", "outInfoPop", "otherPick", "picChoose", "scaleModal", "syncModal", "fbModal", "searchToggle"];
+function anyOverlayOpen() {
+  for (const id of OVERLAY_IDS) { const el = $(id); if (el && el.classList.contains("on")) return true; }
+  const fab = $("fab"); if (fab && fab.classList.contains("menuon")) return true;
+  const ob = $("ob"); if (ob && ob.classList.contains("on")) return true;
   return false;
 }
+function _bodyUnlock() { try { document.body.style.overflow = ""; } catch (e) {} }
+function closeTopOverlay() {
+  // onboarding is mandatory on first run - Back must neither dismiss it nor exit
+  if ($("ob") && $("ob").classList.contains("on")) return true;
+  const fab = $("fab"); if (fab && fab.classList.contains("menuon")) { closeFabMenu(); return true; }
+  if ($("outInfoPop") && $("outInfoPop").classList.contains("on")) { $("outInfoPop").classList.remove("on"); return true; }
+  if ($("otherPick") && $("otherPick").classList.contains("on")) { $("otherPick").classList.remove("on"); _bodyUnlock(); return true; }
+  if ($("picChoose") && $("picChoose").classList.contains("on")) { $("picChoose").classList.remove("on"); _bodyUnlock(); return true; }
+  if ($("voiceOv") && $("voiceOv").classList.contains("on")) { closeVoice(); return true; }
+  if ($("scaleModal") && $("scaleModal").classList.contains("on")) { $("scaleModal").classList.remove("on"); _bodyUnlock(); return true; }
+  if ($("syncModal") && $("syncModal").classList.contains("on")) { $("syncModal").classList.remove("on"); _bodyUnlock(); return true; }
+  if ($("fbModal") && $("fbModal").classList.contains("on")) { $("fbModal").classList.remove("on"); _bodyUnlock(); return true; }
+  if ($("entry").classList.contains("on")) { $("entry").classList.remove("on"); pending = null; _bodyUnlock(); return true; }
+  if ($("cam").classList.contains("on")) { stopScan(); msg("scanMsg", ""); return true; }
+  if ($("catalogPage").classList.contains("on")) { closeCatalogPage(); return true; }
+  if ($("progressPage").classList.contains("on")) { closeProgress(); return true; }
+  if ($("setModal").classList.contains("on")) { closeSettings(); return true; }
+  if ($("drawer").classList.contains("on")) { closeDrawer(); return true; }
+  if ($("coach").classList.contains("on")) { obEndCoach(); return true; }
+  if ($("searchToggle") && $("searchToggle").classList.contains("on")) { $("searchToggle").classList.remove("on"); return true; }
+  return false;
+}
+let _backArmed = false, _backDisarming = false;
+function _armBack() { if (_backArmed) return; _backArmed = true; try { history.pushState({ g: 1 }, ""); } catch (e) {} }
+function _disarmBack() { if (!_backArmed) return; _backArmed = false; _backDisarming = true; try { history.back(); } catch (e) {} }
+function _syncBackGuard() { if (_backDisarming) return; if (anyOverlayOpen()) _armBack(); else _disarmBack(); }
+try {
+  const _mo = new MutationObserver(() => _syncBackGuard());
+  OVERLAY_IDS.concat(["fab", "ob"]).forEach(id => { const el = $(id); if (el) _mo.observe(el, { attributes: true, attributeFilter: ["class"] }); });
+} catch (e) {}
+_syncBackGuard();   // arm immediately if something is already open at startup (e.g. onboarding)
 window.addEventListener("popstate", () => {
-  if (closeTopOverlay() && ovGuards > 0) ovGuards--;
+  if (_backDisarming) { _backDisarming = false; return; }   // our own guard removal
+  if (closeTopOverlay()) {
+    _backArmed = false;                      // this Back just consumed the guard
+    if (anyOverlayOpen()) _armBack();        // something still open → re-arm for the next Back
+  }
+  // nothing was open = main screen → stay disarmed → Capacitor's default Back exits the app
 });
 
 $("obGoogle").addEventListener("click", async () => {
