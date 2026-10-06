@@ -1443,12 +1443,12 @@
               <span class="drawerArrow">›</span>
             </button>
             <button type="button" class="drawerItem" id="drawerApprove">
-              <span class="drawerIco">🍎</span><span class="drawerLbl">מוצרים חדשים</span>
+              <span class="drawerIco">🖼️</span><span class="drawerLbl">תמונות לאישור</span>
               <span class="drawerBadge" id="drawerApproveBadge" hidden></span>
               <span class="drawerArrow">›</span>
             </button>
             <button type="button" class="drawerItem" id="drawerCatalog">
-              <span class="drawerIco">🗂️</span><span class="drawerLbl">קטלוג קהילתי</span>
+              <span class="drawerIco">🗂️</span><span class="drawerLbl">המאגר</span>
               <span class="drawerBadge" id="drawerCatalogBadge" hidden></span>
               <span class="drawerArrow">›</span>
             </button>
@@ -1490,7 +1490,7 @@
       <div id="catalogPage">
         <div class="progHead">
           <button type="button" id="catalogClose" aria-label="סגור">✕</button>
-          <b>🗂️ קטלוג קהילתי</b>
+          <b>🗂️ המאגר</b>
           <div style="display:flex;gap:8px">
             <button type="button" id="catalogRefreshBtn" aria-label="רענן קטלוג">🔄</button>
             <button type="button" id="catalogMigrateBtn" aria-label="העלה קטלוג ישן ל-Firestore" title="חד פעמי: מעביר את catalog.json הישן ל-Firestore">📤</button>
@@ -1843,6 +1843,19 @@ const I18N_EN = {
   "מוצרים חדשים": "New products",
   "🗂️ קטלוג קהילתי": "🗂️ Community catalog",
   "קטלוג קהילתי": "Community catalog",
+  "המאגר": "The catalog",
+  "🗂️ המאגר": "🗂️ The catalog",
+  "תמונות לאישור": "Photos to approve",
+  "אין תמונות שממתינות לאישור 🎉": "No photos waiting for approval 🎉",
+  "תמונה חדשה לאישור": "New photo to approve",
+  "התמונה אושרה ותתעדכן אצל כולם": "Photo approved - updating for everyone",
+  "התמונה נדחתה": "Photo rejected",
+  "לדחות את התמונה? היא תישאר רק אצל מי שהציע אותה.": "Reject this photo? Only the person who proposed it will keep it.",
+  "התמונה עודכנה אצלך ונשלחה לאישור.": "Your photo is saved on your phone and sent for approval.",
+  "מוצרים חדשים במאגר": "new products in the catalog",
+  "מוצרים במאגר": "products in the catalog",
+  "תמונה נוכחית": "current photo",
+  "תמונה מוצעת": "proposed photo",
   "🔎 חפש בקטלוג…": "🔎 Search the catalog…",
   "מוצרים בקטלוג הקהילתי": "products in the community catalog",
   "קהילתי": "Community",
@@ -2352,6 +2365,19 @@ const I18N_AR = {
   "מוצרים חדשים": "منتجات جديدة",
   "🗂️ קטלוג קהילתי": "🗂️ الكتالوج المجتمعي",
   "קטלוג קהילתי": "الكتالوج المجتمعي",
+  "המאגר": "المخزن",
+  "🗂️ המאגר": "🗂️ المخزن",
+  "תמונות לאישור": "صور بانتظار الموافقة",
+  "אין תמונות שממתינות לאישור 🎉": "لا توجد صور بانتظار الموافقة 🎉",
+  "תמונה חדשה לאישור": "صورة جديدة للموافقة",
+  "התמונה אושרה ותתעדכן אצל כולם": "تمت الموافقة على الصورة - سيتم تحديثها للجميع",
+  "התמונה נדחתה": "تم رفض الصورة",
+  "לדחות את התמונה? היא תישאר רק אצל מי שהציע אותה.": "رفض هذه الصورة؟ ستبقى فقط لدى من اقترحها.",
+  "התמונה עודכנה אצלך ונשלחה לאישור.": "تم حفظ صورتك على هاتفك وأُرسلت للموافقة.",
+  "מוצרים חדשים במאגר": "منتجات جديدة في المخزن",
+  "מוצרים במאגר": "منتجات في المخزن",
+  "תמונה נוכחית": "الصورة الحالية",
+  "תמונה מוצעת": "الصورة المقترحة",
   "🔎 חפש בקטלוג…": "🔎 ابحث في الكتالوج…",
   "מוצרים בקטלוג הקהילתי": "منتجات في الكتالوج المجتمعي",
   "קהילתי": "مجتمعي",
@@ -2836,6 +2862,19 @@ const I18N_RU = {
   "מוצרים חדשים": "Новые продукты",
   "🗂️ קטלוג קהילתי": "🗂️ Общий каталог",
   "קטלוג קהילתי": "Общий каталог",
+  "המאגר": "Каталог",
+  "🗂️ המאגר": "🗂️ Каталог",
+  "תמונות לאישור": "Фото на утверждение",
+  "אין תמונות שממתינות לאישור 🎉": "Нет фото, ожидающих утверждения 🎉",
+  "תמונה חדשה לאישור": "Новое фото на утверждение",
+  "התמונה אושרה ותתעדכן אצל כולם": "Фото одобрено — обновится у всех",
+  "התמונה נדחתה": "Фото отклонено",
+  "לדחות את התמונה? היא תישאר רק אצל מי שהציע אותה.": "Отклонить фото? Оно останется только у того, кто его предложил.",
+  "התמונה עודכנה אצלך ונשלחה לאישור.": "Ваше фото сохранено на телефоне и отправлено на утверждение.",
+  "מוצרים חדשים במאגר": "новых продуктов в каталоге",
+  "מוצרים במאגר": "продуктов в каталоге",
+  "תמונה נוכחית": "текущее фото",
+  "תמונה מוצעת": "предложенное фото",
   "🔎 חפש בקטלוג…": "🔎 Поиск в каталоге…",
   "מוצרים בקטלוג הקהילתי": "продуктов в общем каталоге",
   "קהילתי": "Общий",
@@ -3579,7 +3618,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.06.3";
+const APP_BUILD = "2026.10.07.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3805,7 +3844,7 @@ function catalogGet(code) {
 // the whole batch (a first snapshot is the entire catalog). Nutrition values
 // are only taken from a record that actually has calories; a 0-kcal record is
 // an incomplete one, not an instruction to zero everyone's log.
-function applyCatalogRecord(code, rec) {
+function applyCatalogRecord(code, rec, prevImg) {
   const out = { prod: false, log: false };
   if (!code || !rec || !rec.n) return out;
   const portions = Array.isArray(rec.pt) ? rec.pt : [];
@@ -3819,7 +3858,10 @@ function applyCatalogRecord(code, rec) {
       for (const [k, v] of Object.entries(next)) { if ((+p[k] || 0) !== v) { p[k] = v; out.prod = true; } }
     }
     if (portions.length && JSON.stringify(p.portions || []) !== JSON.stringify(portions)) { p.portions = portions.slice(); out.prod = true; }
-    if (photo && p.photo !== photo) { p.photo = photo; out.prod = true; }
+    // photo: only when the CLOUD photo changed (vs what this phone last saw) or
+    // the phone has none - so a user's own proposed photo stays theirs until
+    // Ido decides (2026-10-07), while stale phones still fill in
+    if (photo && p.photo !== photo && (!p.photo || photo !== prevImg)) { p.photo = photo; out.prod = true; }
   }
   for (const row of LOG) {
     if (row.barcode !== code) continue;
@@ -3828,7 +3870,7 @@ function applyCatalogRecord(code, rec) {
       const vals = { k100: +rec.k || 0, pro100: +rec.p || 0, carb100: +rec.c || 0, fat100: +rec.f || 0 };
       for (const [k, v] of Object.entries(vals)) { if ((+row[k] || 0) !== v) { row[k] = v; out.log = true; } }
     }
-    if (photo && row.photo !== photo) { row.photo = photo; out.log = true; }
+    if (photo && row.photo !== photo && (!row.photo || photo !== prevImg)) { row.photo = photo; out.log = true; }
   }
   return out;
 }
@@ -3841,10 +3883,13 @@ function catalogListenStart() {
     let firstSnap = true;
     catalogUnsub = fbFsMod.onSnapshot(fbFsMod.collection(fbDb, "catalog"), snap => {
       CATALOG.codes = CATALOG.codes || {};
-      const changedIds = [];
+      const changedIds = [], prevImgs = {};
       for (const ch of snap.docChanges()) {
         if (ch.type === "removed") delete CATALOG.codes[ch.doc.id];
-        else { CATALOG.codes[ch.doc.id] = ch.doc.data(); changedIds.push(ch.doc.id); }
+        else {
+          prevImgs[ch.doc.id] = (CATALOG.codes[ch.doc.id] || {}).img || "";   // what this phone last saw from the cloud
+          CATALOG.codes[ch.doc.id] = ch.doc.data(); changedIds.push(ch.doc.id);
+        }
       }
       // cache-bust every hosted photo URL against its own edit time (see
       // bustCacheUrl below) - keeps a re-edited photo from hiding behind a
@@ -3866,7 +3911,7 @@ function catalogListenStart() {
       // save once for the whole batch
       let prodTouched = false, logTouched = false;
       for (const id of changedIds) {
-        const r = applyCatalogRecord(id, CATALOG.codes[id]);
+        const r = applyCatalogRecord(id, CATALOG.codes[id], prevImgs[id]);
         if (r.prod) prodTouched = true;
         if (r.log) logTouched = true;
       }
@@ -3878,7 +3923,7 @@ function catalogListenStart() {
       // first snapshot - that is the whole existing catalog, not "new")
       if (isAdmin() && !firstSnap) {
         const gained = newCatalogCount() - beforeNew;
-        if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים בקטלוג הקהילתי"));
+        if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים במאגר"));
         if (typeof updateInboxBadge === "function") updateInboxBadge();
       }
       firstSnap = false;
@@ -3945,6 +3990,7 @@ let contribBusy = false;
 // arriving) where a surprise Google popup/redirect would be jarring;
 // catalogSignIn() is only ever called from a direct user action instead.
 async function contribFlush() {
+  propsFlush();   // queued photo proposals ride the same triggers (resume, sign-in, new contribution)
   if (contribBusy) return;
   contribBusy = true;
   try {
@@ -3966,11 +4012,58 @@ async function contribFlush() {
   } finally { contribBusy = false; }
 }
 
+/* USER PHOTO PROPOSALS (Ido, 2026-10-07: "תאפשר ליוזר לשים תמונה משלו. רק אם
+   אני מאשר את זה זה יתפרסם לכולם וישתנה בכל הלוגים שלהם גם אחורה") - a
+   non-admin's photo shows on their own phone at once but reaches the shared
+   catalog only through his ✓ in the approvals inbox. One live proposal per
+   user per product (doc id <code>__<uid>, re-picking overwrites), queued in
+   localStorage until a JS-SDK sign-in exists; never pops a prompt itself. */
+const LS_PROPS = "fl_photo_props";
+let propsBusy = false;
+function proposePhoto(code, name, image) {
+  if (!code || !image) return;
+  let q = {}; try { q = JSON.parse(localStorage.getItem(LS_PROPS) || "{}"); } catch { q = {}; }
+  q[code] = { code, name: name || "", image, at: new Date().toISOString() };
+  try { localStorage.setItem(LS_PROPS, JSON.stringify(q)); } catch { /* storage full - this one is lost */ }
+  propsFlush();
+}
+async function propsFlush() {
+  if (propsBusy) return;
+  propsBusy = true;
+  try {
+    let q = {}; try { q = JSON.parse(localStorage.getItem(LS_PROPS) || "{}"); } catch { q = {}; }
+    const codes = Object.keys(q);
+    if (!codes.length) return;
+    const ok = await ensureFirebaseWeb();
+    if (!ok || !fbDb || !fbAuth || !fbAuth.currentUser) return;   // stays queued
+    const u = fbAuth.currentUser;
+    for (const code of codes) {
+      const it = q[code];
+      try {
+        await fbFsMod.setDoc(fbFsMod.doc(fbDb, "photo_proposals", code + "__" + u.uid), {
+          code, name: it.name || "", image: it.image, at: it.at, user: u.email || "", userName: u.displayName || "",
+          authUid: u.uid, status: "pending", ts: fbFsMod.serverTimestamp(),
+        });
+        delete q[code];
+      } catch { /* denied or offline - keep it queued */ }
+    }
+    localStorage.setItem(LS_PROPS, JSON.stringify(q));
+  } finally { propsBusy = false; }
+}
+
 function sharedContribute(code, p) {
   if (!code || !p || !p.name) return;
   // A camera/gallery photo is a data: URL - it goes straight into the
   // Firestore record as-is (no separate hosting/compaction step anymore).
-  const photo = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
+  const ownPhoto = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
+  // Ido, 2026-10-07: a USER's photo never publishes on its own - it stays on
+  // their phone and goes to his approvals queue (proposePhoto); the shared
+  // record keeps the photo it already had until he approves. His own (admin)
+  // photos, and AI/system-sourced ones, still publish directly.
+  const exPhoto = (CATALOG.codes && CATALOG.codes[code] && CATALOG.codes[code].img) || "";
+  const direct = isAdmin() || p.src === "ai";
+  const photo = direct ? ownPhoto : exPhoto;
+  if (!direct && ownPhoto && ownPhoto !== exPhoto && isShareable(code)) proposePhoto(code, p.name, ownPhoto);
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
@@ -7410,9 +7503,8 @@ function renderCatalogList() {
   const commN = comm.length;
   // the big read-only built-in DB (57k) - fills the long tail, searchable here too
   const baseN = (BASE_CAT && BASE_CAT.codes) ? Object.keys(BASE_CAT.codes).length : 0;
-  $("catalogCount").textContent = baseN
-    ? commN.toLocaleString(LOC()) + " " + T("קהילתי") + " · " + baseN.toLocaleString(LOC()) + " " + T("מאגר מובנה") + " · " + (commN + baseN).toLocaleString(LOC()) + " " + T("סה״כ")
-    : commN + " " + T("מוצרים בקטלוג הקהילתי");
+  // one catalog, one number (Ido, 2026-10-07: "אין קטלוג קהילתי או קטלוג שלי")
+  $("catalogCount").textContent = (commN + baseN).toLocaleString(LOC()) + " " + T("מוצרים במאגר");
   // build the base row set once (skip codes already in the community catalog or
   // the admin's own products so nothing shows twice), pre-sorted by name
   if (BASE_IDX && !BASE_SORTED) {
@@ -7461,7 +7553,6 @@ function renderCatalogList() {
          : `<span class="catThumbBtn" aria-label="${T("תמונת המוצר")}">${p.img ? `<img src="${esc(p.img)}" loading="lazy">` : "📷"}</span>`}
        <button type="button" class="catMain" data-open="${esc(code)}">
          <span class="catMainTop">
-           <span class="srs ${base ? "gen" : "mine"}">${base ? T("מאגר") : T("קהילתי")}</span>
            ${isNew ? `<span class="srs new">🆕</span>` : ""}
            <span class="srn">${esc(displayName(p.n, true))}</span>
          </span>
@@ -7515,7 +7606,7 @@ async function catalogAdoptAll() {
     if (!isShareable(code)) continue;
     // already on this phone: bring it in line with the catalog (Ido, 2026-10-06)
     if (PRODUCTS[code]) {
-      const r = applyCatalogRecord(code, CATALOG.codes[code]);
+      const r = applyCatalogRecord(code, CATALOG.codes[code], (CATALOG.codes[code] || {}).img || "");
       if (r.prod) changed = true;
       if (r.log) logChanged = true;
       continue;
@@ -8457,51 +8548,38 @@ function timeAgo(iso) {
   return Math.round(h / 24) + " " + T("ימים קודם");
 }
 
-// The approval inbox is the ONE thing left in the app that reads the whole
-// shared store, and that export costs about one Make operation per product -
-// so this call gets dearer every time a user contributes one. Only Ido's phone
-// ever runs it, and a product waiting half an hour to appear costs nothing, so
-// the automatic window is 30 minutes. Pull-to-refresh in the inbox passes
-// force and is always allowed.
-const PENDING_CACHE_MS = 30 * 60 * 1000;
-
-// The nightly compile publishes the waiting products as a plain file next to
-// catalog.json. Reading that costs nothing at all, so it is what the badge and
-// the list use; the live whole-store call below - about one Make operation per
-// product in the catalog - now happens only when he pulls to refresh.
-async function pendingFromFile() {
-  try {
-    const u = new URL("pending.json", location.href).href + "?v=" + new Date().toISOString().slice(0, 10);
-    let text = null;
-    const hb = HB();
-    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [u, "https://mrgurufit.com/app/pending.json"] }); text = (r && r.body) || null; }
-    else { const r = await fetch(u, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
-    if (!text) return false;
-    const d = JSON.parse(text);
-    if (!d || !Array.isArray(d.items)) return false;
-    PENDING = d.items.filter(r => r && r.barcode && r.name);
-    updateInboxBadge();
-    return true;
-  } catch { return false; }
+/* APPROVALS INBOX = user photo proposals (Ido, 2026-10-07). Replaces the old
+   Make-based "pending products" box (moderation was turned off 2026-09-12 and
+   the Make export is dead). Live Firestore listener on photo_proposals where
+   status == "pending"; PENDING keeps its name so the badge/inbox wiring below
+   is untouched. */
+let proposalsUnsub = null;
+function proposalsListenStart() {
+  if (proposalsUnsub || !isAdmin()) return;
+  ensureFirebaseWeb().then(ok => {
+    if (!ok || !fbDb || proposalsUnsub || !isAdmin()) return;
+    const q = fbFsMod.query(fbFsMod.collection(fbDb, "photo_proposals"), fbFsMod.where("status", "==", "pending"));
+    let first = true;
+    proposalsUnsub = fbFsMod.onSnapshot(q, snap => {
+      const out = [];
+      snap.forEach(d => {
+        const r = d.data() || {};
+        out.push({ id: d.id, code: r.code || "", name: r.name || "", image: r.image || "", user: r.user || "", userName: r.userName || "", at: r.at || "" });
+      });
+      out.sort((a, b) => String(b.at).localeCompare(String(a.at)));   // newest first
+      const gained = out.length - PENDING.length;
+      PENDING = out;
+      updateInboxBadge();
+      if (!first && gained > 0) showToast("🖼️ " + T("תמונה חדשה לאישור"));
+      const ov = $("inboxOv");
+      if (inboxKind === "products" && ov && ov.classList.contains("on")) renderInbox();
+      first = false;
+    }, () => { /* offline, or the rules are not deployed yet - keep what we last had */ });
+  });
 }
-
-async function pendingFetch(force) {
-  if (!isAdmin()) return;
-  if (!force && Date.now() - pendingAt < PENDING_CACHE_MS) { updateInboxBadge(); return; }
-  if (!force && await pendingFromFile()) return;
-  try {
-    let text = null;
-    const hb = HB();
-    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [SHARED_GET] }); text = (r && r.body) || null; }
-    else { const r = await fetch(SHARED_GET, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
-    if (!text) return;
-    const arr = JSON.parse(text);
-    if (!Array.isArray(arr)) return;
-    PENDING = arr.filter(r => r && String(r.status || "").toLowerCase() === "pending" && r.barcode && r.name);
-    pendingAt = Date.now();
-    updateInboxBadge();
-  } catch { /* offline - keep whatever we last had */ }
-}
+// kept for the existing call sites (renderAdminIcons / openInbox): "fetch" now
+// just means "make sure the live listener is running"
+async function pendingFetch() { proposalsListenStart(); }
 
 function setBadge(id, n) {
   const el = $(id); if (!el) return;
@@ -8624,7 +8702,7 @@ async function openInbox(kind) {
     $("inboxClose").onclick = close;
     ov.addEventListener("click", ev => { if (ev.target === ov) close(); });
   }
-  $("inboxTitle").textContent = inboxKind === "feedback" ? "📬 " + T("הודעות ופידבק") : "🍎 " + T("מוצרים לאישור");
+  $("inboxTitle").textContent = inboxKind === "feedback" ? "📬 " + T("הודעות ופידבק") : "🖼️ " + T("תמונות לאישור");
   ov.classList.add("on"); document.body.style.overflow = "hidden";
   $("inboxList").innerHTML = `<div class="ehint">${T("טוען…")}</div>`;
   if (inboxKind === "feedback") await feedbackFetch(true);
@@ -8653,28 +8731,18 @@ function renderInbox() {
     }
   } else {
     if (!PENDING.length) {
-      html = `<div class="ehint">${T("אין מוצרים שממתינים לאישור 🎉")}</div>`;
+      html = `<div class="ehint">${T("אין תמונות שממתינות לאישור 🎉")}</div>`;
     } else {
-      // Ido, 2026-09-17: "תאפשר לי להכנס לכרטיס המוצר ולא רק לעשות עליו
-      // אישור או ביטול" - every field here is a real input straight into
-      // PENDING[i], so a wrong AI/user value can be fixed in place before
-      // approving, instead of only a binary accept/reject.
+      // Ido, 2026-10-07: each row = the product, who proposed it, the CURRENT
+      // shared photo (if any) beside the PROPOSED one, and approve / reject.
       html = PENDING.map((r, i) => {
-        const pt = ptSummary(r.pt);
-        const img = /^https?:/.test(r.photo || "")
-          ? `<img class="inboxImg" src="${esc(r.photo)}" alt="" loading="lazy">`
-          : `<div class="inboxImg noimg">📦</div>`;
-        return `<div class="inboxItem inboxEdit">${img}<div class="inboxInfo">`
-          + `<input type="text" class="inboxIn inboxName" data-f="name" data-i="${i}" value="${esc(r.name || "")}" placeholder="${T('שם המוצר')}">`
-          + `<div class="inboxMacEdit">`
-          + `<input type="number" class="inboxIn inboxNum" data-f="kcal" data-i="${i}" value="${+r.kcal || 0}"><small>${T("קק״ל")}</small>`
-          + `<input type="number" class="inboxIn inboxNum" data-f="pro" data-i="${i}" value="${+r.pro || 0}"><small>${T("חלבון")}</small>`
-          + `<input type="number" class="inboxIn inboxNum" data-f="carb" data-i="${i}" value="${+r.carb || 0}"><small>${T("פחמימה")}</small>`
-          + `<input type="number" class="inboxIn inboxNum" data-f="fat" data-i="${i}" value="${+r.fat || 0}"><small>${T("שומן")}</small>`
-          + `</div>`
-          + `<input type="text" class="inboxIn inboxPhoto" data-f="photo" data-i="${i}" value="${esc(r.photo || "")}" placeholder="${T('כתובת תמונה (URL)')}">`
-          + (pt ? `<div class="inboxPt">🍽 ${esc(pt)}</div>` : "")
-          + `<div class="inboxWhen">${esc(r.barcode || "")} · ${esc(r.src || "")} · ${timeAgo(r.at)}</div>`
+        const cur = (CATALOG.codes[r.code] && CATALOG.codes[r.code].img) || "";
+        const curImg = cur ? `<img class="inboxImg" src="${esc(cur)}" alt="" loading="lazy">` : `<div class="inboxImg noimg">📦</div>`;
+        return `<div class="inboxItem"><img class="inboxImg" src="${esc(r.image)}" alt="" loading="lazy"><div class="inboxInfo">`
+          + `<div class="inboxName">🖼️ ${esc(r.name || r.code)}</div>`
+          + `<div class="inboxMsg" style="display:flex;align-items:center;gap:8px">${curImg}<span>${T("תמונה נוכחית")} ← ${T("תמונה מוצעת")}</span></div>`
+          + `<div class="inboxFrom">👤 ${esc(r.user || r.userName || T("אנונימי"))}</div>`
+          + `<div class="inboxWhen">${esc(r.code)} · ${timeAgo(r.at)}</div>`
           + `</div><div class="inboxAct">`
           + `<button type="button" class="iok" data-ok="${i}">✓ ${T("אשר")}</button>`
           + `<button type="button" class="ino" data-no="${i}">✕ ${T("דחה")}</button>`
@@ -8696,23 +8764,26 @@ function renderInbox() {
 
 function inboxApprove(i) {
   const r = PENDING[i]; if (!r) return;
-  // publish to the shared catalog (re-sent as "approved"), then drop from the box
-  sharedContribute(r.barcode, {
-    name: r.name, kcal: +r.kcal || 0, pro: +r.pro || 0, carb: +r.carb || 0, fat: +r.fat || 0,
-    photo: r.photo || "", portions: ptParse(r.pt), src: r.src || "app",
+  // publish: the shared record takes the proposed photo (an ADMIN write, so
+  // sharedContribute's non-admin photo gate does not apply) -> every phone's
+  // listener puts it on the product AND on every log row of it, backwards too
+  const base = catalogGet(r.code) || PRODUCTS[r.code] || { name: r.name, kcal: 0, pro: 0, carb: 0, fat: 0, portions: [] };
+  sharedContribute(r.code, Object.assign({}, base, { name: base.name || r.name, photo: r.image }));
+  ensureFirebaseWeb().then(ok => {
+    if (ok && fbDb) fbFsMod.updateDoc(fbFsMod.doc(fbDb, "photo_proposals", r.id), { status: "approved", decidedAt: new Date().toISOString() }).catch(() => {});
   });
   PENDING.splice(i, 1); updateInboxBadge(); renderInbox();
-  msg("setMsg", "✅ " + T("אושר ויתווסף לכולם בקרוב"), "ok");
+  showToast("✅ " + T("התמונה אושרה ותתעדכן אצל כולם"));
 }
 
 function inboxReject(i) {
   const r = PENDING[i]; if (!r) return;
-  if (!confirm(T("לדחות את המוצר? הוא לא יגיע לאף אחד."))) return;
-  // NOTE 2026-09-18: PENDING items come from the old Make-based inbox
-  // (pendingFetch/SHARED_GET) - nothing writes new ones since the catalog
-  // moved to Firestore (every contribution is instantly live, no pending
-  // state exists there), so this is now just a local dismissal.
+  if (!confirm(T("לדחות את התמונה? היא תישאר רק אצל מי שהציע אותה."))) return;
+  ensureFirebaseWeb().then(ok => {
+    if (ok && fbDb) fbFsMod.updateDoc(fbFsMod.doc(fbDb, "photo_proposals", r.id), { status: "rejected", decidedAt: new Date().toISOString() }).catch(() => {});
+  });
   PENDING.splice(i, 1); updateInboxBadge(); renderInbox();
+  showToast(T("התמונה נדחתה"));
 }
 
 $("expBtn").addEventListener("click", async () => {
@@ -8876,7 +8947,7 @@ function applyPickedPhoto(photo) {
     showToast(T("התמונה עודכנה."));
     return;
   }
-  if (picTarget == null) { if (isAdmin()) setShot(photo); return; }
+  if (picTarget == null) { setShot(photo); return; }   // everyone may pick; a user's photo publishes only via Ido's approval (sharedContribute gate)
   const e = LOG.find(x => x.id === picTarget);
   if (!e) return;
   e.photo = photo;
@@ -8886,13 +8957,18 @@ function applyPickedPhoto(photo) {
   renderLog();
   // admin: push the photo to the shared catalog so it reaches everyone
   // (the pipeline hosts it as-is - no background removal)
-  let shared = false;
+  let shared = false, proposed = false;
   if (isAdmin() && isShareable(e.barcode || "") && PRODUCTS[e.barcode]) {
     sharedContribute(e.barcode, PRODUCTS[e.barcode]);
     shared = true;
+  } else if (!isAdmin() && isShareable(e.barcode || "")) {
+    // a user's photo: theirs right away, everyone's only after Ido approves
+    proposePhoto(e.barcode, e.name, photo);
+    proposed = true;
   }
   msg("scanMsg", shared
     ? T("התמונה עודכנה ותשותף לכולם בקרוב.")
+    : proposed ? T("התמונה עודכנה אצלך ונשלחה לאישור.")
     : T("התמונה עודכנה בכל הרישומים של המוצר."), "ok");
 }
 
