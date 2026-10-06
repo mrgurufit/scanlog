@@ -3579,7 +3579,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.05.4";
+const APP_BUILD = "2026.10.06.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3633,9 +3633,8 @@ async function showDbg() {
 // legacy "pending" items still sit in Make's old datastore (see
 // pendingFetch below) - nothing new is ever written there anymore.
 const SHARED_GET = "https://hook.us2.make.com/m45uuq5j27h89anwnudw51kbotbg55fg";
-// "כתוב לנו" - user feedback goes here (bug / missing product / suggestion),
-// reaches Ido with who sent it and an optional screenshot
-const FEEDBACK_HOOK = "https://hook.us2.make.com/kwmm5bcpb3deisjydcpt4odyygdapqqd";
+// "כתוב לנו" - user feedback goes straight to Firestore (see fbPost below);
+// the Make webhook that used to carry it is gone (Ido, 2026-10-06).
 // one record, not the whole store - used only to poll for the AI's answer
 // right after logging a product missing a portion or photo (see pollEnrichment)
 const LOOKUP_ONE_URL = "https://hook.us2.make.com/n829qcnyjqf6n4c19no1o2npqq7ykaje";
@@ -3794,6 +3793,45 @@ function catalogGet(code) {
 // Firestore delivers the change - no polling, no throttle, no compile lag.
 // Writing still requires being signed in with a Google account (Ido,
 // 2026-09-18: "חייב להתחבר עם חשבון גוגל") - see catalogSignIn() below.
+// Ido, 2026-10-06 ("אם אני משנה שם או תמונה או ערכים תזונתיים או מנות או
+// מידות כלשהן זה משתנה אצל כולם"): the shared catalog is the ONE source of
+// truth. The listener used to update only CATALOG.codes (+ adopt photos), so
+// a phone that had already logged a product kept its own cached copy - name,
+// values, portions - forever (his פטה צוריאל rename never showed on other
+// phones). Every changed record is now pushed INTO this phone's own product
+// memory and into every log row of that product, on every snapshot
+// (including the first, so a phone that was offline during the edit catches
+// up on next launch). Does NOT persist by itself - the caller saves once for
+// the whole batch (a first snapshot is the entire catalog). Nutrition values
+// are only taken from a record that actually has calories; a 0-kcal record is
+// an incomplete one, not an instruction to zero everyone's log.
+function applyCatalogRecord(code, rec) {
+  const out = { prod: false, log: false };
+  if (!code || !rec || !rec.n) return out;
+  const portions = Array.isArray(rec.pt) ? rec.pt : [];
+  const photo = /^(https?:|data:image\/)/.test(rec.img || "") ? rec.img : "";
+  const hasVals = (+rec.k || 0) > 0;
+  const p = PRODUCTS[code];
+  if (p) {
+    if (p.name !== rec.n) { p.name = rec.n; out.prod = true; }
+    if (hasVals) {
+      const next = { kcal: +rec.k || 0, pro: +rec.p || 0, carb: +rec.c || 0, fat: +rec.f || 0, unit: +rec.u || 0 };
+      for (const [k, v] of Object.entries(next)) { if ((+p[k] || 0) !== v) { p[k] = v; out.prod = true; } }
+    }
+    if (portions.length && JSON.stringify(p.portions || []) !== JSON.stringify(portions)) { p.portions = portions.slice(); out.prod = true; }
+    if (photo && p.photo !== photo) { p.photo = photo; out.prod = true; }
+  }
+  for (const row of LOG) {
+    if (row.barcode !== code) continue;
+    if (row.name !== rec.n) { row.name = rec.n; out.log = true; }
+    if (hasVals) {
+      const vals = { k100: +rec.k || 0, pro100: +rec.p || 0, carb100: +rec.c || 0, fat100: +rec.f || 0 };
+      for (const [k, v] of Object.entries(vals)) { if ((+row[k] || 0) !== v) { row[k] = v; out.log = true; } }
+    }
+    if (photo && row.photo !== photo) { row.photo = photo; out.log = true; }
+  }
+  return out;
+}
 let catalogUnsub = null;
 function catalogListenStart() {
   if (catalogUnsub) return;   // already running
@@ -3803,9 +3841,10 @@ function catalogListenStart() {
     let firstSnap = true;
     catalogUnsub = fbFsMod.onSnapshot(fbFsMod.collection(fbDb, "catalog"), snap => {
       CATALOG.codes = CATALOG.codes || {};
+      const changedIds = [];
       for (const ch of snap.docChanges()) {
         if (ch.type === "removed") delete CATALOG.codes[ch.doc.id];
-        else CATALOG.codes[ch.doc.id] = ch.doc.data();
+        else { CATALOG.codes[ch.doc.id] = ch.doc.data(); changedIds.push(ch.doc.id); }
       }
       // cache-bust every hosted photo URL against its own edit time (see
       // bustCacheUrl below) - keeps a re-edited photo from hiding behind a
@@ -3822,6 +3861,17 @@ function catalogListenStart() {
         const cur = PRODUCTS[c] && PRODUCTS[c].photo;
         if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
       }
+      // the catalog is the one source of truth (Ido, 2026-10-06): push every
+      // changed record into this phone's own product memory + log rows, then
+      // save once for the whole batch
+      let prodTouched = false, logTouched = false;
+      for (const id of changedIds) {
+        const r = applyCatalogRecord(id, CATALOG.codes[id]);
+        if (r.prod) prodTouched = true;
+        if (r.log) logTouched = true;
+      }
+      if (prodTouched) store.set(LS_PROD, PRODUCTS);
+      if (logTouched) { store.set(LS_LOG, LOG); if (typeof renderLog === "function") renderLog(); }
       if (typeof renderCatalogList === "function") renderCatalogList();
       // the in-app "notification": tell the admin right away if this update
       // actually brought in products he hasn't seen yet (skip on the very
@@ -3928,17 +3978,23 @@ function sharedContribute(code, p) {
   // (Ido, 2026-09-12: "אני רוצה לדעת בדיוק מה יש בקטלוג מי הכניס אותו")
   const who = (!isAdmin() && isSignedIn() && cloudUser && cloudUser.email)
     ? "app:" + cloudUser.email : (p.src || "app");
-  // Already in the catalog with the same values (name, kcal, portions, picture)?
-  // Then the cloud already has it - do NOT send again. Including the picture here
-  // means ADDING or CHANGING a photo counts as a real change and gets sent.
+  // Already in the catalog with the same values? Then the cloud already has it
+  // - do NOT send again. Including the picture here means ADDING or CHANGING a
+  // photo counts as a real change and gets sent. Ido, 2026-10-06 ("אם אני
+  // משנה שם או תמונה או ערכים תזונתיים או מנות או מידות כלשהן זה משתנה אצל
+  // כולם"): protein/carb/fat and the unit are part of the comparison now too -
+  // an edit that changed only those used to be deduped as "unchanged" and
+  // never left the phone.
   const already = ex && ex.n === p.name && (+ex.k || 0) === (+p.kcal || 0)
+    && (+ex.p || 0) === (+p.pro || 0) && (+ex.c || 0) === (+p.carb || 0) && (+ex.f || 0) === (+p.fat || 0)
+    && (+ex.u || 0) === (+p.unit || 0)
     && JSON.stringify(ex.pt || []) === JSON.stringify(portions)
     && (ex.img || "") === photo;
   // "when" is for the catalog page's newest-first sort - only bump it on a
   // REAL change, or re-logging an unchanged product would look freshly added
   // every time (Ido, 2026-09-12: wants to see what's genuinely new).
   const t = already ? (ex && ex.t) || new Date().toISOString() : new Date().toISOString();
-  const rec = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, img: photo, s: who, t };
+  const rec = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, u: +p.unit || 0, img: photo, s: who, t };
   if (portions.length) rec.pt = portions;
   try {
     CATALOG.codes[code] = rec;
@@ -7454,13 +7510,21 @@ document.querySelectorAll("[data-cat-sort]").forEach(b => b.addEventListener("cl
 async function catalogAdoptAll() {
   if (!isAdmin()) return;
   try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
-  let changed = false;
+  let changed = false, logChanged = false;
   for (const code of Object.keys((CATALOG && CATALOG.codes) || {})) {
-    if (!isShareable(code) || PRODUCTS[code]) continue;
+    if (!isShareable(code)) continue;
+    // already on this phone: bring it in line with the catalog (Ido, 2026-10-06)
+    if (PRODUCTS[code]) {
+      const r = applyCatalogRecord(code, CATALOG.codes[code]);
+      if (r.prod) changed = true;
+      if (r.log) logChanged = true;
+      continue;
+    }
     const hit = catalogGet(code);
     if (hit && hit.name) { PRODUCTS[code] = hit; changed = true; }
   }
   if (changed) store.set(LS_PROD, PRODUCTS);
+  if (logChanged) { store.set(LS_LOG, LOG); renderLog(); }
 }
 
 function fmtShortDate(day) {
@@ -8372,9 +8436,8 @@ $("testModeBack").addEventListener("click", endTestAsUser);
    op when he opens the box and one per approve/reject - nothing on a timer. */
 let PENDING = [];
 let pendingAt = 0;
-// user feedback ("כתוב לנו") lands in a Google Sheet; FEEDBACK_GET reads it back
-// so the admin sees it in this same inbox. "Handled" is remembered per-device.
-const FEEDBACK_GET = "https://hook.us2.make.com/rpvafxffaxlvdr83mk1und5lwim6xynn";
+// user feedback ("כתוב לנו") lives in the Firestore "feedback" collection and
+// streams into this inbox live - see feedbackListenStart() below.
 const LS_FB_DONE = "fl_fb_done";
 let FEEDBACK = [];
 
@@ -8492,8 +8555,12 @@ async function shareAllMine() {
   }
 }
 
-// user feedback from the "כתוב לנו" Google Sheet (admin only). Read-only here;
-// "handled" is stored per-device in localStorage (no write back to the sheet).
+// Ido, 2026-10-06: feedback lives in the Firestore "feedback" collection and
+// the admin inbox holds a LIVE listener on it - a message shows up here (and
+// on the 📬 badge + menu dot) the moment a user taps Send: no Make, no Sheet.
+// "Handled" is written back to the record (done: true) so it clears on every
+// one of his devices; the old per-device fl_fb_done list stays as a fallback
+// for anything the write-back could not reach.
 function fbDoneSet() {
   try { return new Set(JSON.parse(localStorage.getItem(LS_FB_DONE) || "[]")); } catch { return new Set(); }
 }
@@ -8501,33 +8568,45 @@ function fbMarkDone(id) {
   const s = fbDoneSet(); s.add(id);
   try { localStorage.setItem(LS_FB_DONE, JSON.stringify([...s].slice(-500))); } catch { /* full */ }
 }
-async function feedbackFetch(force) {
-  if (!isAdmin()) return;
-  try {
-    let text = null;
-    const hb = HB();
-    if (hb && hb.httpGet) { const r = await hb.httpGet({ urls: [FEEDBACK_GET] }); text = (r && r.body) || null; }
-    else { const r = await fetch(FEEDBACK_GET, { cache: "no-store" }); text = r.ok ? await r.text() : null; }
-    if (!text) return;
-    const d = JSON.parse(text);
-    const rows = (d && Array.isArray(d.values)) ? d.values : [];
-    const done = fbDoneSet();
-    const out = [];
-    for (const r of rows) {
-      const at = String((r && r[0]) || "").trim();
-      if (!/^\d{4}-\d\d-\d\dT/.test(at)) continue;   // skip the header row and anything not a timestamp
-      if (done.has(at)) continue;                    // already handled on this device
-      out.push({ id: at, at, user: r[1] || "", name: r[2] || "", subject: r[3] || "", text: r[4] || "", img: r[5] || "", ver: r[6] || "" });
-    }
-    out.reverse();   // newest first
-    FEEDBACK = out;
-    updateInboxBadge();
-  } catch { /* offline - keep whatever we last had */ }
+let feedbackUnsub = null;
+function feedbackListenStart() {
+  if (feedbackUnsub || !isAdmin()) return;
+  ensureFirebaseWeb().then(ok => {
+    if (!ok || !fbDb || feedbackUnsub || !isAdmin()) return;
+    const q = fbFsMod.query(fbFsMod.collection(fbDb, "feedback"), fbFsMod.where("done", "==", false));
+    let first = true;
+    feedbackUnsub = fbFsMod.onSnapshot(q, snap => {
+      const done = fbDoneSet();
+      const out = [];
+      snap.forEach(d => {
+        const r = d.data() || {};
+        if (done.has(d.id)) return;
+        out.push({ id: d.id, at: r.at || "", user: r.user || "", name: r.name || "", subject: r.subject || "",
+          text: r.text || "", img: r.image || "", ver: r.ver || "", device: r.device || "" });
+      });
+      out.sort((a, b) => String(b.at).localeCompare(String(a.at)));   // newest first
+      const gained = out.length - FEEDBACK.length;
+      FEEDBACK = out;
+      updateInboxBadge();
+      if (!first && gained > 0) showToast("📬 " + T("הודעה חדשה ממשתמש"));
+      const ov = $("inboxOv");
+      if (inboxKind === "feedback" && ov && ov.classList.contains("on")) renderInbox();
+      first = false;
+    }, () => { /* offline, or the rules are not deployed yet - keep what we last had */ });
+  });
 }
+// kept for the existing call sites (renderAdminIcons / openInbox): "fetch" now
+// just means "make sure the live listener is running"
+async function feedbackFetch() { feedbackListenStart(); }
 function fbHandle(i) {
   const f = FEEDBACK[i]; if (!f) return;
   fbMarkDone(f.id);
   FEEDBACK.splice(i, 1); updateInboxBadge(); renderInbox();
+  // write it back so the message is gone on every device, not just this one
+  ensureFirebaseWeb().then(ok => {
+    if (!ok || !fbDb) return;
+    fbFsMod.updateDoc(fbFsMod.doc(fbDb, "feedback", f.id), { done: true }).catch(() => {});
+  });
 }
 
 let inboxKind = "products";
@@ -8981,16 +9060,24 @@ function fbEnqueue(p) {
   q.push(p); if (q.length > 50) q = q.slice(-50);
   localStorage.setItem(LS_FB, JSON.stringify(q));
 }
+// Ido, 2026-10-06: "שפשוט יופיע הישר באפליקציה בלי סנריו של MAKE" - feedback
+// goes straight into the Firestore "feedback" collection (the same SDK the
+// catalog writes use), so it shows in the admin inbox the instant it is sent,
+// through the realtime listener in feedbackListenStart(). The Make webhook +
+// Google Sheet path is gone. Needs the JS-SDK sign-in (fbAuth.currentUser)
+// the catalog writes already need; without it the message stays queued in
+// fl_fb and fbFlush() retries on the next launch.
 async function fbPost(payload) {
-  const hb = HB();
-  if (hb && hb.httpPost) {
-    const r = await hb.httpPost({ url: FEEDBACK_HOOK, body: JSON.stringify(payload),
-      contentType: "application/json; charset=utf-8" });
-    return !!(r && r.ok);
-  }
-  await fetch(FEEDBACK_HOOK, { method: "POST", mode: "no-cors",
-    headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify(payload), keepalive: true });
-  return true;   // no-cors is opaque; a resolved fetch means it left the device
+  const ok = await ensureFirebaseWeb();
+  if (!ok || !fbDb || !fbAuth || !fbAuth.currentUser) return false;
+  // a screenshot is a data: URL thumb (toThumb 1000px/0.75); Firestore caps a
+  // document at 1 MB, so an oversized one is dropped rather than failing the
+  // whole message
+  const image = (payload.image && payload.image.length < 850000) ? payload.image : "";
+  await fbFsMod.addDoc(fbFsMod.collection(fbDb, "feedback"), Object.assign({}, payload, {
+    image, done: false, ts: fbFsMod.serverTimestamp(), authUid: fbAuth.currentUser.uid,
+  }));
+  return true;
 }
 async function fbFlush() {
   let q = []; try { q = JSON.parse(localStorage.getItem(LS_FB) || "[]"); } catch {}
@@ -9012,6 +9099,9 @@ $("fbSend").addEventListener("click", async () => {
     at: new Date().toISOString(),
   };
   $("fbSend").disabled = true; $("fbSend").textContent = T("שולח…");
+  // the Firestore write needs the JS-SDK sign-in (same one the catalog uses);
+  // Send is a direct user action, so asking for it right here is fine
+  try { await ensureFirebaseWeb(); if (!(fbAuth && fbAuth.currentUser)) await catalogSignIn(); } catch { /* fbPost will queue it */ }
   let ok = false; try { ok = await fbPost(payload); } catch { ok = false; }
   if (ok) { msg("fbMsg", T("תודה! ההודעה נשלחה."), "ok"); setTimeout(closeFb, 1200); }
   else { fbEnqueue(payload); msg("fbMsg", T("אין חיבור כרגע — יישלח כשתחזור לרשת."), "ok"); setTimeout(closeFb, 1600); }
