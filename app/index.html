@@ -1843,6 +1843,7 @@ const I18N_EN = {
   "מוצרים חדשים": "New products",
   "🗂️ קטלוג קהילתי": "🗂️ Community catalog",
   "קטלוג קהילתי": "Community catalog",
+  "הודעה חדשה ממשתמש": "New message from a user",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Your message is saved and will be sent automatically next time the app opens.",
   "המאגר": "The catalog",
   "🗂️ המאגר": "🗂️ The catalog",
@@ -2366,6 +2367,7 @@ const I18N_AR = {
   "מוצרים חדשים": "منتجات جديدة",
   "🗂️ קטלוג קהילתי": "🗂️ الكتالوج المجتمعي",
   "קטלוג קהילתי": "الكتالوج المجتمعي",
+  "הודעה חדשה ממשתמש": "رسالة جديدة من مستخدم",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "تم حفظ رسالتك وسيتم إرسالها تلقائيًا عند فتح التطبيق في المرة القادمة.",
   "המאגר": "المخزن",
   "🗂️ המאגר": "🗂️ المخزن",
@@ -2864,6 +2866,7 @@ const I18N_RU = {
   "מוצרים חדשים": "Новые продукты",
   "🗂️ קטלוג קהילתי": "🗂️ Общий каталог",
   "קטלוג קהילתי": "Общий каталог",
+  "הודעה חדשה ממשתמש": "Новое сообщение от пользователя",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Сообщение сохранено и будет отправлено автоматически при следующем открытии приложения.",
   "המאגר": "Каталог",
   "🗂️ המאגר": "🗂️ Каталог",
@@ -3621,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.07.2";
+const APP_BUILD = "2026.10.07.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3857,7 +3860,8 @@ function applyCatalogRecord(code, rec, prevImg) {
   if (p) {
     if (p.name !== rec.n) { p.name = rec.n; out.prod = true; }
     if (hasVals) {
-      const next = { kcal: +rec.k || 0, pro: +rec.p || 0, carb: +rec.c || 0, fat: +rec.f || 0, unit: +rec.u || 0 };
+      const next = { kcal: +rec.k || 0, pro: +rec.p || 0, carb: +rec.c || 0, fat: +rec.f || 0 };
+      if (rec.u !== undefined) next.unit = +rec.u || 0;   // records from before 2026-10-07 carry no u - keep the local unit
       for (const [k, v] of Object.entries(next)) { if ((+p[k] || 0) !== v) { p[k] = v; out.prod = true; } }
     }
     if (portions.length && JSON.stringify(p.portions || []) !== JSON.stringify(portions)) { p.portions = portions.slice(); out.prod = true; }
@@ -3907,7 +3911,9 @@ function catalogListenStart() {
         const url = v && v.img;
         if (!url || !/^https?:/.test(url)) continue;
         const cur = PRODUCTS[c] && PRODUCTS[c].photo;
-        if (PRODUCTS[c] && !/^https?:/.test(cur || "")) applyProductPhoto(c, PRODUCTS[c].name, url);
+        // only FILL an empty photo - never overwrite a user's own shot that is
+        // waiting for approval (applyCatalogRecord handles real changes)
+        if (PRODUCTS[c] && !cur) applyProductPhoto(c, PRODUCTS[c].name, url);
       }
       // the catalog is the one source of truth (Ido, 2026-10-06): push every
       // changed record into this phone's own product memory + log rows, then
@@ -4037,6 +4043,7 @@ async function propsFlush() {
     let q = {}; try { q = JSON.parse(localStorage.getItem(LS_PROPS) || "{}"); } catch { q = {}; }
     const codes = Object.keys(q);
     if (!codes.length) return;
+    const sent = [];
     const ok = await ensureFirebaseWeb();
     if (!ok || !fbDb) return;   // stays queued
     // identity from the JS session if there is one, else the app's own
@@ -4052,10 +4059,14 @@ async function propsFlush() {
           code, name: it.name || "", image: it.image, at: it.at, user: u.email || "", userName: u.displayName || "",
           authUid: u.uid, status: "pending", ts: fbFsMod.serverTimestamp(),
         });
-        delete q[code];
+        sent.push(code);
       } catch { /* denied or offline - keep it queued */ }
     }
-    localStorage.setItem(LS_PROPS, JSON.stringify(q));
+    // re-read before writing back: a proposal queued during the awaits above
+    // must survive, so only the codes actually sent are removed
+    let cur = {}; try { cur = JSON.parse(localStorage.getItem(LS_PROPS) || "{}"); } catch { cur = {}; }
+    for (const c of sent) delete cur[c];
+    try { localStorage.setItem(LS_PROPS, JSON.stringify(cur)); } catch { /* storage full */ }
   } finally { propsBusy = false; }
 }
 
@@ -4069,9 +4080,14 @@ function sharedContribute(code, p) {
   // record keeps the photo it already had until he approves. His own (admin)
   // photos, and AI/system-sourced ones, still publish directly.
   const exPhoto = (CATALOG.codes && CATALOG.codes[code] && CATALOG.codes[code].img) || "";
-  const direct = isAdmin() || p.src === "ai";
+  // only a user's OWN camera/gallery shot (a data: URL) waits for approval;
+  // an https photo (Open Food Facts, AI) is reference data and publishes
+  // directly like before - otherwise every scanned product would land in
+  // the inbox and be created without its picture (QA review, 2026-10-07)
+  const userShot = /^data:image\//.test(ownPhoto);
+  const direct = isAdmin() || !userShot;
   const photo = direct ? ownPhoto : exPhoto;
-  if (!direct && ownPhoto && ownPhoto !== exPhoto && isShareable(code)) proposePhoto(code, p.name, ownPhoto);
+  if (!direct && ownPhoto !== exPhoto && isShareable(code)) proposePhoto(code, p.name, ownPhoto);
   const portions = Array.isArray(p.portions) ? p.portions.filter(x => x && +x.g > 0) : [];
   CATALOG.codes = CATALOG.codes || {};
   const ex = CATALOG.codes[code];
@@ -8728,7 +8744,7 @@ function renderInbox() {
     } else {
       html = FEEDBACK.map((f, i) => {
         const icon = FB_ICON[f.subject] || "✉️";
-        const img = /^https?:/.test(f.img || "") ? `<img class="inboxImg" src="${esc(f.img)}" alt="" loading="lazy">` : "";
+        const img = /^(https?:|data:image\/)/.test(f.img || "") ? `<img class="inboxImg" src="${esc(f.img)}" alt="" loading="lazy">` : "";
         return `<div class="inboxItem fb">${img}<div class="inboxInfo">`
           + `<div class="inboxName">${icon} ${esc(f.subject || T("פידבק"))}</div>`
           + `<div class="inboxMsg">${esc(f.text || "")}</div>`
@@ -8777,6 +8793,9 @@ function inboxApprove(i) {
   // listener puts it on the product AND on every log row of it, backwards too
   const base = catalogGet(r.code) || PRODUCTS[r.code] || { name: r.name, kcal: 0, pro: 0, carb: 0, fat: 0, portions: [] };
   sharedContribute(r.code, Object.assign({}, base, { name: base.name || r.name, photo: r.image }));
+  // his own phone: sharedContribute already cached the new record, so the
+  // echo snapshot sees "unchanged" - apply the photo to his rows directly
+  applyProductPhoto(r.code, base.name || r.name, r.image); renderLog();
   ensureFirebaseWeb().then(ok => {
     if (ok && fbDb) fbFsMod.updateDoc(fbFsMod.doc(fbDb, "photo_proposals", r.id), { status: "approved", decidedAt: new Date().toISOString() }).catch(() => {});
   });
@@ -9159,6 +9178,7 @@ async function fbPost(payload) {
   // whole message
   const image = (payload.image && payload.image.length < 850000) ? payload.image : "";
   await fbFsMod.addDoc(fbFsMod.collection(fbDb, "feedback"), Object.assign({}, payload, {
+    text: String(payload.text || "").slice(0, 4999),   // the rule caps it; longer would fail on every retry
     image, done: false, ts: fbFsMod.serverTimestamp(),
     authUid: (fbAuth && fbAuth.currentUser && fbAuth.currentUser.uid) || payload.uid || "",
   }));
