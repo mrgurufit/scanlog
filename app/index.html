@@ -1843,6 +1843,7 @@ const I18N_EN = {
   "מוצרים חדשים": "New products",
   "🗂️ קטלוג קהילתי": "🗂️ Community catalog",
   "קטלוג קהילתי": "Community catalog",
+  "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Your message is saved and will be sent automatically next time the app opens.",
   "המאגר": "The catalog",
   "🗂️ המאגר": "🗂️ The catalog",
   "תמונות לאישור": "Photos to approve",
@@ -2365,6 +2366,7 @@ const I18N_AR = {
   "מוצרים חדשים": "منتجات جديدة",
   "🗂️ קטלוג קהילתי": "🗂️ الكتالوج المجتمعي",
   "קטלוג קהילתי": "الكتالوج المجتمعي",
+  "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "تم حفظ رسالتك وسيتم إرسالها تلقائيًا عند فتح التطبيق في المرة القادمة.",
   "המאגר": "المخزن",
   "🗂️ המאגר": "🗂️ المخزن",
   "תמונות לאישור": "صور بانتظار الموافقة",
@@ -2862,6 +2864,7 @@ const I18N_RU = {
   "מוצרים חדשים": "Новые продукты",
   "🗂️ קטלוג קהילתי": "🗂️ Общий каталог",
   "קטלוג קהילתי": "Общий каталог",
+  "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Сообщение сохранено и будет отправлено автоматически при следующем открытии приложения.",
   "המאגר": "Каталог",
   "🗂️ המאגר": "🗂️ Каталог",
   "תמונות לאישור": "Фото на утверждение",
@@ -3618,7 +3621,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.07.1";
+const APP_BUILD = "2026.10.07.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4035,8 +4038,13 @@ async function propsFlush() {
     const codes = Object.keys(q);
     if (!codes.length) return;
     const ok = await ensureFirebaseWeb();
-    if (!ok || !fbDb || !fbAuth || !fbAuth.currentUser) return;   // stays queued
-    const u = fbAuth.currentUser;
+    if (!ok || !fbDb) return;   // stays queued
+    // identity from the JS session if there is one, else the app's own
+    // (native) account - no extra Google prompt for the user (Ido, 2026-10-07)
+    const ju = (fbAuth && fbAuth.currentUser) || null;
+    const u = { uid: (ju && ju.uid) || (cloudUser && cloudUser.uid) || "anon",
+                email: (ju && ju.email) || (cloudUser && cloudUser.email) || "",
+                displayName: (ju && ju.displayName) || (cloudUser && cloudUser.name) || "" };
     for (const code of codes) {
       const it = q[code];
       try {
@@ -9140,18 +9148,19 @@ function fbEnqueue(p) {
 // goes straight into the Firestore "feedback" collection (the same SDK the
 // catalog writes use), so it shows in the admin inbox the instant it is sent,
 // through the realtime listener in feedbackListenStart(). The Make webhook +
-// Google Sheet path is gone. Needs the JS-SDK sign-in (fbAuth.currentUser)
-// the catalog writes already need; without it the message stays queued in
-// fl_fb and fbFlush() retries on the next launch.
+// Google Sheet path is gone. No sign-in of its own is needed (Ido, 2026-10-07:
+// "פשוט שישלח לי הודעה") - the app's native account rides in the payload; if
+// the write fails the message stays queued in fl_fb and fbFlush() retries.
 async function fbPost(payload) {
   const ok = await ensureFirebaseWeb();
-  if (!ok || !fbDb || !fbAuth || !fbAuth.currentUser) return false;
+  if (!ok || !fbDb) return false;
   // a screenshot is a data: URL thumb (toThumb 1000px/0.75); Firestore caps a
   // document at 1 MB, so an oversized one is dropped rather than failing the
   // whole message
   const image = (payload.image && payload.image.length < 850000) ? payload.image : "";
   await fbFsMod.addDoc(fbFsMod.collection(fbDb, "feedback"), Object.assign({}, payload, {
-    image, done: false, ts: fbFsMod.serverTimestamp(), authUid: fbAuth.currentUser.uid,
+    image, done: false, ts: fbFsMod.serverTimestamp(),
+    authUid: (fbAuth && fbAuth.currentUser && fbAuth.currentUser.uid) || payload.uid || "",
   }));
   return true;
 }
@@ -9175,12 +9184,13 @@ $("fbSend").addEventListener("click", async () => {
     at: new Date().toISOString(),
   };
   $("fbSend").disabled = true; $("fbSend").textContent = T("שולח…");
-  // the Firestore write needs the JS-SDK sign-in (same one the catalog uses);
-  // Send is a direct user action, so asking for it right here is fine
-  try { await ensureFirebaseWeb(); if (!(fbAuth && fbAuth.currentUser)) await catalogSignIn(); } catch { /* fbPost will queue it */ }
+  // Ido, 2026-10-07: NO second (JS-SDK) Google sign-in here - the app is
+  // already signed in natively and the payload says who sent it; the
+  // feedback rule allows the create without auth
+  try { await ensureFirebaseWeb(); } catch { /* fbPost will queue it */ }
   let ok = false; try { ok = await fbPost(payload); } catch { ok = false; }
   if (ok) { msg("fbMsg", T("תודה! ההודעה נשלחה."), "ok"); setTimeout(closeFb, 1200); }
-  else { fbEnqueue(payload); msg("fbMsg", T("אין חיבור כרגע — יישלח כשתחזור לרשת."), "ok"); setTimeout(closeFb, 1600); }
+  else { fbEnqueue(payload); msg("fbMsg", T("ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה."), "ok"); setTimeout(closeFb, 1600); }
 });
 
 /* ---------------- wireless kitchen scale (BLE) — invite-only beta ----------------
