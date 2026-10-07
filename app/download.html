@@ -3,22 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scan &amp; Log</title>
+<title>Scan &amp; Log — הורדה</title>
 <link rel="icon" href="icon-192.png">
-<!-- The direct-APK page was retired on 2026-09-11 (his call: Google Play only,
-     every install must count toward the 12-tester production gate). This
-     address was shared on WhatsApp and is linked from installed copies of the
-     app, so it forwards to the sales landing instead of going dark. -->
-<meta http-equiv="refresh" content="0; url=/get/">
-<script>location.replace("/get/");</script>
+<meta name="robots" content="noindex">
+<!-- 2026-10-07: back to a real download page (it forwarded to /get/ since
+     2026-09-11). Linked from inside the app ("download the update") and shared
+     on WhatsApp, so it must offer the newest APK directly. Bump the version
+     text below whenever a new APK is pushed to /app/ScanLog.apk. -->
 <style>
-  body { margin:0; background:#0A0C11; color:#8D97AB; min-height:100vh;
-         display:flex; align-items:center; justify-content:center;
-         font-family:"Rubik",-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
-  a { color:#FFD21E; }
+  body { margin:0; background:#0A0C11; color:#F2F5FA; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         font-family:"Rubik",-apple-system,"Segoe UI",Roboto,Arial,sans-serif; text-align:center; padding:24px; box-sizing:border-box; }
+  .box { max-width:440px; width:100%; }
+  img { width:84px; height:84px; border-radius:20px; }
+  h1 { font-size:26px; margin:14px 0 6px; }
+  p { color:#8D97AB; margin:6px 0 18px; line-height:1.5; }
+  a.btn { display:block; text-decoration:none; font-weight:900; font-size:18px; padding:16px 20px; border-radius:14px; margin:10px 0;
+          background:linear-gradient(180deg,#FFD21E,#F0C000); color:#141005; }
+  a.btn small { display:block; font-weight:500; font-size:12.5px; opacity:.75; margin-top:2px; }
+  a.btn.alt { background:#1A2130; color:#F2F5FA; border:1px solid #242D3E; }
+  a.web { color:#8AB4F8; font-size:14px; }
 </style>
 </head>
 <body>
-<p><a href="/get/">ממשיכים לעמוד ההורדה ←</a></p>
+<div class="box">
+  <img src="icon-192.png" alt="">
+  <h1>Scan &amp; Log</h1>
+  <p>סורקים ברקוד, רואים קלוריות. חינם.</p>
+  <a class="btn" href="ScanLog.apk" download>⬇️ הגרסה האחרונה: 1.54 (APK)<small>התקנה ישירה מעל הקיים · הנתונים נשמרים</small></a>
+  <a class="btn alt" href="https://play.google.com/store/apps/details?id=fit.mrguru.scanlog">▶ Google Play<small>עדכונים מגיעים לבד</small></a>
+  <p><a class="web" href="./?app=1">אייפון או מחשב: גרסת הווב ←</a></p>
+</div>
 </body>
 </html>
