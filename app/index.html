@@ -3624,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.07.4";
+const APP_BUILD = "2026.10.07.5";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3960,10 +3960,34 @@ function bustCacheUrl(url, t) {
 // (ensureFirebaseWeb above), because that is the SDK instance the Firestore
 // catalog rules actually check, in both the browser and the APK's WebView.
 // Reads stay open to everyone, signed in or not - only writes are gated.
+// Android APK, 2026-10-07: the native plugin (1.54+) returns the Google ID
+// token of the account the user already signed into, and the JS SDK accepts
+// it as a credential - no popup, no redirect, no second Google prompt. The
+// WebView cannot complete signInWithPopup/Redirect at all (Firebase's
+// "missing initial state" page), so inside the APK this is the ONLY way in.
+async function nativeJsSignIn() {
+  const hb = HB(); if (!hb || !hb.googleIdToken) return false;
+  const ok = await ensureFirebaseWeb(); if (!ok || !fbAuth) return false;
+  if (fbAuth.currentUser) return true;
+  try {
+    const r = await hb.googleIdToken();
+    if (!r || !r.idToken) return false;
+    await fbAuthMod.signInWithCredential(fbAuth, fbAuthMod.GoogleAuthProvider.credential(r.idToken));
+    return !!fbAuth.currentUser;
+  } catch (e) { return false; }
+}
 async function catalogSignIn() {
   const ok = await ensureFirebaseWeb();
   if (!ok || !fbAuth) return false;
   if (fbAuth.currentUser) { adminListenersRestart(); return true; }
+  if (HB()) {
+    const okN = await nativeJsSignIn();
+    if (okN) { adminListenersRestart(); return true; }
+    // an APK older than 1.54 has no token bridge, and the popup/redirect
+    // path below would strand the user on an error page - say so instead
+    showToast(HB().googleIdToken ? T("החיבור לענן נכשל, נסה שוב") : T("צריך לעדכן את האפליקציה (1.54) כדי לחבר את הענן"));
+    return false;
+  }
   const provider = new fbAuthMod.GoogleAuthProvider();
   try {
     await fbAuthMod.signInWithPopup(fbAuth, provider);
@@ -8384,6 +8408,11 @@ async function cloudRefreshUser() {
   const hb = CB(); if (!hb || !hb.authState) { renderAccount(); return; }
   try { cloudUser = await hb.authState(); } catch { cloudUser = null; }
   renderAccount();
+  // APK 1.54+: open the JS session from the native one silently, then start
+  // whatever waited for it (admin inbox listeners, queued catalog writes)
+  if (cloudUser && cloudUser.signedIn && HB() && HB().googleIdToken) {
+    nativeJsSignIn().then(ok => { if (ok) { adminListenersRestart(); contribFlush(); renderAccount(); } }).catch(() => {});
+  }
 }
 async function cloudSignIn() {
   const hb = CB(); if (!hb || !hb.googleSignIn) return;
@@ -8765,6 +8794,11 @@ function renderInbox() {
   // Android: the inbox reads with the JS session - without it the list stays
   // empty forever and nothing says why; offer the same one-tap sign-in here
   if (adminJsAuthGap()) {
+    if (!HB().googleIdToken) {   // APK before 1.54: no token bridge, nothing to tap - needs the update
+      list.innerHTML = `<div class="ehint">${T("התיבה דורשת את עדכון האפליקציה 1.54 (מתקין מעל הקיים, הנתונים נשמרים).")}</div>`
+        + `<div style="padding:10px 14px"><a class="gbtn" href="https://mrgurufit.com/app/download.html" target="_blank" rel="noopener">⬇️ ${T("הורד את העדכון")}</a></div>`;
+      return;
+    }
     list.innerHTML = `<div class="ehint">${T("כדי לראות הודעות ותמונות בטלפון הזה צריך לאשר פעם אחת את החיבור לענן.")}</div>`
       + `<div style="padding:10px 14px"><button type="button" id="inboxAuth" class="gbtn">🔗 ${T("הפעל תיבת הודעות (חד פעמי)")}</button></div>`;
     const b = $("inboxAuth");
