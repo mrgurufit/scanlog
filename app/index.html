@@ -3624,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.1";
+const APP_BUILD = "2026.10.08.2";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -5683,7 +5683,7 @@ function renderMiss(list, code, offerWeb) {
     box.innerHTML = `<div class="misshead">🔎 ${T("אולי זה אחד מאלה? בחירה ממלאת את הערכים ונשמרת תחת הברקוד שנסרק:")}</div>` +
       list.map((r, i) =>
         `<button class="sr" data-mi="${i}">
-           <span class="srs${r.src === "שלי" ? " mine" : r.src === "מאגר" ? " gen" : ""}">${T(r.src)}</span>
+           <span class="srs${/^ai$/i.test(r.src || "") ? " ai" : " gen"}">${/^ai$/i.test(r.src || "") ? "AI" : T("מאגר")}</span>
            <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
            <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
          </button>`).join("") + webBtn;
@@ -5731,7 +5731,7 @@ function renderSearch(res, token, stillLoading, histMatches) {
   const histHtml = curHistMatches.map(histRowHtml).join("");
   box.innerHTML = histHtml + lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
-       <span class="srs${r.src === "שלי" ? " mine" : " gen"}">${r.src === "שלי" ? T("שלי") : T("מאגר")}</span>
+       <span class="srs${/^ai$/i.test(r.src || "") ? " ai" : " gen"}">${/^ai$/i.test(r.src || "") ? "AI" : T("מאגר")}</span>
        <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
        <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
      </button>`).join("") +
