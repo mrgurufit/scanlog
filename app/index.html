@@ -97,6 +97,7 @@
   .sr:last-child { border-bottom:0; }
   /* show the full product name - wrap instead of truncating with an ellipsis */
   .sr .srn { flex:1; font-weight:700; white-space:normal; word-break:break-word; line-height:1.35; }
+  .sr .srm { display:block; font-weight:400; font-size:11.5px; color:var(--muted); }
   .sr .srv { color:var(--muted); font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; padding-top:1px; }
   .sr .srs {
     font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px;
@@ -3624,7 +3625,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.5";
+const APP_BUILD = "2026.10.08.6";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3648,13 +3649,26 @@ function renderVer() {
 
 /* on-screen device diagnostic: which settings screens actually exist here.
    He screenshots it; that beats guessing intent names. */
+// one line that says where launch time went - shown in the admin diagnostics
+// and attached to every "contact us" message (Ido, 2026-10-08: "10-15 s to open")
+function bootLine() {
+  try {
+    const n = performance.getEntriesByType("navigation")[0] || {};
+    const m = window.__marks || {};
+    const r = x => (x == null || isNaN(x)) ? "-" : Math.round(x);
+    let ls = "-"; try { ls = r(JSON.stringify(localStorage).length / 1024) + "KB"; } catch { /* blocked */ }
+    return "boot: html " + r(n.responseEnd) + "ms · interactive " + r(n.domInteractive) + "ms · loaded " + r(n.loadEventEnd) + "ms"
+      + " | base parse " + r(m.baseParse) + "ms · index " + r(m.baseIndex) + "ms | firebase @" + r(m.firebase) + "ms | storage " + ls
+      + " | " + APP_BUILD + (NATIVE_VER ? " · " + NATIVE_VER : "");
+  } catch (e) { return "boot: n/a"; }
+}
 async function showDbg() {
   const box = $("dbgBox");
   box.style.display = "block";
-  box.textContent = T("קורא…");
+  box.textContent = bootLine() + "\n" + T("קורא…");
   try {
     const d = await HB().debugActivities();
-    const lines = [];
+    const lines = [bootLine(), ""];
     for (const k of Object.keys(d)) {
       const v = d[k];
       if (!Array.isArray(v) || !v.length) continue;
@@ -3663,7 +3677,7 @@ async function showDbg() {
     }
     box.textContent = lines.join("\n") || T("לא נמצאו מסכים");
   } catch (e) {
-    box.textContent = T("אבחון לא זמין בגרסה הזו: ") + ((e && e.message) || e);
+    box.textContent = bootLine() + "\n" + T("אבחון לא זמין בגרסה הזו: ") + ((e && e.message) || e);
   }
 }
 
@@ -3736,6 +3750,7 @@ function heNorm(s) {
   s = s.replace(/ך/g, "כ").replace(/ם/g, "מ").replace(/ן/g, "נ")
        .replace(/ף/g, "פ").replace(/ץ/g, "צ");             // final letters -> base
   s = s.replace(/יי/g, "י").replace(/וו/g, "ו");          // double yod/vav -> single
+  s = s.replace(/(\d)[.,](\d)/g, "$1$2");       // "3.8%" stays one number ("38"), so a search for "3" does not hit it (2026-10-08)
   s = s.replace(/[^א-תa-z0-9\s]/g, " ");        // drop other punctuation
   return s.replace(/\s+/g, " ").trim();
 }
@@ -3825,20 +3840,50 @@ function loadBaseCatalog() {
         text = (r && r.ok) ? await r.text() : null;
       }
       if (!text) { baseLoading = null; return null; }
+      const tP = performance.now();
       const d = JSON.parse(text);
+      window.__marks = window.__marks || {}; __marks.baseParse = Math.round(performance.now() - tP);
       BASE_CAT = (d && d.codes) ? d : { codes: {} };
-      BASE_IDX = [];
-      for (const key in BASE_CAT.codes) {
-        const rec = BASE_CAT.codes[key];
-        const txt = (rec.n || "") + " " + (rec.m || "");
-        BASE_IDX.push({ key, rec, norm: heNorm(txt), skel: xlSkel(txt) });
-      }
+      buildBaseIndex();   // in slices between frames - never a frozen UI (see below)
       return BASE_CAT;
     } catch { baseLoading = null; return null; }
   })();
   return baseLoading;
 }
 // a base-catalog record in the same {name,kcal,...} shape as catalogGet
+// The name-search index over the 57k base products used to be built in one
+// synchronous loop right after the 11 MB parse - seconds of frozen UI on a
+// phone, on every launch (Ido, 2026-10-08: "10-15 seconds to load"). It is now
+// built in 2000-row slices between frames; BASE_IDX stays null until the whole
+// index exists, so every reader keeps its existing "ready or not" check.
+let baseIdxBuilding = null;
+function buildBaseIndex() {
+  if (BASE_IDX) return Promise.resolve(BASE_IDX);
+  if (baseIdxBuilding) return baseIdxBuilding;
+  baseIdxBuilding = new Promise(resolve => {
+    const keys = Object.keys((BASE_CAT && BASE_CAT.codes) || {});
+    const out = []; let i = 0; const t0 = performance.now();
+    const step = () => {
+      const end = Math.min(i + 2000, keys.length);
+      for (; i < end; i++) {
+        const key = keys[i], rec = BASE_CAT.codes[key];
+        const txt = (rec.n || "") + " " + (rec.m || "");
+        out.push({ key, rec, norm: heNorm(txt), skel: xlSkel(txt) });
+      }
+      if (i < keys.length) setTimeout(step, 0);
+      else {
+        BASE_IDX = out; baseIdxBuilding = null;
+        window.__marks = window.__marks || {}; __marks.baseIndex = Math.round(performance.now() - t0);
+        resolve(out);
+      }
+    };
+    setTimeout(step, 0);
+  });
+  return baseIdxBuilding;
+}
+// "I need the search index": parses the base DB if needed, then waits for the index
+function baseIndexReady() { return loadBaseCatalog().then(() => buildBaseIndex()); }
+
 function baseGet(code) {
   const p = code && BASE_CAT && BASE_CAT.codes && BASE_CAT.codes[code];
   if (!p || !p.n) return null;
@@ -4465,6 +4510,7 @@ async function ensureFirebaseWeb() {
     fbAuthMod = authMod; fbFsMod = fsMod;
     fbAuth = authMod.getAuth(app);
     fbDb = fsMod.getFirestore(app);
+    window.__marks = window.__marks || {}; __marks.firebase = Math.round(performance.now());
     // completes a signInWithRedirect() started before a previous page reload
     // (the fallback path for browsers/in-app-webviews that block popups)
     authMod.getRedirectResult(fbAuth).catch(() => {});
@@ -5374,11 +5420,15 @@ function localMatches(q) {
   // normalized Hebrew query - niqqud/geresh/final-letter/spacing tolerant, so
   // the whole search matches the way the big built-in DB is indexed
   const qn = heNorm(q);
-  const qWords = qn.split(" ").filter(w => w.length >= 2);
+  // a lone number ("5" left of "5%") is a real search word - "משק צוריאל 5%"
+  // must not list every Tzuriel product (Ido, 2026-10-08); numbers match
+  // whole words only, so "5" does not hit "15"
+  const qWords = qn.split(" ").filter(w => w.length >= 2 || /^\d+$/.test(w));
+  const wordHit = (t, w) => /^\d+$/.test(w) ? new RegExp("(^|\\s)" + w + "(\\s|$)").test(t) : t.includes(w);
   const nMatch = txt => {
     if (!qn || !txt) return false;
     const t = heNorm(txt);
-    return qWords.length ? qWords.every(w => t.includes(w)) : t.includes(qn);
+    return qWords.length ? qWords.every(w => wordHit(t, w)) : t.includes(qn);
   };
   // how closely a result's name matches what's actually typed, independent
   // of which of the sources below happened to contribute it (Ido, 2026-09-30:
@@ -5415,9 +5465,11 @@ function localMatches(q) {
   // 12k Hebrew list answers an English search too.
   const gh = [];
   for (const v of queryVariants(q)) {
-    const words = v.split(/\s+/).filter(w => w.length >= 2);
+    const words = v.split(/\s+/).filter(w => w.length >= 2 || /^\d+%?$/.test(w));
     if (!words.length) continue;
-    for (const g of GOV) if (words.every(w => g[0].includes(w))) gh.push(g);
+    // a number in the query must be a whole number in the name: "3%" is not "13%" (2026-10-08)
+    const govHit = (name, w) => /^\d+%?$/.test(w) ? new RegExp("(^|\\D)" + w.replace("%", "") + "(?!\\d|[.,]\\d)").test(name) : name.includes(w);
+    for (const g of GOV) if (words.every(w => govHit(g[0], w))) gh.push(g);
   }
   gh.sort((a, b) => a[0].length - b[0].length);
   for (const g of gh.slice(0, 12))
@@ -5459,19 +5511,25 @@ function localMatches(q) {
   // first so the plain product beats a long promotional variant.
   if (BASE_IDX && qn) {
     const qskel = xlSkel(q);
+    const qHasLatin = /[a-z]/.test(qn), qNums = qWords.filter(w => /^\d+$/.test(w));
     const direct = [], trans = [];   // exact heNorm hits first, cross-script skeleton hits after
     for (const it of BASE_IDX) {
       if (PRODUCTS[it.key] || (CATALOG.codes && CATALOG.codes[it.key])) continue;
-      const d = qWords.length ? qWords.every(w => it.norm.includes(w)) : it.norm.includes(qn);
+      const d = qWords.length ? qWords.every(w => wordHit(it.norm, w)) : it.norm.includes(qn);
       if (d) direct.push(it);
-      else if (qskel.length >= 3 && it.skel.includes(qskel)) trans.push(it);   // "נוטלה" <-> "Nutella"
+      // the consonant-skeleton fallback exists for a Hebrew query against a
+      // Latin-named product (or the reverse) - never between two Hebrew
+      // texts, where it let "משק צוריאל 5%" match every Tzuriel product
+      // (Ido, 2026-10-08); the numbers in the query must still hit
+      else if (qskel.length >= 3 && qHasLatin !== /[a-z]/.test(it.norm) && it.skel.includes(qskel)
+               && qNums.every(w => wordHit(it.norm, w))) trans.push(it);   // "נוטלה" <-> "Nutella"
     }
     direct.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
     trans.sort((a, b) => (a.rec.n || "").length - (b.rec.n || "").length);
     for (const it of direct.concat(trans).slice(0, 60)) {   // show many options, like Kaloria - the list scrolls
       const r = it.rec;
       add({ name: r.n, k: r.k || 0, p: r.p || 0, c: r.c || 0, f: r.f || 0, barcode: it.key,
-            photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר" });
+            photo: "", portions: Array.isArray(r.pt) ? r.pt : [], src: "מאגר", maker: r.m || "" });
     }
   }
   // one global re-rank across every source combined, so the closest match to
@@ -5566,7 +5624,7 @@ function doSearch(q) {
   renderSearch(localMatches(q), token, false, histMatches);
   // the big built-in DB may still be loading on this first search - fetch it
   // (once) and re-render this same query the moment it is ready
-  if (!BASE_IDX) loadBaseCatalog().then(() => { if (token === searchToken) renderSearch(localMatches(q), token, false, histMatches); });
+  if (!BASE_IDX) baseIndexReady().then(() => { if (token === searchToken) renderSearch(localMatches(q), token, false, histMatches); });
   btn.style.display = "block";
   btn.disabled = false;
   btn.textContent = T("🤖 חיפוש AI");
@@ -5755,7 +5813,7 @@ function renderSearch(res, token, stillLoading, histMatches) {
   box.innerHTML = histHtml + lastResults.map((r, i) =>
     `<button class="sr" data-i="${i}">
        <span class="srs${/^ai$/i.test(r.src || "") ? " ai" : " gen"}">${/^ai$/i.test(r.src || "") ? "AI" : T("מאגר")}</span>
-       <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}</span>
+       <span class="srn">${esc(displayName(r.name, r.src === "לאומי"))}${r.maker ? `<small class="srm">${esc(r.maker)}</small>` : ""}</span>
        <span class="srv">${Math.round(r.k)} ${T("קק״ל · ח")} ${r.p === "" ? "?" : r.p}</span>
      </button>`).join("") +
     (stillLoading ? `<div class="sr dim">${T("מחפש גם במאגר העולמי…")}</div>`
@@ -7211,7 +7269,7 @@ async function voiceParseNow() {
 async function openVoice() {
   V_ITEMS = []; $("voiceResults").innerHTML = ""; $("voiceCommit").style.display = "none"; $("voiceText").value = "";
   $("voiceOv").classList.add("on"); document.body.style.overflow = "hidden";
-  loadBaseCatalog();   // make sure the 57k DB is ready to match against
+  baseIndexReady();   // make sure the 57k DB (and its search index) is ready to match against
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const hasNative = !!(HB() && HB().startSpeech);   // native STT inside the APK
   $("voiceMic").style.display = (hasNative || SR) ? "block" : "none";
@@ -7461,7 +7519,7 @@ function openCatalogPage() {
   if (!isAdmin()) return;
   ovPush();
   catalogPull(false).then(renderCatalogList);
-  loadBaseCatalog().then(renderCatalogList);   // so the browse page sees the 57k built-in DB too
+  baseIndexReady().then(renderCatalogList);   // so the browse page sees the 57k built-in DB too
   renderCatalogList();
   $("catalogSearch").value = "";
   $("catalogPage").classList.add("on");
@@ -7850,7 +7908,7 @@ document.addEventListener("visibilitychange", async () => {
    keeps the WebView alive in the recents for days - so a pushed fix used to
    sit unseen until he happened to kill the app. Poll a tiny version file and
    offer the reload instead of waiting for a process death. */
-let updLast = 0, updErr = "";
+let updLast = 0, updErr = "", updAvail = "";
 // inside the APK the page is served from local files, so the version file
 // must come from the real site (github.io answers with ACAO:* so the
 // cross-origin fetch is allowed); in the browser/PWA relative is correct.
@@ -7881,7 +7939,16 @@ async function checkForUpdate() {
     }
     // no more "tap to update" banner (Ido, 2026-09-29: "אל תגיד ליוזר שיש
     // גרסא חדשה, פשוט תזריק אוטומטית") - a new build applies itself
-    if (build && build !== APP_BUILD) applyUpdateSilently();
+    if (build && build !== APP_BUILD) {
+      // Ido, 2026-10-08 ("10-15 s to open"): inside the APK applying an update
+      // swaps the page and reloads - right after launch that is a second full
+      // load in the user's face. Defer it to the moment the app goes to the
+      // background (the next open is already current); if the same build is
+      // still pending at the NEXT launch (app was killed first), apply it then.
+      updAvail = build;
+      if (!HB() || document.hidden || localStorage.getItem("fl_upd_seen") === build) applyUpdateSilently();
+      else { try { localStorage.setItem("fl_upd_seen", build); } catch { applyUpdateSilently(); } }
+    }
     if (updErr) { updErr = ""; renderVer(); }
   } catch (e) {
     // a silent failure here cost a whole evening once - surface it in the
@@ -7919,15 +7986,19 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   // check (and silently apply) both on the way out and the way back in, so a
   // backgrounded tab is already current by the time he returns to it
+  if (document.hidden && updAvail && updAvail !== APP_BUILD) { applyUpdateSilently(); return; }
   checkForUpdate();
   if (!document.hidden) { catalogPull(); contribFlush(); }
 });
 checkForUpdate();
 // warm the big built-in DB in the background so a scan or search a moment
 // later is already answered offline from its 57k products
-// warm the 57k base DB for the scanner/search, but well after boot: the
-// parse + index of an 11 MB file must never compete with the first paint
-setTimeout(() => { loadBaseCatalog(); }, 4000);
+// warm the 57k base DB for the scanner/search only once the phone is idle
+// and well after boot - the 11 MB parse (~1 s on a phone) must never land on
+// the first seconds; a scan/search before that just parses on demand
+const warmBase = () => { loadBaseCatalog().then(() => buildBaseIndex()).catch(() => {}); };
+if ("requestIdleCallback" in window) setTimeout(() => requestIdleCallback(warmBase, { timeout: 20000 }), 6000);
+else setTimeout(warmBase, 8000);
 
 /* pull down from the top to refresh, like a web page */
 async function doRefresh() {
@@ -9323,7 +9394,7 @@ $("fbSend").addEventListener("click", async () => {
     subject: $("fbSubject").value, text, image: fbImage || "",
     user: (cloudUser && cloudUser.email) || "", name: (cloudUser && cloudUser.name) || "",
     uid: (cloudUser && cloudUser.uid) || "", ver: APP_BUILD, device: navigator.userAgent,
-    at: new Date().toISOString(),
+    at: new Date().toISOString(), boot: (typeof bootLine === "function" ? bootLine() : ""),
   };
   $("fbSend").disabled = true; $("fbSend").textContent = T("שולח…");
   // Ido, 2026-10-07: NO second (JS-SDK) Google sign-in here - the app is
@@ -9604,9 +9675,10 @@ scrubImages();
 renderLog();
 updateFbButton();
 // pull the shared catalog (once a day) and flush any queued contributions
-catalogPull();
-contribFlush();
-fbFlush();
+// Firebase (three modules), the live catalog listener and the queues all
+// start a moment AFTER the first paint - nothing network-bound before the
+// log is on screen (Ido, 2026-10-08)
+setTimeout(() => { catalogPull(); contribFlush(); fbFlush(); }, 1500);
 // cloud account: pick up the signed-in user and sync their data down+up
 /* Ido, 2026-09-11: everyone signed in means everyone in sync. Shown once per
    app session, never during first-run onboarding, and never where signing in
