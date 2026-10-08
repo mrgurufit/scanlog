@@ -3625,7 +3625,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.6";
+const APP_BUILD = "2026.10.08.7";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3955,7 +3955,7 @@ function catalogListenStart() {
   if (catalogUnsub) return;   // already running
   ensureFirebaseWeb().then(ok => {
     if (!ok || !fbDb || catalogUnsub) return;
-    const beforeNew = isAdmin() ? newCatalogCount() : 0;
+    let beforeNew = isAdmin() ? newCatalogCount() : 0;
     let firstSnap = true;
     catalogUnsub = fbFsMod.onSnapshot(fbFsMod.collection(fbDb, "catalog"), snap => {
       CATALOG.codes = CATALOG.codes || {};
@@ -4000,8 +4000,13 @@ function catalogListenStart() {
       // actually brought in products he hasn't seen yet (skip on the very
       // first snapshot - that is the whole existing catalog, not "new")
       if (isAdmin() && !firstSnap) {
-        const gained = newCatalogCount() - beforeNew;
+        // Ido, 2026-10-08 ("47 new products?! I added nothing"): the echo of
+        // this phone's OWN queued contributions is not news - leave those out
+        let own = 0;
+        for (const id of changedIds) if (recentlySent.has(id)) { own++; recentlySent.delete(id); }
+        const gained = newCatalogCount() - beforeNew - own;
         if (gained > 0) showToast("🆕 " + gained + " " + T("מוצרים חדשים במאגר"));
+        beforeNew = newCatalogCount();   // the next toast reports only what arrives after this one
         if (typeof updateInboxBadge === "function") updateInboxBadge();
       }
       firstSnap = false;
@@ -4096,6 +4101,7 @@ function contribEnqueue(code, data) {
 }
 
 let contribBusy = false;
+const recentlySent = new Set();   // codes this phone pushed in the last minute - their echo is not "new"
 // Ido, 2026-09-18: pushes straight to Firestore now instead of a Make
 // webhook - a signed-in Google account is required to write (catalogSignIn
 // above); if nobody is signed in yet, everything just stays queued and
@@ -4125,6 +4131,7 @@ async function contribFlush() {
       try {
         await fbFsMod.setDoc(fbFsMod.doc(fbDb, "catalog", item.code), item.data);
         done.add(item.code + "|" + t);
+        recentlySent.add(item.code); setTimeout(() => recentlySent.delete(item.code), 60000);
       } catch (e) {
         // the rules refused it (a non-admin touching an existing record) -
         // retrying can never succeed, so it must not clog the queue; any
