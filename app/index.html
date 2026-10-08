@@ -3624,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.2";
+const APP_BUILD = "2026.10.08.3";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4071,11 +4071,21 @@ async function contribFlush() {
     if (!ok1 || !fbDb || !fbAuth.currentUser) return;   // offline, SDK failed, or not signed in - keep everything queued
     const rest = [];
     for (const item of q) {
+      // queued BEFORE a newer edit reached this phone from the cloud (usually
+      // Ido's rename): sending it would roll that edit back for everyone -
+      // the "feta cheese keeps coming back" bug (2026-10-08). Drop it.
+      const ex = CATALOG.codes && CATALOG.codes[item.code];
+      if (ex && ex.t && item.data && item.data.t && ex.t > item.data.t) continue;
       let ok = false;
       try {
         await fbFsMod.setDoc(fbFsMod.doc(fbDb, "catalog", item.code), item.data);
         ok = true;
-      } catch { ok = false; }
+      } catch (e) {
+        ok = false;
+        // the rules refused it (a non-admin touching an existing record) -
+        // retrying can never succeed, so it must not clog the queue
+        if (e && /permission-denied/i.test(e.code || e.message || "")) continue;
+      }
       if (!ok) rest.push(item);
     }
     localStorage.setItem(LS_CONTRIB, JSON.stringify(rest));
@@ -4156,6 +4166,15 @@ function sharedContribute(code, p) {
   // (Ido, 2026-09-12: "אני רוצה לדעת בדיוק מה יש בקטלוג מי הכניס אותו")
   const who = (!isAdmin() && isSignedIn() && cloudUser && cloudUser.email)
     ? "app:" + cloudUser.email : (p.src || "app");
+  // Ido, 2026-10-08 ("רק אני האדמין יכול לבצע שינויים"): a user may ADD a
+  // product nobody has yet, or fix one they added themselves - never change a
+  // record that already exists in the shared catalog or the built-in base.
+  // Their edit stays on their own phone (PRODUCTS); the Firestore rules refuse
+  // such a write anyway, this just keeps the local cache honest too.
+  if (!isAdmin()) {
+    const own = ex && ex.s === who;
+    if ((ex && !own) || (!ex && BASE_CAT && baseGet(code))) return;
+  }
   // Already in the catalog with the same values? Then the cloud already has it
   // - do NOT send again. Including the picture here means ADDING or CHANGING a
   // photo counts as a real change and gets sent. Ido, 2026-10-06 ("אם אני
