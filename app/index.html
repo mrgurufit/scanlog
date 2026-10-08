@@ -3116,7 +3116,10 @@ const store = {
   set(k, v) {
     try {
       localStorage.setItem(k, JSON.stringify(v));
-      if (CLOUD_KEYS.has(k) && typeof cloudPush === "function") cloudPush();
+      if (CLOUD_KEYS.has(k)) {
+        try { localStorage.setItem("fl_cloud_dirty", "1"); } catch { /* full */ }   // the cloud copy is behind until the next successful push
+        if (typeof cloudPush === "function") cloudPush();
+      }
       return true;
     } catch { return false; }
   },
@@ -3625,7 +3628,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.7";
+const APP_BUILD = "2026.10.08.8";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -7527,9 +7530,9 @@ function openCatalogPage() {
   ovPush();
   catalogPull(false).then(renderCatalogList);
   baseIndexReady().then(renderCatalogList);   // so the browse page sees the 57k built-in DB too
-  renderCatalogList();
   $("catalogSearch").value = "";
   $("catalogPage").classList.add("on");
+  renderCatalogList();
   document.body.style.overflow = "hidden";
   // opening the page IS "I saw it" - clears the 🆕 badge/dot right away
   localStorage.setItem(LS_CAT_SEEN, String(Date.now()));
@@ -7666,7 +7669,12 @@ function catalogRowData(code) {
 }
 let catalogSort = "name";   // "name" | "new" - toggled by the catalog page's own segmented control
 let BASE_SORTED = null;   // the 57k built-in DB rows, pre-sorted by name once (heavy to sort per keystroke)
+const HE_COLLATOR = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator("he") : null;
 function renderCatalogList() {
+  // nothing to draw while the page is closed - and the one-time 57k sort
+  // below is the single heaviest thing in the app, so it must never run as a
+  // side effect of a catalog snapshot at launch (Ido, 2026-10-08)
+  const pg = $("catalogPage"); if (!pg || !pg.classList.contains("on")) return;
   const q = $("catalogSearch").value.trim().toLowerCase();
   const qn = (typeof heNorm === "function") ? heNorm(q) : q;
   const qWords = qn.split(" ").filter(w => w.length >= 2);
@@ -7684,7 +7692,7 @@ function renderCatalogList() {
     BASE_SORTED = BASE_IDX
       .filter(it => !(CATALOG.codes && CATALOG.codes[it.key]) && !PRODUCTS[it.key])
       .map(it => ({ code: it.key, p: it.rec, base: true, norm: it.norm, skel: it.skel }))
-      .sort((a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"));
+      .sort(HE_COLLATOR ? (a, b) => HE_COLLATOR.compare(a.p.n || "", b.p.n || "") : (a, b) => (a.p.n || "").localeCompare(b.p.n || "", "he"));
   }
   const baseRows = BASE_SORTED || [];
   let rows;
@@ -8603,13 +8611,17 @@ async function cloudMergeSync() {
   const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudGet) return;
   try {
     const r = await hb.cloudGet();
-    if (r && r.json) { try { mergePayload(JSON.parse(r.json)); renderTotals(); } catch { /* bad json */ } }
-    await cloudPushNow();
+    let added = 0;
+    if (r && r.json) { try { added = mergePayload(JSON.parse(r.json)); renderTotals(); } catch { /* bad json */ } }
+    // re-upload the whole backup only when this phone changed something since
+    // its last successful push (or the merge brought rows in) - not on every
+    // launch (Ido, 2026-10-08: launch must not do heavy work for nothing)
+    if (added > 0 || localStorage.getItem("fl_cloud_dirty")) await cloudPushNow();
   } catch { /* offline - try again next launch */ }
 }
 async function cloudPushNow() {
   const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudSet) return;
-  try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); } catch { /* offline */ }
+  try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); localStorage.removeItem("fl_cloud_dirty"); } catch { /* offline - stays dirty, retried on the next change or launch */ }
 }
 function cloudPush() {   // debounced; called on every change to the user's data
   if (!isSignedIn()) return;
@@ -9723,7 +9735,7 @@ testModeBarInit();
   if (scaleBetaAllowed() && scaleSupported() && localStorage.getItem(LS_SCALE)) {
     scaleListen(); scaleConnectTo(localStorage.getItem(LS_SCALE));
   }
-  if (isSignedIn()) await cloudMergeSync();
+  if (isSignedIn()) setTimeout(() => { cloudMergeSync(); }, 2500);   // after first paint, never blocking boot
   updateDashboardNotif();   // on by default - the function itself checks the opt-out flag
 })();
 // Auto-open the scanner on launch - but NEVER during first-run onboarding.
