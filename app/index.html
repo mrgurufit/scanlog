@@ -3624,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.3";
+const APP_BUILD = "2026.10.08.4";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -4069,26 +4069,30 @@ async function contribFlush() {
     if (!q.length) return;
     const ok1 = await ensureFirebaseWeb();
     if (!ok1 || !fbDb || !fbAuth.currentUser) return;   // offline, SDK failed, or not signed in - keep everything queued
-    const rest = [];
+    const done = new Map();   // code -> the t this pass sent or deliberately dropped
     for (const item of q) {
+      const t = (item.data && item.data.t) || "";
       // queued BEFORE a newer edit reached this phone from the cloud (usually
       // Ido's rename): sending it would roll that edit back for everyone -
       // the "feta cheese keeps coming back" bug (2026-10-08). Drop it.
       const ex = CATALOG.codes && CATALOG.codes[item.code];
-      if (ex && ex.t && item.data && item.data.t && ex.t > item.data.t) continue;
-      let ok = false;
+      if (ex && ex.t && t && ex.t > t) { done.set(item.code, t); continue; }
       try {
         await fbFsMod.setDoc(fbFsMod.doc(fbDb, "catalog", item.code), item.data);
-        ok = true;
+        done.set(item.code, t);
       } catch (e) {
-        ok = false;
         // the rules refused it (a non-admin touching an existing record) -
-        // retrying can never succeed, so it must not clog the queue
-        if (e && /permission-denied/i.test(e.code || e.message || "")) continue;
+        // retrying can never succeed, so it must not clog the queue; any
+        // other failure (offline) keeps the item for the next pass
+        if (e && /permission-denied/i.test(e.code || e.message || "")) done.set(item.code, t);
       }
-      if (!ok) rest.push(item);
     }
-    localStorage.setItem(LS_CONTRIB, JSON.stringify(rest));
+    // re-read the queue: whatever was added while this pass was awaiting the
+    // network must survive - only what was sent/dropped above (same code AND
+    // same t) leaves. Writing back our own stale copy used to lose those.
+    let cur = q;
+    try { cur = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { cur = q; }
+    localStorage.setItem(LS_CONTRIB, JSON.stringify(cur.filter(it => done.get(it.code) !== ((it.data && it.data.t) || ""))));
   } finally { contribBusy = false; }
 }
 
