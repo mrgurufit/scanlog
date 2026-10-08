@@ -3628,7 +3628,16 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.8";
+const APP_BUILD = "2026.10.08.9";
+// every main-thread block over 100 ms in the first 20 s, with when it hit -
+// the one number that says whether a launch "freezes" and what froze it
+// (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
+window.__long = [];
+try {
+  const po = new PerformanceObserver(list => { for (const e of list.getEntries()) if (e.duration >= 100) __long.push([Math.round(e.startTime), Math.round(e.duration)]); });
+  po.observe({ type: "longtask", buffered: true });
+  setTimeout(() => { try { po.disconnect(); } catch { /* done */ } }, 20000);
+} catch { /* no longtask support */ }
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3662,7 +3671,8 @@ function bootLine() {
     let ls = "-"; try { ls = r(JSON.stringify(localStorage).length / 1024) + "KB"; } catch { /* blocked */ }
     return "boot: html " + r(n.responseEnd) + "ms · interactive " + r(n.domInteractive) + "ms · loaded " + r(n.loadEventEnd) + "ms"
       + " | base parse " + r(m.baseParse) + "ms · index " + r(m.baseIndex) + "ms | firebase @" + r(m.firebase) + "ms | storage " + ls
-      + " | " + APP_BUILD + (NATIVE_VER ? " · " + NATIVE_VER : "");
+      + " | " + APP_BUILD + (NATIVE_VER ? " · " + NATIVE_VER : "")
+      + " | freezes " + ((window.__long || []).length ? __long.map(x => (x[1] / 1000).toFixed(1) + "s@" + (x[0] / 1000).toFixed(1) + "s").join(", ") : "none");
   } catch (e) { return "boot: n/a"; }
 }
 async function showDbg() {
