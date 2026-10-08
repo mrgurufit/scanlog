@@ -3629,7 +3629,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.15";
+const APP_BUILD = "2026.10.08.16";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3739,7 +3739,11 @@ async function showDbg() {
   try {
     if (HB() && HB().uiStalls) {
       const r = await HB().uiStalls();
-      stallLines = (r && r.stalls || []).map(s => "UI stall " + (s.ms / 1000).toFixed(1) + "s @" + (s.at / 1000).toFixed(1) + "s:" + (s.stack || []).slice(0, 10).map(f => "  " + f).join(""));
+      stallLines = (r && r.stalls || []).map(s => {
+        const samples = s.samples || (s.stack ? [s.stack] : []);
+        return "UI stall " + (s.ms / 1000).toFixed(1) + "s @" + (s.at / 1000).toFixed(1) + "s (" + samples.length + " samples):"
+          + samples.map((st, i) => "\n  [" + (i + 1) + "] " + st.slice(0, 9).join(" < ")).join("");
+      });
       if (!stallLines.length) stallLines = ["UI stalls: none"];
     }
   } catch (e) { stallLines = ["UI stalls: " + ((e && e.message) || e)]; }
