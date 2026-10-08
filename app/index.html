@@ -38,7 +38,16 @@
      as the icon instead of the real logo (Ido, 2026-09-12: iPhone-parity pass) -->
 <link rel="apple-touch-icon" href="icon-512.png">
 <!-- set the saved light theme before paint so there is no dark flash -->
-<script>try{if(localStorage.getItem('fl_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
+<script>try{if(localStorage.getItem('fl_theme')==='light')document.documentElement.setAttribute('data-theme','light');if(localStorage.getItem('fl_plain')==='1')document.documentElement.setAttribute('data-plain','1');}catch(e){}</script>
+<style>
+  /* diagnostics experiment (2026-10-08): "plain" rendering - nothing the GPU
+     has to work for. Toggled from the diagnostics box, applied before paint. */
+  html[data-plain] *, html[data-plain] *::before, html[data-plain] *::after {
+    box-shadow:none !important; text-shadow:none !important; filter:none !important; backdrop-filter:none !important;
+    background-image:none !important; border-radius:3px !important; transition:none !important; animation:none !important;
+    transform:none !important; opacity:1 !important;
+  }
+</style>
 <style>
   :root {
     --bg:#0d0f14; --panel:#161a22; --panel2:#1d2330; --line:#2a3242;
@@ -3628,7 +3637,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.08.13";
+const APP_BUILD = "2026.10.08.14";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3697,7 +3706,9 @@ function bootLine() {
       + " | freezes " + ((window.__long || []).length ? __long.map(x => (x[1] / 1000).toFixed(1) + "s@" + (x[0] / 1000).toFixed(1) + "s").join(", ") : "none")
       + " | taps " + ((window.__taps || []).length ? __taps.map(x => (x[0] / 1000).toFixed(1) + "s(+" + (x[1] / 1000).toFixed(1) + "s " + x[2] + ")").join(", ") : "none")
       + " | frame gaps " + ((window.__gaps || []).length ? __gaps.map(x => (x[1] / 1000).toFixed(1) + "s@" + (x[0] / 1000).toFixed(1) + "s").join(", ") : "none")
-      + " | nav " + (((performance.getEntriesByType("navigation")[0] || {}).type) || "?");
+      + " | nav " + (((performance.getEntriesByType("navigation")[0] || {}).type) || "?")
+      + " | screen " + window.innerWidth + "x" + window.innerHeight + " @" + (window.devicePixelRatio || 1) + "x"
+      + " | plain " + (document.documentElement.hasAttribute("data-plain") ? "on" : "off");
   } catch (e) { return "boot: n/a"; }
 }
 // one tap copies the whole diagnostics text (Ido, 2026-10-08: "a copy button
@@ -3727,6 +3738,12 @@ async function showDbg() {
     cb.textContent = "📋 " + T("העתק את האבחון");
     cb.onclick = copyDbg;
     box.parentNode.insertBefore(cb, box);
+    const pb = document.createElement("button"); pb.type = "button"; pb.id = "dbgPlain"; pb.className = "gbtn";
+    pb.style.cssText = "margin:6px 6px;font-size:13px;padding:8px 14px";
+    const plainOn = () => localStorage.getItem("fl_plain") === "1";
+    pb.textContent = plainOn() ? "🎨 " + T("חזרה לעיצוב הרגיל") : "🧪 " + T("מצב רזה (בדיקה)");
+    pb.onclick = () => { try { localStorage.setItem("fl_plain", plainOn() ? "0" : "1"); } catch { /* full */ } location.reload(); };
+    box.parentNode.insertBefore(pb, box);
   }
   box.textContent = bootLine() + "\n" + T("קורא…");
   // native UI-thread stalls with their stacks (APK 1.56+) - the one view the
