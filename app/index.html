@@ -3624,7 +3624,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.07.5";
+const APP_BUILD = "2026.10.08.1";
 let NATIVE_VER = "";
 
 /* the page booted - disarm the native dead-man switch, so a broken live
@@ -3771,6 +3771,9 @@ function xlSkel(s) {
    scans and the name search both fall back to it after the small, editable
    community catalog (CATALOG.codes) misses. Ido, 2026-09-22. */
 let BASE_CAT = null;          // { codes: { key: {n,m,k,p,c,f,pt} } }
+// bump this whenever app/catalog_base.json is regenerated - it keys the
+// on-device copy kept in Cache Storage (see loadBaseCatalog)
+const BASE_CAT_VER = "2026-09-29";
 let BASE_IDX = null;          // [ { key, rec, norm } ] for fast name search
 let baseLoading = null;
 function loadBaseCatalog() {
@@ -3785,7 +3788,28 @@ function loadBaseCatalog() {
       const abs = "https://mrgurufit.com/app/catalog_base.json";
       let text = null;
       const hb = HB();
-      if (hb && hb.httpGet) { try { const r = await hb.httpGet({ urls: [rel, abs] }); text = (r && r.body) || null; } catch {} }
+      if (hb && hb.httpGet) {
+        // Ido, 2026-10-08 ("every launch is slow"): the OTA copy of this page
+        // lives in its own folder WITHOUT catalog_base.json, so the relative
+        // URL 404s and the native GET (no HTTP cache) pulled the 11 MB file
+        // from the CDN on every single launch. Keep one copy in the WebView's
+        // Cache Storage, keyed by BASE_CAT_VER; older keys are dropped.
+        const ck = abs + "?base=" + BASE_CAT_VER;
+        let cache = null;
+        try { cache = await caches.open("scanlog-base"); } catch { cache = null; }
+        if (cache) {
+          try { const hit = await cache.match(ck); if (hit) text = await hit.text(); } catch { text = null; }
+        }
+        if (!text) {
+          try { const r = await hb.httpGet({ urls: [rel, abs] }); text = (r && r.body) || null; } catch {}
+          if (text && cache) {
+            try {
+              for (const k of await cache.keys()) if (k.url !== ck) await cache.delete(k);
+              await cache.put(ck, new Response(text, { headers: { "Content-Type": "application/json" } }));
+            } catch { /* quota or private mode - the download still worked */ }
+          }
+        }
+      }
       if (!text) {
         // Cache-bust the web fetch by APP_BUILD so a deploy that changes
         // catalog_base.json actually reaches installs whose HTTP cache still
@@ -7878,7 +7902,9 @@ document.addEventListener("visibilitychange", () => {
 checkForUpdate();
 // warm the big built-in DB in the background so a scan or search a moment
 // later is already answered offline from its 57k products
-setTimeout(() => { loadBaseCatalog(); }, 1500);
+// warm the 57k base DB for the scanner/search, but well after boot: the
+// parse + index of an 11 MB file must never compete with the first paint
+setTimeout(() => { loadBaseCatalog(); }, 4000);
 
 /* pull down from the top to refresh, like a web page */
 async function doRefresh() {
