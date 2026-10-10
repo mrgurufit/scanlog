@@ -3629,7 +3629,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.10.1";
+const APP_BUILD = "2026.10.10.2";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3734,6 +3734,16 @@ async function showDbg() {
     cb.textContent = "📋 " + T("העתק את האבחון");
     cb.onclick = copyDbg;
     box.parentNode.insertBefore(cb, box);
+    if (HB() && HB().setSoftRender) {   // APK 1.59+: the software-rendering experiment
+      const sb = document.createElement("button"); sb.type = "button"; sb.id = "dbgSoft"; sb.className = "gbtn";
+      sb.style.cssText = "margin:6px 6px;font-size:13px;padding:8px 14px";
+      sb.textContent = "🧪 " + T("ציור תוכנה: החלף ואתחל");
+      sb.onclick = async () => {
+        try { const cur = await HB().uiStalls(); const on = !(cur && cur.softRender); await HB().setSoftRender({ on }); showToast(on ? T("ציור תוכנה מופעל - סגור ופתח את האפליקציה") : T("ציור GPU - סגור ופתח את האפליקציה")); }
+        catch (e) { showToast(String((e && e.message) || e)); }
+      };
+      box.parentNode.insertBefore(sb, box);
+    }
 
   }
   box.textContent = bootLine() + "\n" + T("קורא…");
@@ -3743,12 +3753,15 @@ async function showDbg() {
   try {
     if (HB() && HB().uiStalls) {
       const r = await HB().uiStalls();
+      // native uptime vs. this page's clock, so stall times print in page seconds like everything else
+      const off = (r && r.uptime) ? (r.uptime - performance.now()) : null;
       stallLines = (r && r.stalls || []).map(s => {
         const samples = s.samples || (s.stack ? [s.stack] : []);
-        return "UI stall " + (s.ms / 1000).toFixed(1) + "s @" + (s.at / 1000).toFixed(1) + "s (" + samples.length + " samples):"
+        return "UI stall " + (s.ms / 1000).toFixed(1) + "s @" + (s.at / 1000).toFixed(1) + "s uptime (" + samples.length + " samples):"
           + samples.map((st, i) => "\n  [" + (i + 1) + "] " + st.slice(0, 9).join(" < ")).join("");
       });
       if (!stallLines.length) stallLines = ["UI stalls: none"];
+      if (r && r.uptime) stallLines.unshift("page started at uptime " + ((r.uptime - performance.now()) / 1000).toFixed(1) + "s" + (r.softRender ? " · software rendering ON" : " · GPU rendering"));
     }
   } catch (e) { stallLines = ["UI stalls: " + ((e && e.message) || e)]; }
   try {
