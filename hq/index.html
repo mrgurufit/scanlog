@@ -288,10 +288,24 @@ async function load() {
     return;
   }
   const users = [];
-  snap.forEach(docSnap => {
+  const docs = []; snap.forEach(s => docs.push(s));
+  for (const docSnap of docs) {
     const d = docSnap.data() || {};
     let p = {};
-    try { p = JSON.parse(d.data || "{}"); } catch (e) { p = {}; }
+    // a backup that outgrew Firestore's 1 MB document sits in parts/p0..pN
+    // (app content 2026.10.10.5); the main document then has no data field
+    let json = (typeof d.data === "string" && d.data) ? d.data : "";
+    if (!json && (+d.parts || 0) > 0) {
+      try {
+        const pieces = [];
+        for (let i = 0; i < +d.parts; i++) {
+          const ps = await F.getDoc(F.doc(db, "users", docSnap.id, "parts", "p" + i));
+          pieces.push(ps.exists() ? (ps.data().data || "") : "");
+        }
+        json = pieces.join("");
+      } catch (e) { json = ""; }
+    }
+    try { p = JSON.parse(json || "{}"); } catch (e) { p = {}; }
     users.push({
       uid: docSnap.id,
       email: d.email || p.email || "",
@@ -300,7 +314,7 @@ async function load() {
       dd: p.daydata || {},
       prof: p.profile || {}
     });
-  });
+  }
   users.sort((a, b) => b.updated - a.updated);
 
   const t0 = dayKey(0);

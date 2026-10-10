@@ -3629,7 +3629,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.10.4";
+const APP_BUILD = "2026.10.10.5";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3718,7 +3718,8 @@ function bootLine() {
       + " | autoScan " + (typeof PROFILE !== "undefined" && PROFILE && PROFILE.autoScan === false ? "off" : "on")
       + " | scanner " + ((window.__scan || []).length ? __scan.map(s => "open@" + (s.open / 1000).toFixed(1) + "s" + (s.close ? " close@" + (s.close / 1000).toFixed(1) + "s " + s.how : " still open")).join(", ") : "not opened")
       + " | visibility " + ((window.__vis || []).join(", ") || "-")
-      + " | plain " + (document.documentElement.hasAttribute("data-plain") ? "on" : "off");
+      + " | plain " + (document.documentElement.hasAttribute("data-plain") ? "on" : "off")
+      + " | backup " + (localStorage.getItem("fl_cloud_dirty") ? "pending" : "synced") + (typeof cloudLastErr !== "undefined" && cloudLastErr ? " ERR " + cloudLastErr : "");
   } catch (e) { return "boot: n/a"; }
 }
 // one tap copies the whole diagnostics text (Ido, 2026-10-08: "a copy button
@@ -4690,19 +4691,74 @@ function CB() {
     cloudGet: async () => {
       const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
       if (!uid) throw new Error("not signed in");
-      const snap = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid));
-      const d = snap.exists() ? snap.data() : null;
-      return { json: d ? (d.data || null) : null, updated: d ? (d.updated || 0) : 0 };
+      return cloudReadChunked(uid);
     },
     cloudSet: async ({ json }) => {
       const uid = fbAuth.currentUser && fbAuth.currentUser.uid;
       if (!uid) throw new Error("not signed in");
       // email rides along so the admin HQ can show who is who (the native
       // bridge writes only {data, updated}; there it lives inside the payload)
-      await fbFsMod.setDoc(fbFsMod.doc(fbDb, "users", uid),
-        { data: json, updated: Date.now(), email: (fbAuth.currentUser && fbAuth.currentUser.email) || null }, { merge: true });
+      await cloudWriteChunked(uid, json, (fbAuth.currentUser && fbAuth.currentUser.email) || null);
     },
   };
+}
+// the web-SDK pair above, usable on its own wherever the JS session exists -
+// inside the APK too (Android 1.54+ signs the JS SDK in from the native
+// token), because only this path knows the chunked backup below
+function jsCloud() {
+  if (!fbAuth || !fbAuth.currentUser || !fbDb) return null;
+  const uid = fbAuth.currentUser.uid, email = fbAuth.currentUser.email || null;
+  return {
+    cloudGet: async () => cloudReadChunked(uid),
+    cloudSet: async ({ json }) => cloudWriteChunked(uid, json, email),
+  };
+}
+/* ---- cloud backup storage, 2026-10-10 ----
+   Firestore caps a document at ~1 MB and Ido's backup is 1.2 MB, so every push
+   had been failing silently ("The value of property data is longer than
+   1048487 bytes"). A backup that does not fit in the main document is split
+   across users/{uid}/parts/p0..pN (CLOUD_PART chars each); the main document
+   then carries parts:N and no data. A small backup keeps the old single-field
+   shape, so older app versions and the native bridge still read it. Reading
+   prefers a non-empty data field (the most recent writer wins either way). */
+const CLOUD_PART = 800000;
+async function cloudReadChunked(uid) {
+  const snap = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid));
+  const d = snap.exists() ? snap.data() : null;
+  if (!d) return { json: null, updated: 0 };
+  if (typeof d.data === "string" && d.data) return { json: d.data, updated: d.updated || 0 };
+  const n = +d.parts || 0;
+  if (n <= 0) return { json: null, updated: d.updated || 0 };
+  const pieces = [];
+  for (let i = 0; i < n; i++) {
+    const ps = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i));
+    if (!ps.exists()) throw new Error("backup part " + i + " of " + n + " is missing");
+    pieces.push(ps.data().data || "");
+  }
+  return { json: pieces.join(""), updated: d.updated || 0 };
+}
+async function cloudWriteChunked(uid, json, email) {
+  const ref = fbFsMod.doc(fbDb, "users", uid);
+  let oldParts = 0;
+  try { const prev = await fbFsMod.getDoc(ref); oldParts = (prev.exists() && +prev.data().parts) || 0; } catch { oldParts = 0; }
+  const n = json.length <= CLOUD_PART ? 0 : Math.ceil(json.length / CLOUD_PART);
+  const batch = fbFsMod.writeBatch(fbDb);
+  if (n === 0) {
+    batch.set(ref, { data: json, parts: 0, size: json.length, updated: Date.now(), email: email || null }, { merge: true });
+  } else {
+    for (let i = 0; i < n; i++) batch.set(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i), { i, data: json.slice(i * CLOUD_PART, (i + 1) * CLOUD_PART) });
+    batch.set(ref, { data: fbFsMod.deleteField(), parts: n, size: json.length, updated: Date.now(), email: email || null }, { merge: true });
+  }
+  for (let i = n; i < oldParts; i++) batch.delete(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i));   // leftovers of a bigger backup
+  await batch.commit();
+}
+async function cloudDeleteParts(uid) {
+  const snap = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid)).catch(() => null);
+  const n = (snap && snap.exists() && +snap.data().parts) || 0;
+  if (!n) return;
+  const batch = fbFsMod.writeBatch(fbDb);
+  for (let i = 0; i < n; i++) batch.delete(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i));
+  await batch.commit();
 }
 
 /* The Android WebView has no BarcodeDetector, so inside the APK the SAME
@@ -8629,9 +8685,14 @@ $("copyBtn").addEventListener("click", async () => {
    cloud account stores. buildPayload() reads it, mergePayload() folds one back
    into this phone (union of log ids, newest wins per product/day). */
 function buildPayload() {
-  return { v: 2, exported: new Date().toISOString(),
+  // v3 (2026-10-10): a log row whose photo is the very same shot as its
+  // product's carries "~" instead of the whole data URL again - those repeats
+  // were most of what pushed the backup past Firestore's 1 MB document limit
+  const log = LOG.map(e => (e && e.barcode && typeof e.photo === "string" && e.photo.startsWith("data:")
+    && PRODUCTS[e.barcode] && PRODUCTS[e.barcode].photo === e.photo) ? Object.assign({}, e, { photo: "~" }) : e);
+  return { v: 3, exported: new Date().toISOString(),
     email: (typeof cloudUser !== "undefined" && cloudUser && cloudUser.email) || "",
-    log: LOG, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
+    log, products: PRODUCTS, daydata: DAYDATA, profile: PROFILE,
     bank: BANK, lang: LANG,
     push: localStorage.getItem("fl_push") || "",
     pushkey: localStorage.getItem("fl_pushkey") || "",
@@ -8639,10 +8700,14 @@ function buildPayload() {
 }
 function mergePayload(d) {
   if (!d || !Array.isArray(d.log)) return -1;
+  Object.assign(PRODUCTS, d.products || {});   // first: a v3 row may point at its product's photo
   const ids = new Set(LOG.map(x => x.id));
   let added = 0;
-  for (const en of d.log) if (!ids.has(en.id)) { LOG.push(en); added++; }
-  Object.assign(PRODUCTS, d.products || {});
+  for (const en of d.log) {
+    if (!en || ids.has(en.id)) continue;
+    if (en.photo === "~") en.photo = (en.barcode && PRODUCTS[en.barcode] && PRODUCTS[en.barcode].photo) || "";
+    LOG.push(en); added++;
+  }
   for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
   if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
   if (d.bank && d.bank.total) { BANK = d.bank; store.set(LS_BANK, BANK); }
@@ -8708,6 +8773,9 @@ async function cloudDeleteAccount() {
   if (!confirm(T("למחוק את החשבון ואת כל הנתונים שלך מהענן? אי אפשר לשחזר. היומן ששמור רק בטלפון הזה יישאר עד שתסיר את האפליקציה."))) return;
   msg("setMsg", T("מוחק…"), "");
   let r = null;
+  // the chunked backup lives in a subcollection the native delete does not
+  // reach - clear it first through the JS session when there is one
+  try { if (fbAuth && fbAuth.currentUser && fbDb) await cloudDeleteParts(fbAuth.currentUser.uid); } catch { /* best effort */ }
   try {
     if (hb.deleteAccount) r = await hb.deleteAccount();
   } catch (e) { r = null; }
@@ -8731,8 +8799,15 @@ async function cloudDeleteAccount() {
 }
 // pull the cloud copy, MERGE it into this phone, then push the merged result -
 // so a new device downloads everything and an existing one never loses data
+// which cloud store to talk to: the web SDK (chunked backup, see
+// cloudReadChunked) whenever its session exists, else the native bridge
+async function cloudIO() {
+  if (HB() && HB().googleIdToken) { try { await nativeJsSignIn(); } catch { /* falls back to native */ } }
+  return jsCloud() || CB();
+}
 async function cloudMergeSync() {
-  const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudGet) return;
+  if (!isSignedIn()) return;
+  const hb = await cloudIO(); if (!hb || !hb.cloudGet) return;
   try {
     const r = await hb.cloudGet();
     let added = 0;
@@ -8744,9 +8819,12 @@ async function cloudMergeSync() {
   } catch { /* offline - try again next launch */ }
 }
 async function cloudPushNow() {
-  const hb = CB(); if (!hb || !isSignedIn() || !hb.cloudSet) return;
-  try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); localStorage.removeItem("fl_cloud_dirty"); } catch { /* offline - stays dirty, retried on the next change or launch */ }
+  if (!isSignedIn()) return;
+  const hb = await cloudIO(); if (!hb || !hb.cloudSet) return;
+  try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); localStorage.removeItem("fl_cloud_dirty"); cloudLastErr = ""; }
+  catch (e) { cloudLastErr = String((e && e.message) || e).slice(0, 120); /* offline or refused - stays dirty, retried on the next change or launch */ }
 }
+let cloudLastErr = "";
 function cloudPush() {   // debounced; called on every change to the user's data
   if (!isSignedIn()) return;
   clearTimeout(cloudTimer);
