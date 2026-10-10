@@ -3629,7 +3629,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.10.2";
+const APP_BUILD = "2026.10.10.3";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3649,6 +3649,17 @@ try {
   };
   document.addEventListener("pointerdown", onDown, true);
 } catch { /* no pointer events */ }
+// page visibility / focus changes in the first 25 s: a hidden page produces no
+// frames at all, and something covering the WebView (splash, dialog, native
+// overlay) would show up here as hidden/blur
+window.__vis = [];
+try {
+  const rec = n => { if (performance.now() < 25000) __vis.push(n + "@" + (performance.now() / 1000).toFixed(1)); };
+  document.addEventListener("visibilitychange", () => rec(document.visibilityState));
+  window.addEventListener("blur", () => rec("blur")); window.addEventListener("focus", () => rec("focus"));
+  window.addEventListener("pageshow", () => rec("pageshow")); window.addEventListener("resize", () => rec("resize"));
+  rec("start:" + document.visibilityState + (document.hasFocus() ? "+focus" : "-focus"));
+} catch { /* ignore */ }
 // frame gaps > 250 ms in the first 25 s: the renderer stalled without a JS long task
 window.__gaps = [];
 try {
@@ -3704,6 +3715,9 @@ function bootLine() {
       + " | frame gaps " + ((window.__gaps || []).length ? __gaps.map(x => (x[1] / 1000).toFixed(1) + "s@" + (x[0] / 1000).toFixed(1) + "s").join(", ") : "none")
       + " | nav " + (((performance.getEntriesByType("navigation")[0] || {}).type) || "?")
       + " | screen " + window.innerWidth + "x" + window.innerHeight + " @" + (window.devicePixelRatio || 1) + "x"
+      + " | autoScan " + (typeof PROFILE !== "undefined" && PROFILE && PROFILE.autoScan === false ? "off" : "on")
+      + " | scanner " + ((window.__scan || []).length ? __scan.map(s => "open@" + (s.open / 1000).toFixed(1) + "s" + (s.close ? " close@" + (s.close / 1000).toFixed(1) + "s " + s.how : " still open")).join(", ") : "not opened")
+      + " | visibility " + ((window.__vis || []).join(", ") || "-")
       + " | plain " + (document.documentElement.hasAttribute("data-plain") ? "on" : "off");
   } catch (e) { return "boot: n/a"; }
 }
@@ -4966,12 +4980,15 @@ async function nativeScan() {
   ovPush();
   nativeScanActive = true;
   $("fab").classList.add("scanon");
+  window.__scan = window.__scan || []; const __s = { open: Math.round(performance.now()), close: 0, how: "" }; __scan.push(__s);   // launch-freeze diagnostics
   try {
     const r = await HB().scanBarcode();
+    __s.close = Math.round(performance.now()); __s.how = (r && r.value) ? "scanned" : "closed";
     nativeScanActive = false;
     $("fab").classList.remove("scanon");
     if (r && r.value) onBarcode(r.value, "");
   } catch (err) {
+    __s.close = Math.round(performance.now()); __s.how = String((err && err.message) || err).slice(0, 30);
     nativeScanActive = false;
     $("fab").classList.remove("scanon");
     const m = String((err && err.message) || err);
