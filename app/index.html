@@ -658,6 +658,9 @@
              padding:8px 10px; font-size:13px; font-weight:700;
              align-items:center; justify-content:center; gap:10px; }
   #betaBar.on { display:flex; }
+  /* the banner is above everything (9998) while the entry sheet is at 75: with
+     the sheet open the banner hid the product-name field under it (QA 2026-10-10) */
+  body:has(#entry.on) #betaBar.on { display:none; }
   /* admin "test as a regular user" mode - a constant reminder while it's on,
      since the whole point is that the app looks and behaves like a fresh
      install (including onboarding); z-index above #ob (90) so it survives
@@ -1845,7 +1848,37 @@ const I18N_EN = {
   "מוצרים חדשים": "New products",
   "🗂️ קטלוג קהילתי": "🗂️ Community catalog",
   "קטלוג קהילתי": "Community catalog",
-  "הודעה חדשה ממשתמש": "New message from a user",
+  "הודעה חדשה ממשתמש": "New message from a user",
+  "☁️ התחברות": "☁️ Sign in",
+  "האפליקציה מסתנכרנת בין כולם: כל מוצר שמישהו סורק נשמר במאגר המשותף, ומגיע לכל הטלפונים.": "The app syncs between everyone: every product anyone scans is saved to the shared catalog and reaches every phone.",
+  "כדי להשתתף בזה — ושהיומן שלך ישרוד החלפת טלפון — צריך חשבון Google.": "To take part, and so your log survives a new phone, you need a Google account.",
+  "התחברות עם Google": "Sign in with Google",
+  "אמשיך בלי חשבון": "Continue without an account",
+  "🎤 דיווח קולי": "🎤 Voice log",
+  "אמור או הקלד מה אכלת. לדוגמה: \"6 כפות אורז לבן מבושל, 3 קציצות בשר וכוס קולה זירו\"": "Say or type what you ate. For example: \"6 tablespoons of cooked white rice, 3 meatballs and a glass of Coke Zero\"",
+  "🎤 התחל לדבר": "🎤 Start talking",
+  "…או הקלד כאן מה אכלת": "…or type here what you ate",
+  "נתח מה אכלתי": "Analyze what I ate",
+  "➕ הוסף הכל ליומן": "➕ Add everything to the log",
+  "מראה": "Appearance",
+  "🌙 כהה": "🌙 Dark",
+  "☀️ בהיר": "☀️ Light",
+  "🔄 אוטומטי": "🔄 Auto",
+  "כדי שנוכל לחזור אליך, הודעה נשלחת רק מחשבון Google מחובר.": "So we can get back to you, messages are sent only from a signed-in Google account.",
+  "🌐 חפש באינטרנט": "🌐 Search the web",
+  "חיפוש לפי שם": "Search by name",
+  "סריקת ברקוד": "Scan barcode",
+  "דיווח קולי": "Voice log",
+  "לפי שם": "By name",
+  "🆕 החדשים": "🆕 Newest",
+  "🧪 בחון כמשתמש רגיל": "🧪 Test as a regular user",
+  "🔙 חזור לחשבון האדמין": "🔙 Back to the admin account",
+  "⚖️ משקל דיגיטלי (בטא)": "⚖️ Digital scale (beta)",
+  "הקש \"סרוק\" והנח את המשקל דלוק לידך.": "Tap \"Scan\" and keep the scale switched on next to you.",
+  "🔍 סרוק משקלים": "🔍 Scan for scales",
+  "🔌 נתק ושכח משקל": "🔌 Disconnect and forget scale",
+  "החיבור לענן נכשל, נסה שוב": "Cloud connection failed, try again",
+  "צריך לעדכן את האפליקציה (1.54) כדי לחבר את הענן": "Update the app (1.54) to connect the cloud",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Your message is saved and will be sent automatically next time the app opens.",
   "המאגר": "The catalog",
   "🗂️ המאגר": "🗂️ The catalog",
@@ -2369,7 +2402,37 @@ const I18N_AR = {
   "מוצרים חדשים": "منتجات جديدة",
   "🗂️ קטלוג קהילתי": "🗂️ الكتالوج المجتمعي",
   "קטלוג קהילתי": "الكتالوج المجتمعي",
-  "הודעה חדשה ממשתמש": "رسالة جديدة من مستخدم",
+  "הודעה חדשה ממשתמש": "رسالة جديدة من مستخدم",
+  "☁️ התחברות": "☁️ تسجيل الدخول",
+  "האפליקציה מסתנכרנת בין כולם: כל מוצר שמישהו סורק נשמר במאגר המשותף, ומגיע לכל הטלפונים.": "التطبيق يتزامن بين الجميع: كل منتج يمسحه أحد يُحفظ في الكتالوج المشترك ويصل إلى كل الهواتف.",
+  "כדי להשתתף בזה — ושהיומן שלך ישרוד החלפת טלפון — צריך חשבון Google.": "للمشاركة، ولكي يبقى سجلك عند تغيير الهاتف، تحتاج إلى حساب Google.",
+  "התחברות עם Google": "تسجيل الدخول عبر Google",
+  "אמשיך בלי חשבון": "المتابعة بدون حساب",
+  "🎤 דיווח קולי": "🎤 تسجيل صوتي",
+  "אמור או הקלד מה אכלת. לדוגמה: \"6 כפות אורז לבן מבושל, 3 קציצות בשר וכוס קולה זירו\"": "قل أو اكتب ما أكلت. مثلاً: \"6 ملاعق أرز أبيض مطبوخ، 3 كرات لحم وكوب كولا زيرو\"",
+  "🎤 התחל לדבר": "🎤 ابدأ الكلام",
+  "…או הקלד כאן מה אכלת": "…أو اكتب هنا ما أكلت",
+  "נתח מה אכלתי": "حلّل ما أكلت",
+  "➕ הוסף הכל ליומן": "➕ أضف الكل إلى السجل",
+  "מראה": "المظهر",
+  "🌙 כהה": "🌙 داكن",
+  "☀️ בהיר": "☀️ فاتح",
+  "🔄 אוטומטי": "🔄 تلقائي",
+  "כדי שנוכל לחזור אליך, הודעה נשלחת רק מחשבון Google מחובר.": "لكي نتمكن من الرد عليك، تُرسل الرسائل فقط من حساب Google متصل.",
+  "🌐 חפש באינטרנט": "🌐 ابحث في الإنترنت",
+  "חיפוש לפי שם": "بحث بالاسم",
+  "סריקת ברקוד": "مسح الباركود",
+  "דיווח קולי": "تسجيل صوتي",
+  "לפי שם": "حسب الاسم",
+  "🆕 החדשים": "🆕 الأحدث",
+  "🧪 בחון כמשתמש רגיל": "🧪 اختبر كمستخدم عادي",
+  "🔙 חזור לחשבון האדמין": "🔙 العودة إلى حساب المسؤول",
+  "⚖️ משקל דיגיטלי (בטא)": "⚖️ ميزان رقمي (تجريبي)",
+  "הקש \"סרוק\" והנח את המשקל דלוק לידך.": "اضغط \"مسح\" وضع الميزان مشغّلاً بجانبك.",
+  "🔍 סרוק משקלים": "🔍 ابحث عن موازين",
+  "🔌 נתק ושכח משקל": "🔌 افصل وانسَ الميزان",
+  "החיבור לענן נכשל, נסה שוב": "فشل الاتصال بالسحابة، حاول مجدداً",
+  "צריך לעדכן את האפליקציה (1.54) כדי לחבר את הענן": "حدّث التطبيق (1.54) لربط السحابة",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "تم حفظ رسالتك وسيتم إرسالها تلقائيًا عند فتح التطبيق في المرة القادمة.",
   "המאגר": "المخزن",
   "🗂️ המאגר": "🗂️ المخزن",
@@ -2868,7 +2931,37 @@ const I18N_RU = {
   "מוצרים חדשים": "Новые продукты",
   "🗂️ קטלוג קהילתי": "🗂️ Общий каталог",
   "קטלוג קהילתי": "Общий каталог",
-  "הודעה חדשה ממשתמש": "Новое сообщение от пользователя",
+  "הודעה חדשה ממשתמש": "Новое сообщение от пользователя",
+  "☁️ התחברות": "☁️ Вход",
+  "האפליקציה מסתנכרנת בין כולם: כל מוצר שמישהו סורק נשמר במאגר המשותף, ומגיע לכל הטלפונים.": "Приложение синхронизируется между всеми: каждый продукт, который кто-то сканирует, сохраняется в общем каталоге и попадает на все телефоны.",
+  "כדי להשתתף בזה — ושהיומן שלך ישרוד החלפת טלפון — צריך חשבון Google.": "Чтобы участвовать и чтобы ваш журнал пережил смену телефона, нужен аккаунт Google.",
+  "התחברות עם Google": "Войти через Google",
+  "אמשיך בלי חשבון": "Продолжить без аккаунта",
+  "🎤 דיווח קולי": "🎤 Голосовая запись",
+  "אמור או הקלד מה אכלת. לדוגמה: \"6 כפות אורז לבן מבושל, 3 קציצות בשר וכוס קולה זירו\"": "Скажите или напишите, что вы ели. Например: «6 ложек варёного белого риса, 3 котлеты и стакан Кока-Колы Зеро»",
+  "🎤 התחל לדבר": "🎤 Начать говорить",
+  "…או הקלד כאן מה אכלת": "…или напишите здесь, что вы ели",
+  "נתח מה אכלתי": "Разобрать, что я ел",
+  "➕ הוסף הכל ליומן": "➕ Добавить всё в журнал",
+  "מראה": "Оформление",
+  "🌙 כהה": "🌙 Тёмная",
+  "☀️ בהיר": "☀️ Светлая",
+  "🔄 אוטומטי": "🔄 Авто",
+  "כדי שנוכל לחזור אליך, הודעה נשלחת רק מחשבון Google מחובר.": "Чтобы мы могли вам ответить, сообщения отправляются только из подключённого аккаунта Google.",
+  "🌐 חפש באינטרנט": "🌐 Искать в интернете",
+  "חיפוש לפי שם": "Поиск по названию",
+  "סריקת ברקוד": "Сканировать штрихкод",
+  "דיווח קולי": "Голосовая запись",
+  "לפי שם": "По названию",
+  "🆕 החדשים": "🆕 Новые",
+  "🧪 בחון כמשתמש רגיל": "🧪 Проверить как обычный пользователь",
+  "🔙 חזור לחשבון האדמין": "🔙 Вернуться к аккаунту админа",
+  "⚖️ משקל דיגיטלי (בטא)": "⚖️ Цифровые весы (бета)",
+  "הקש \"סרוק\" והנח את המשקל דלוק לידך.": "Нажмите «Сканировать» и держите включённые весы рядом.",
+  "🔍 סרוק משקלים": "🔍 Искать весы",
+  "🔌 נתק ושכח משקל": "🔌 Отключить и забыть весы",
+  "החיבור לענן נכשל, נסה שוב": "Не удалось подключиться к облаку, попробуйте снова",
+  "צריך לעדכן את האפליקציה (1.54) כדי לחבר את הענן": "Обновите приложение (1.54), чтобы подключить облако",
   "ההודעה נשמרה ותישלח אוטומטית בפתיחה הבאה.": "Сообщение сохранено и будет отправлено автоматически при следующем открытии приложения.",
   "המאגר": "Каталог",
   "🗂️ המאגר": "🗂️ Каталог",
@@ -3055,7 +3148,8 @@ const I18N_ALL = { en: I18N_EN, ar: I18N_AR, ru: I18N_RU };
    and a one-off DOM sweep handles the static markup. Switching reloads the page,
    which is how the direction flip stays clean instead of half-mirrored. */
 const LS_LANG = "fl_lang";
-let LANG = localStorage.getItem(LS_LANG) || "en";
+// first run: the phone's language when it is one of ours, English otherwise
+let LANG = localStorage.getItem(LS_LANG) || String((navigator.language || "en")).slice(0, 2).toLowerCase();
 if (!["he", "en", "ar", "ru"].includes(LANG)) LANG = "en";
 
 const LANGS = ["he", "en", "ar", "ru"];
@@ -3209,7 +3303,11 @@ function weightFor(day) {
   if (DAYDATA[day] && DAYDATA[day].weight) return DAYDATA[day].weight;
   const days = Object.keys(DAYDATA).filter(d => d <= day && DAYDATA[d].weight).sort();
   if (days.length) return DAYDATA[days[days.length - 1]].weight;
-  return 107.6;   // build-time seed, replaced by his first entry
+  // a day before the first weigh-in: the first weigh-in after it is the best
+  // guess (QA 2026-10-10: yesterday showed 107.6 kg for a user who entered 80.5)
+  const later = Object.keys(DAYDATA).filter(d => d > day && DAYDATA[d].weight).sort();
+  if (later.length) return DAYDATA[later[0]].weight;
+  return 107.6;   // build-time seed, only until the very first entry
 }
 
 function bmrFor(w) {
@@ -3629,7 +3727,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.10.5";
+const APP_BUILD = "2026.10.10.6";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -3972,6 +4070,7 @@ function loadBaseCatalog() {
 let baseIdxBuilding = null;
 function buildBaseIndex() {
   if (BASE_IDX) return Promise.resolve(BASE_IDX);
+  if (!BASE_CAT || !BASE_CAT.codes) return Promise.resolve(null);   // nothing to index yet - built when the DB arrives
   if (baseIdxBuilding) return baseIdxBuilding;
   baseIdxBuilding = new Promise(resolve => {
     const keys = Object.keys((BASE_CAT && BASE_CAT.codes) || {});
@@ -4155,7 +4254,12 @@ function bustCacheUrl(url, t) {
 async function nativeJsSignIn() {
   const hb = HB(); if (!hb || !hb.googleIdToken) return false;
   const ok = await ensureFirebaseWeb(); if (!ok || !fbAuth) return false;
-  if (fbAuth.currentUser) return true;
+  if (fbAuth.currentUser) {
+    // a JS session of ANOTHER account (test-as-user, a family phone that
+    // switched Google accounts) must not be reused for this user's data
+    if (!cloudUser || !cloudUser.uid || fbAuth.currentUser.uid === cloudUser.uid) return true;
+    try { await fbAuthMod.signOut(fbAuth); } catch { /* re-sign-in below */ }
+  }
   try {
     const r = await hb.googleIdToken();
     if (!r || !r.idToken) return false;
@@ -4376,7 +4480,7 @@ function sharedContribute(code, p, opts) {
   // frozen first 10 seconds on Ido's phone (2026-10-10)
   if (already) return false;
   CATALOG.codes[code] = rec;
-  if (bulk && bulkContrib) { bulkContrib.push({ code, data: rec }); return true; }
+  if (bulk && bulkContrib) { bulkContrib.push({ code, data: rec, prev: ex || null }); return true; }
   try { store.set(LS_CAT, CATALOG); } catch { /* storage full - the cloud queue still carries it */ }
   // queue for Firestore (durable + retried) and flush now - reaches every
   // other phone the instant the realtime listener delivers it (Ido,
@@ -4707,6 +4811,7 @@ function CB() {
 // token), because only this path knows the chunked backup below
 function jsCloud() {
   if (!fbAuth || !fbAuth.currentUser || !fbDb) return null;
+  if (cloudUser && cloudUser.uid && fbAuth.currentUser.uid !== cloudUser.uid) return null;   // never another account's backup
   const uid = fbAuth.currentUser.uid, email = fbAuth.currentUser.email || null;
   return {
     cloudGet: async () => cloudReadChunked(uid),
@@ -4721,7 +4826,9 @@ function jsCloud() {
    then carries parts:N and no data. A small backup keeps the old single-field
    shape, so older app versions and the native bridge still read it. Reading
    prefers a non-empty data field (the most recent writer wins either way). */
-const CLOUD_PART = 800000;
+// 300,000 UTF-16 units: Firestore's limit is 1,048,487 BYTES and Hebrew is 2
+// bytes per char (3 for some symbols), so this stays under 900 KB per document
+const CLOUD_PART = 300000;
 async function cloudReadChunked(uid) {
   const snap = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid));
   const d = snap.exists() ? snap.data() : null;
@@ -4729,12 +4836,8 @@ async function cloudReadChunked(uid) {
   if (typeof d.data === "string" && d.data) return { json: d.data, updated: d.updated || 0 };
   const n = +d.parts || 0;
   if (n <= 0) return { json: null, updated: d.updated || 0 };
-  const pieces = [];
-  for (let i = 0; i < n; i++) {
-    const ps = await fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i));
-    if (!ps.exists()) throw new Error("backup part " + i + " of " + n + " is missing");
-    pieces.push(ps.data().data || "");
-  }
+  const snaps = await Promise.all(Array.from({ length: n }, (_, i) => fbFsMod.getDoc(fbFsMod.doc(fbDb, "users", uid, "parts", "p" + i))));
+  const pieces = snaps.map((ps, i) => { if (!ps.exists()) throw new Error("backup part " + i + " of " + n + " is missing"); return ps.data().data || ""; });
   return { json: pieces.join(""), updated: d.updated || 0 };
 }
 async function cloudWriteChunked(uid, json, email) {
@@ -8710,11 +8813,14 @@ function mergePayload(d) {
   }
   for (const [k, v] of Object.entries(d.daydata || {})) DAYDATA[k] = Object.assign({}, DAYDATA[k] || {}, v);
   if (d.profile) PROFILE = Object.assign({}, PROFILE, d.profile);
-  if (d.bank && d.bank.total) { BANK = d.bank; store.set(LS_BANK, BANK); }
+  // persist WITHOUT marking the cloud dirty or arming a push: the cloud just
+  // handed us this data (store.set would have re-uploaded 1.2 MB on every launch)
+  const quiet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full */ } };
+  if (d.bank && d.bank.total) { BANK = d.bank; quiet(LS_BANK, BANK); }
   if (d.push) localStorage.setItem("fl_push", d.push);
   if (d.pushkey) localStorage.setItem("fl_pushkey", d.pushkey);
   if (d.onboarded) localStorage.setItem(LS_OB, d.onboarded);
-  store.set(LS_LOG, LOG); store.set(LS_PROD, PRODUCTS); store.set(LS_DAY, DAYDATA); store.set(LS_PROF, PROFILE);
+  quiet(LS_LOG, LOG); quiet(LS_PROD, PRODUCTS); quiet(LS_DAY, DAYDATA); quiet(LS_PROF, PROFILE);
   renderLog();
   return added;
 }
@@ -8761,6 +8867,7 @@ async function cloudSignIn() {
 async function cloudSignOut() {
   const hb = CB(); if (!hb || !hb.googleSignOut) return;
   try { await hb.googleSignOut(); } catch { /* ignore */ }
+  try { if (fbAuth && fbAuth.currentUser && fbAuthMod) await fbAuthMod.signOut(fbAuth); } catch { /* ignore */ }   // the JS session as well
   cloudUser = null; renderAccount();
   msg("setMsg", T("התנתקת מהחשבון"), "ok");
 }
@@ -8775,7 +8882,8 @@ async function cloudDeleteAccount() {
   let r = null;
   // the chunked backup lives in a subcollection the native delete does not
   // reach - clear it first through the JS session when there is one
-  try { if (fbAuth && fbAuth.currentUser && fbDb) await cloudDeleteParts(fbAuth.currentUser.uid); } catch { /* best effort */ }
+  try { await cloudIO(); } catch { /* no JS session - the main document still goes below */ }
+  try { if (jsCloud()) await cloudDeleteParts(fbAuth.currentUser.uid); } catch { /* best effort */ }
   try {
     if (hb.deleteAccount) r = await hb.deleteAccount();
   } catch (e) { r = null; }
@@ -8805,22 +8913,43 @@ async function cloudIO() {
   if (HB() && HB().googleIdToken) { try { await nativeJsSignIn(); } catch { /* falls back to native */ } }
   return jsCloud() || CB();
 }
+// a merge in flight blocks pushes until it has read the cloud, so a debounced
+// push can never replace the backup with a near-empty phone first
+let cloudBusy = null;
+// set when this client read a backup it cannot understand (native bridge vs a
+// chunked backup): it must not write over it
+let cloudReadOnly = false;
 async function cloudMergeSync() {
-  if (!isSignedIn()) return;
-  const hb = await cloudIO(); if (!hb || !hb.cloudGet) return;
-  try {
-    const r = await hb.cloudGet();
-    let added = 0;
-    if (r && r.json) { try { added = mergePayload(JSON.parse(r.json)); renderTotals(); } catch { /* bad json */ } }
-    // re-upload the whole backup only when this phone changed something since
-    // its last successful push (or the merge brought rows in) - not on every
-    // launch (Ido, 2026-10-08: launch must not do heavy work for nothing)
-    if (added > 0 || localStorage.getItem("fl_cloud_dirty")) await cloudPushNow();
-  } catch { /* offline - try again next launch */ }
+  if (!isSignedIn() || cloudBusy) return;
+  cloudBusy = (async () => {
+    const hb = await cloudIO(); if (!hb || !hb.cloudGet) return;
+    try {
+      const r = await hb.cloudGet();
+      if (hb === HB() && r && !r.json && r.updated) { cloudReadOnly = true; cloudLastErr = "chunked backup needs the JS session"; return; }
+      cloudReadOnly = false;
+      let added = 0, cloudHasAll = true;
+      if (r && r.json) {
+        try {
+          const d = JSON.parse(r.json);
+          const cloudIds = new Set((d.log || []).map(x => x && x.id));
+          cloudHasAll = LOG.every(x => cloudIds.has(x.id));   // rows from before the dirty flag existed
+          added = mergePayload(d); renderTotals();
+        } catch { /* bad json */ }
+      }
+      // re-upload only when this phone has something the cloud lacks
+      if (added > 0 || !cloudHasAll || localStorage.getItem("fl_cloud_dirty")) await cloudPushRaw();
+    } catch { /* offline - try again next launch */ }
+  })();
+  try { await cloudBusy; } finally { cloudBusy = null; }
 }
 async function cloudPushNow() {
+  if (cloudBusy) { try { await cloudBusy; } catch { /* ignore */ } }
+  return cloudPushRaw();
+}
+async function cloudPushRaw() {
   if (!isSignedIn()) return;
   const hb = await cloudIO(); if (!hb || !hb.cloudSet) return;
+  if (cloudReadOnly && !jsCloud()) { cloudLastErr = "chunked backup needs the JS session"; return; }
   try { await hb.cloudSet({ json: JSON.stringify(buildPayload()) }); localStorage.removeItem("fl_cloud_dirty"); cloudLastErr = ""; }
   catch (e) { cloudLastErr = String((e && e.message) || e).slice(0, 120); /* offline or refused - stays dirty, retried on the next change or launch */ }
 }
@@ -9050,14 +9179,21 @@ async function shareAllMine() {
       if (!isShareable(code) || !p || !p.name) continue;
       try { sharedContribute(code, p, { bulk: true }); } catch { /* one bad product must not stop the rest */ }
     }
+    // queue this slice now; if the queue cannot take it (storage full) the
+    // cache goes back to what it was, so nothing is marked "shared" that never left
+    const slice = bulkContrib; bulkContrib = [];
+    if (slice.length) {
+      try { contribEnqueueMany(slice); any = true; }
+      catch { for (const c of slice) { if (c.prev) CATALOG.codes[c.code] = c.prev; else delete CATALOG.codes[c.code]; } }
+    }
     if (i < entries.length) { setTimeout(step, 0); return; }
-    const changed = bulkContrib; bulkContrib = null;
-    if (changed.length) {
+    bulkContrib = null;
+    if (any) {
       try { store.set(LS_CAT, CATALOG); } catch { /* storage full */ }
-      contribEnqueueMany(changed);
       contribFlush();
     }
   };
+  let any = false;
   setTimeout(step, 0);
 }
 
@@ -9608,11 +9744,15 @@ async function fbPost(payload) {
   // document at 1 MB, so an oversized one is dropped rather than failing the
   // whole message
   const image = (payload.image && payload.image.length < 850000) ? payload.image : "";
-  await fbFsMod.addDoc(fbFsMod.collection(fbDb, "feedback"), Object.assign({}, payload, {
+  const write = fbFsMod.addDoc(fbFsMod.collection(fbDb, "feedback"), Object.assign({}, payload, {
     text: String(payload.text || "").slice(0, 4999),   // the rule caps it; longer would fail on every retry
     image, done: false, ts: fbFsMod.serverTimestamp(),
     authUid: (fbAuth && fbAuth.currentUser && fbAuth.currentUser.uid) || payload.uid || "",
   }));
+  // Firestore keeps a write pending for as long as its channel is down - the
+  // button sat on "sending…" forever (QA 2026-10-10). 15 s, then it is queued
+  // and sent on the next open like any offline message.
+  await Promise.race([write, new Promise((_, rej) => setTimeout(() => rej(new Error("feedback write timed out")), 15000))]);
   return true;
 }
 async function fbFlush() {
@@ -9635,6 +9775,7 @@ $("fbSend").addEventListener("click", async () => {
     at: new Date().toISOString(), boot: (typeof bootLine === "function" ? bootLine() : ""),
   };
   $("fbSend").disabled = true; $("fbSend").textContent = T("שולח…");
+  $("fbMsg").textContent = ""; $("fbMsg").className = "msg";
   // Ido, 2026-10-07: NO second (JS-SDK) Google sign-in here - the app is
   // already signed in natively and the payload says who sent it; the
   // feedback rule allows the create without auth
@@ -9909,6 +10050,8 @@ function setThemeMode(m) { themeMode = m; localStorage.setItem(LS_THEME, m); app
 document.querySelectorAll("[data-theme-opt]").forEach(b => b.addEventListener("click", () => setThemeMode(b.dataset.themeOpt)));
 applyTheme();
 
+// an older build merged a v3 backup and kept the "~" photo marker literally
+for (const e of LOG) if (e && e.photo === "~") e.photo = (e.barcode && PRODUCTS[e.barcode] && PRODUCTS[e.barcode].photo) || "";
 scrubImages();
 renderLog();
 updateFbButton();
