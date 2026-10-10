@@ -3629,7 +3629,7 @@ function msg(id, text, cls) { const el = $(id); el.textContent = text || ""; el.
 /* version line: APP_BUILD is bumped on every deploy of this file, so the
    footer always answers "which version am I actually running?". The native
    APK version joins it when the bridge reports one. */
-const APP_BUILD = "2026.10.10.3";
+const APP_BUILD = "2026.10.10.4";
 // every main-thread block over 100 ms in the first 20 s, with when it hit -
 // the one number that says whether a launch "freezes" and what froze it
 // (Ido, 2026-10-08); read back by bootLine() in the diagnostics box
@@ -4203,11 +4203,16 @@ function adminListenersRestart() {
 // contributions are queued durably so a lost signal (or not being signed in
 // yet) never drops a new product - each entry is {code, data}, "data" being
 // exactly the record shape stored in CATALOG.codes / the Firestore doc
-function contribEnqueue(code, data) {
+function contribEnqueue(code, data) { contribEnqueueMany([{ code, data }]); }
+// one read + one write for any number of items (the per-item version made a
+// bulk share O(n^2) in storage traffic)
+function contribEnqueueMany(items) {
+  if (!items || !items.length) return;
   let q = [];
   try { q = JSON.parse(localStorage.getItem(LS_CONTRIB) || "[]"); } catch { q = []; }
-  q = q.filter(x => x.code !== code);   // newest wins per barcode
-  q.push({ code, data });
+  const codes = new Set(items.map(x => x.code));
+  q = q.filter(x => !codes.has(x.code));   // newest wins per barcode
+  for (const it of items) q.push({ code: it.code, data: it.data });
   if (q.length > 300) q = q.slice(-300);
   localStorage.setItem(LS_CONTRIB, JSON.stringify(q));
 }
@@ -4309,8 +4314,11 @@ async function propsFlush() {
   } finally { propsBusy = false; }
 }
 
-function sharedContribute(code, p) {
-  if (!code || !p || !p.name) return;
+// bulk mode (shareAllMine): changed records pile up here and are persisted once
+let bulkContrib = null;
+function sharedContribute(code, p, opts) {
+  if (!code || !p || !p.name) return false;
+  const bulk = !!(opts && opts.bulk);
   // A camera/gallery photo is a data: URL - it goes straight into the
   // Firestore record as-is (no separate hosting/compaction step anymore).
   const ownPhoto = /^(https?:|data:image\/)/.test(p.photo || "") ? p.photo : "";
@@ -4361,16 +4369,20 @@ function sharedContribute(code, p) {
   const t = already ? (ex && ex.t) || new Date().toISOString() : new Date().toISOString();
   const rec = { n: p.name, k: p.kcal || 0, p: p.pro || 0, c: p.carb || 0, f: p.fat || 0, u: +p.unit || 0, img: photo, s: who, t };
   if (portions.length) rec.pt = portions;
-  try {
-    CATALOG.codes[code] = rec;
-    store.set(LS_CAT, CATALOG);
-  } catch { /* storage full - the cloud queue still carries it */ }
-  if (already) return;
+  // unchanged = nothing to write and nothing to send. This used to re-save
+  // the whole 1.2 MB cache on EVERY call, changed or not - with 1,350
+  // products at launch that was 1.6 GB of localStorage writes and the
+  // frozen first 10 seconds on Ido's phone (2026-10-10)
+  if (already) return false;
+  CATALOG.codes[code] = rec;
+  if (bulk && bulkContrib) { bulkContrib.push({ code, data: rec }); return true; }
+  try { store.set(LS_CAT, CATALOG); } catch { /* storage full - the cloud queue still carries it */ }
   // queue for Firestore (durable + retried) and flush now - reaches every
   // other phone the instant the realtime listener delivers it (Ido,
   // 2026-09-18: "מיידי... אין יותר קטלוג שלי קטלוג שלו... קטלוג אחד")
   contribEnqueue(code, rec);
   contribFlush();
+  return true;
 }
 
 /* AI ENRICHMENT LOOKBACK (Ido, 2026-09-13): "שאלה למשתמש יוכל לראות את זה
@@ -8934,7 +8946,7 @@ function renderAdminIcons() {
       pendingFetch(false); feedbackFetch(false);
     }
     updateInboxBadge();                          // badges + the menu dot, no network
-    if (!window.__mineShared) { window.__mineShared = true; shareAllMine(); catalogAdoptAll(); }
+    if (!window.__mineShared) { window.__mineShared = true; setTimeout(() => { shareAllMine(); catalogAdoptAll(); }, 8000); }
   } else {
     setBadge("drawerApproveBadge", 0); setBadge("drawerInboxBadge", 0);
     const dot = $("menuDot"); if (dot) dot.classList.remove("on");
@@ -8948,10 +8960,27 @@ function renderAdminIcons() {
 async function shareAllMine() {
   if (!isAdmin()) return;
   try { await catalogPull(false); } catch { /* use whatever catalog we have */ }
-  for (const [code, p] of Object.entries(PRODUCTS || {})) {
-    if (!isShareable(code) || !p || !p.name) continue;
-    sharedContribute(code, p);   // skipped automatically if already in the catalog unchanged
-  }
+  // slices of 60 products between frames, all changes collected and persisted
+  // ONCE at the end - never a storage write per product (2026-10-10)
+  const entries = Object.entries(PRODUCTS || {});
+  bulkContrib = [];
+  let i = 0;
+  const step = () => {
+    const end = Math.min(i + 60, entries.length);
+    for (; i < end; i++) {
+      const [code, p] = entries[i];
+      if (!isShareable(code) || !p || !p.name) continue;
+      try { sharedContribute(code, p, { bulk: true }); } catch { /* one bad product must not stop the rest */ }
+    }
+    if (i < entries.length) { setTimeout(step, 0); return; }
+    const changed = bulkContrib; bulkContrib = null;
+    if (changed.length) {
+      try { store.set(LS_CAT, CATALOG); } catch { /* storage full */ }
+      contribEnqueueMany(changed);
+      contribFlush();
+    }
+  };
+  setTimeout(step, 0);
 }
 
 // Ido, 2026-10-06: feedback lives in the Firestore "feedback" collection and
